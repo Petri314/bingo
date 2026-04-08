@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link href="https://fonts.googleapis.com/css2?family=Poller+One&display=swap" rel="stylesheet">
+    <title>Bingo Beneficio Cristian</title>
+    <style>
+  @keyframes bingoFlash {
+    0%   { transform: scale(1.1); box-shadow: 0 0 10px 4px rgba(239,68,68,0.6); }
+    50%  { transform: scale(1.22); box-shadow: 0 0 30px 10px rgba(239,68,68,0.9); }
+    100% { transform: scale(1.1); box-shadow: 0 0 10px 4px rgba(239,68,68,0.6); }
+  }
+
+  .sorteo-top-row { display: contents; }
+
+  @media (max-width: 768px) {
+    .sorteo-imagen { display: none !important; }
+    .sorteo-grid {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 16px !important;
+    }
+    .sorteo-top-row {
+      display: flex !important;
+      flex-direction: row !important;
+      gap: 12px !important;
+      width: 100% !important;
+    }
+    .sorteo-col1 { flex: 1 !important; }
+    .sorteo-col3 { flex: 1 !important; }
+    .sorteo-col2 {
+      width: 100% !important;
+      justify-content: center !important;
+      overflow-x: auto !important;
+    }
+  }
+</style>
+
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
