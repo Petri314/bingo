@@ -287,7 +287,7 @@ export default function BingoAdmin() {
             )}
           </div>
           <div className="sorteo-imagen" style={{ borderRadius: 16, flex: 1, width: '100%', minHeight: 520, overflow: 'hidden' }}>
-            <img src="/imagen.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 12 }} />
+            <img src="/iimagen.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 12 }} />
           </div>
         </div>
 
