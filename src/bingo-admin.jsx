@@ -8,7 +8,7 @@ const TOTAL = 75; const PRICE = 1000;
 const DB_CARDS   = "bingo_cards";
 const DB_DRAWN   = "bingo_drawn";
 const DB_WINNERS = "bingo_winners";
-const DB_STATE   = "bingo_state";   // ← guarda juego y patrón activo en Firebase
+const DB_STATE   = "bingo_state";
 
 const GAMES = [
   { id: "j1", name: "Juego 1", color: "#ef4444" },
@@ -48,7 +48,6 @@ function generateCardGrid() {
   grid[2][2] = "FREE"; return grid;
 }
 
-// ─── VERIFICAR PATRÓN ─────────────────────────────────────────────────────────
 function checkPattern(card, drawn, pattern) {
   for (let row = 0; row < 5; row++) {
     for (let col = 0; col < 5; col++) {
@@ -75,7 +74,6 @@ function CardGrid({ card, drawn }) {
   );
 }
 
-// ─── MODAL PATRÓN ─────────────────────────────────────────────────────────────
 function PatternModal({ activePattern, activeGame, onSelect, onClose }) {
   return (
     <div onClick={onClose} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300, backdropFilter:"blur(4px)" }}>
@@ -102,7 +100,6 @@ function PatternModal({ activePattern, activeGame, onSelect, onClose }) {
   );
 }
 
-// ─── MODAL JUEGO ──────────────────────────────────────────────────────────────
 function GameModal({ activeGame, onSelect, onClose }) {
   return (
     <div onClick={onClose} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300, backdropFilter:"blur(4px)" }}>
@@ -127,7 +124,6 @@ function GameModal({ activeGame, onSelect, onClose }) {
   );
 }
 
-// ─── MODAL REINICIAR ──────────────────────────────────────────────────────────
 function ResetModal({ onConfirm, onClose }) {
   return (
     <div onClick={onClose} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300, backdropFilter:"blur(4px)" }}>
@@ -144,11 +140,9 @@ function ResetModal({ onConfirm, onClose }) {
   );
 }
 
-// ─── MODAL GANADOR 🏆 ─────────────────────────────────────────────────────────
 function WinnerPopup({ winner, onClose }) {
   const game = GAMES.find(g => g.id === winner.gameId);
   const gc = game?.color || "#f59e0b";
-
   return (
     <div onClick={onClose} style={{ position:"fixed", inset:0, zIndex:500, background:"rgba(0,0,0,0.88)", display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(6px)" }}>
       <style>{`
@@ -162,14 +156,12 @@ function WinnerPopup({ winner, onClose }) {
         .balloon-float   { position:fixed;bottom:-90px;font-size:44px;animation:floatBalloon linear infinite;pointer-events:none;line-height:1;z-index:501; }
         .confetti-piece  { position:fixed;bottom:-20px;pointer-events:none;animation:floatBalloon linear infinite;z-index:501; }
       `}</style>
-
       {[{l:"8%",delay:"0s",dur:"3.2s"},{l:"20%",delay:"0.35s",dur:"2.8s"},{l:"34%",delay:"0.8s",dur:"3.6s"},{l:"50%",delay:"0.15s",dur:"3.0s"},{l:"63%",delay:"0.6s",dur:"2.6s"},{l:"77%",delay:"1.0s",dur:"3.4s"},{l:"90%",delay:"0.45s",dur:"2.9s"},{l:"42%",delay:"1.3s",dur:"3.1s"}].map((b,i)=>(
         <div key={"b"+i} className="balloon-float" style={{left:b.l,animationDelay:b.delay,animationDuration:b.dur}}>🎈</div>
       ))}
       {Array.from({length:22}).map((_,i)=>(
         <div key={"cf"+i} className="confetti-piece" style={{ left:`${(i*4.5)%100}%`, width:i%4===0?12:8, height:i%4===0?12:8, borderRadius:i%3===0?"50%":2, background:["#ef4444","#3b82f6","#f59e0b","#22c55e","#a855f7","#ec4899","#14b8a6","#f97316"][i%8], animationDuration:`${2.2+(i%5)*0.35}s`, animationDelay:`${(i*0.14).toFixed(2)}s` }}/>
       ))}
-
       <div className="winner-pop-card" onClick={e=>e.stopPropagation()} style={{ background:"#0f1221", border:`3px solid ${gc}`, borderRadius:26, padding:"38px 44px", textAlign:"center", maxWidth:400, width:"92vw", boxShadow:`0 0 80px ${gc}66, 0 0 160px ${gc}22`, position:"relative", zIndex:502 }}>
         <div className="star-pop" style={{fontSize:20,position:"absolute",top:18,left:22,animationDelay:"0.2s"}}>⭐</div>
         <div className="star-pop" style={{fontSize:16,position:"absolute",top:22,right:26,animationDelay:"0.4s"}}>✨</div>
@@ -191,7 +183,6 @@ function WinnerPopup({ winner, onClose }) {
   );
 }
 
-// ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
 export default function BingoAdmin() {
   const [tab, setTab]                   = useState(2);
   const [cards, setCards]               = useState([]);
@@ -241,79 +232,39 @@ export default function BingoAdmin() {
     window.speechSynthesis.speak(u);
   };
 
-  // ── Firebase listeners (incluye bingo_state para sync en tiempo real) ──
   useEffect(()=>{
     const uC = onValue(ref(db,DB_CARDS),   s=>{ const v=s.val(); setCards(v?Object.values(v).sort((a,b)=>a.id-b.id):[]); });
     const uD = onValue(ref(db,DB_DRAWN),   s=>{ const v=s.val(); if(v){const n=Object.values(v); setDrawn(n); setLastDrawn(n.at(-1)??null);} else{setDrawn([]); setLastDrawn(null);} });
     const uW = onValue(ref(db,DB_WINNERS), s=>{ const v=s.val(); setWinners(v?Object.values(v).sort((a,b)=>a.ts-b.ts):[]); });
-
-    // ── SINCRONIZACIÓN DE JUEGO, PATRÓN Y GANADOR EN TODOS LOS DISPOSITIVOS ──
     const uS = onValue(ref(db,DB_STATE), s=>{
-      const v = s.val();
-      if (!v) return;
-      // Sincronizar juego activo
-      if (v.gameId) {
-        const g = GAMES.find(g=>g.id===v.gameId);
-        if (g) setActiveGame(g);
-      }
-      // Sincronizar patrón activo
-      if (v.patternId) {
-        const p = PATTERNS.find(p=>p.id===v.patternId);
-        if (p) setActivePattern(p);
-      }
-      // Sincronizar flag de ganador ya encontrado
-      if (typeof v.alreadyWon === "boolean") setAlreadyWon(v.alreadyWon);
-      // Mostrar popup del ganador en TODOS los dispositivos
+      const v = s.val(); if (!v) return;
+      if (v.gameId)   { const g=GAMES.find(g=>g.id===v.gameId);     if(g) setActiveGame(g); }
+      if (v.patternId){ const p=PATTERNS.find(p=>p.id===v.patternId); if(p) setActivePattern(p); }
+      if (typeof v.alreadyWon==="boolean") setAlreadyWon(v.alreadyWon);
       if (v.currentWinner) {
-        const w = v.currentWinner;
-        // Solo mostrar si es reciente (últimos 30 segundos) para evitar popups al entrar
-        if (Date.now() - w.ts < 30000) {
-          setWinnerPopup(w);
-        }
-      } else {
-        setWinnerPopup(null);
-      }
+        if (Date.now()-v.currentWinner.ts < 30000) setWinnerPopup(v.currentWinner);
+      } else { setWinnerPopup(null); }
     });
-
     return ()=>{ uC(); uD(); uW(); uS(); };
   },[]);
 
-  // ── Admin cambia juego → persiste en Firebase → todos los dispositivos se actualizan ──
   const handleSelectGame = async (game) => {
-    await update(ref(db, DB_STATE), {
-      gameId: game.id,
-      alreadyWon: false,
-      currentWinner: null,
-    });
+    await update(ref(db,DB_STATE),{ gameId:game.id, alreadyWon:false, currentWinner:null });
   };
-
-  // ── Admin cambia patrón → persiste en Firebase → todos los dispositivos se actualizan ──
   const handleSelectPattern = async (pattern) => {
-    await update(ref(db, DB_STATE), {
-      patternId: pattern.id,
-      alreadyWon: false,
-      currentWinner: null,
-    });
+    await update(ref(db,DB_STATE),{ patternId:pattern.id, alreadyWon:false, currentWinner:null });
   };
 
-  // ── Detectar ganador automáticamente ──
   useEffect(() => {
     if (!drawn.length || alreadyWon) return;
     const soldCards = cards.filter(c => c.paid && c.gameId === activeGame.id);
     for (const card of soldCards) {
       if (!card.grid) continue;
       if (checkPattern(card, drawn, activePattern)) {
-        const winnerData = {
-          name: card.owner,
-          card: card.cardNum,
-          game: activeGame.name,
-          gameId: activeGame.id,
-          time: new Date().toLocaleTimeString("es-CL"),
-          ts: Date.now(),
-        };
-        // Guardar en winners y en state (para propagarlo a todos los dispositivos)
-        set(ref(db, `${DB_WINNERS}/${winnerData.ts}`), winnerData);
-        update(ref(db, DB_STATE), { alreadyWon: true, currentWinner: winnerData });
+        const winnerData = { name:card.owner, card:card.cardNum, game:activeGame.name, gameId:activeGame.id, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now() };
+        setAlreadyWon(true);
+        set(ref(db,`${DB_WINNERS}/${winnerData.ts}`), winnerData);
+        update(ref(db,DB_STATE),{ alreadyWon:true, currentWinner:winnerData });
         break;
       }
     }
@@ -336,8 +287,7 @@ export default function BingoAdmin() {
     const unsold=cards.filter(c=>!c.paid&&c.gameId===activeGame.id);
     if (!unsold.length) return showToast("No hay cartones disponibles","err");
     const updates={}; unsold.forEach(c=>{ updates[`${DB_CARDS}/${c.id}`]=null; });
-    await update(ref(db),updates);
-    showToast(`🗑️ ${unsold.length} cartones eliminados`);
+    await update(ref(db),updates); showToast(`🗑️ ${unsold.length} cartones eliminados`);
   };
 
   const assignCard = async () => {
@@ -347,8 +297,7 @@ export default function BingoAdmin() {
     if (available.length<qty) return showToast(`Solo quedan ${available.length} cartones en ${activeGame.name}`,"err");
     const updates={}; const nums=[];
     for (let i=0;i<qty;i++) { updates[`${DB_CARDS}/${available[i].id}`]={...available[i],owner:newOwner.trim(),paid:true}; nums.push(available[i].cardNum); }
-    await update(ref(db),updates);
-    showToast(`✓ ${activeGame.name}: ${nums.join(', ')}`);
+    await update(ref(db),updates); showToast(`✓ ${activeGame.name}: ${nums.join(', ')}`);
     setNewOwner(""); setNewQty("1");
   };
 
@@ -365,18 +314,13 @@ export default function BingoAdmin() {
   const resetSort = async () => {
     await set(ref(db,DB_DRAWN),null);
     await update(ref(db,DB_STATE),{ alreadyWon:false, currentWinner:null });
-    setShowResetModal(false);
-    showToast("Sorteo reiniciado");
+    setShowResetModal(false); showToast("Sorteo reiniciado");
   };
 
   const addWinner = async () => {
     if (!winnerName.trim()||!winnerCard.trim()) return showToast("Completa campos","err");
     const ts=Date.now();
-    await set(ref(db,`${DB_WINNERS}/${ts}`),{
-      name:winnerName.trim(), card:winnerCard.trim(),
-      game:activeGame.name, gameId:activeGame.id,
-      time:new Date().toLocaleTimeString("es-CL"), ts,
-    });
+    await set(ref(db,`${DB_WINNERS}/${ts}`),{ name:winnerName.trim(), card:winnerCard.trim(), game:activeGame.name, gameId:activeGame.id, time:new Date().toLocaleTimeString("es-CL"), ts });
     showToast("🏆 ¡Ganador registrado!"); setWinnerName(""); setWinnerCard("");
   };
 
@@ -420,9 +364,11 @@ export default function BingoAdmin() {
     printWindow.document.write(html); printWindow.document.close();
   };
 
-  const filteredCards = cards.filter(c=>c.gameId===activeGame.id&&(c.cardNum.includes(search)||(c.owner&&c.owner.toLowerCase().includes(search.toLowerCase()))));
-  const totalRecaudado = cards.filter(c=>c.paid).length*PRICE;
+  const filteredCards    = cards.filter(c=>c.gameId===activeGame.id&&(c.cardNum.includes(search)||(c.owner&&c.owner.toLowerCase().includes(search.toLowerCase()))));
+  const totalRecaudado   = cards.filter(c=>c.paid).length*PRICE;
+  const jugadoresActuales = cards.filter(c=>c.paid&&c.gameId===activeGame.id).length;
   const gc = activeGame.color;
+  const gameNum = activeGame.id.replace("j","");
 
   return (
     <div style={{ minHeight:"100vh", background:"linear-gradient(135deg,#172441 0%,#285289 50%,#0a101f 100%)", fontFamily:"sans-serif", color:"#1e293b", paddingBottom:60 }}>
@@ -451,20 +397,35 @@ export default function BingoAdmin() {
         {TABS.map((t,i)=>(<button key={t} onClick={()=>setTab(i)} style={{ flex:1, padding:"12px 4px", background:"none", border:"none", color:tab===i?"#7c3aed":"#94a3b8", fontWeight:tab===i?700:400, fontSize:13, cursor:"pointer", borderBottom:tab===i?"2px solid #7c3aed":"2px solid transparent", fontFamily:"sans-serif" }}>{t}</button>))}
       </div>
 
-      {/* TAB SORTEO */}
+      {/* ══ TAB SORTEO ══ */}
       {tab===2&&(
         <div style={{ padding:"16px 20px", width:"100%", boxSizing:"border-box", minHeight:"calc(100vh - 112px)", display:"flex", flexDirection:"column", gap:14, paddingBottom: isAdmin ? 90 : 60 }}>
           <style>{`
+            @import url('https://fonts.googleapis.com/css2?family=Poller+One&display=swap');
+            @media (min-width: 769px) {
+              .panel-inferior-pc {
+                display: grid;
+                grid-template-columns: 140px 160px 1fr 140px;
+                gap: 12px;
+                min-height: 170px;
+              }
+            }
             @media (max-width: 768px) {
               .bingo-board-mobile { display: grid !important; grid-template-columns: repeat(5, 1fr) !important; gap: 8px !important; }
               .bingo-board-mobile .bingo-row { display: contents !important; }
               .bingo-board-mobile .bingo-letter { display: none !important; }
               .bingo-board-mobile .bingo-number { flex: unset !important; }
-              .panel-inferior-mobile { display: grid !important; grid-template-columns: 1fr 1fr !important; grid-template-rows: auto auto !important; gap: 14px !important; }
+              .panel-inferior-pc {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                grid-template-rows: auto auto !important;
+                gap: 12px !important;
+              }
               .zona-patron { grid-column: 1 !important; grid-row: 1 !important; }
               .zona-ultimo { grid-column: 2 !important; grid-row: 1 !important; }
-              .zona-premio { grid-column: 1 / -1 !important; grid-row: 2 !important; min-height: 300px !important; }
-              .btn-flotantes-mobile { bottom: 80px !important; right: 12px !important; gap: 8px !important; }
+              .zona-premio { grid-column: 1 / -1 !important; grid-row: 2 !important; min-height:220px !important; }
+              .zona-jugadores { grid-column: 1 / -1 !important; grid-row: 3 !important; }
+              .btn-flotantes-mobile { bottom: 80px !important; gap: 8px !important; }
               .btn-flotantes-mobile button { padding: 8px 12px !important; font-size: 12px !important; }
               .mobile-bingo-letters { display: flex !important; }
             }
@@ -483,47 +444,60 @@ export default function BingoAdmin() {
                 {Array.from({length:15},(_,i)=>i+min).map(n=>{
                   const isLast=n===lastDrawn; const isDrawn=drawn.includes(n);
                   return (
-                    <div key={n} className="bingo-number" onClick={()=>toggleNumber(n)} style={{ flex:1, aspectRatio:"1/1", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"clamp(29px,3vw,50px)", fontWeight:700, fontFamily:"'Poller One',cursive", cursor:isAdmin?"pointer":"default", animation:isLast?"bingoFlash 0.8s ease-in-out infinite":"none", background:isDrawn?gc:"rgba(255,255,255,0.10)", color:isDrawn?"#fff":"rgba(131,128,128,0.72)", border:isLast?`3px solid #fff`:isDrawn?`2px solid ${gc}`:"1px solid rgba(255,255,255,0.15)", boxShadow:isLast?`0 0 16px ${gc}`:isDrawn?`0 0 6px ${gc}88`:"none", transform:isLast?"scale(1.18)":"scale(1)", transition:"transform 0.15s" }}>{n}</div>
+                    <div key={n} className="bingo-number" onClick={()=>toggleNumber(n)} style={{ flex:1, aspectRatio:"1/1", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"clamp(29px,3vw,50px)", fontWeight:700, fontFamily:"'Poller One',cursive", cursor:isAdmin?"pointer":"default", background:isDrawn?gc:"rgba(255,255,255,0.10)", color:isDrawn?"#fff":"rgba(131,128,128,0.72)", border:isLast?`3px solid #fff`:isDrawn?`2px solid ${gc}`:"1px solid rgba(255,255,255,0.15)", boxShadow:isLast?`0 0 16px ${gc}`:isDrawn?`0 0 6px ${gc}88`:"none", transform:isLast?"scale(1.18)":"scale(1)", transition:"transform 0.15s" }}>{n}</div>
                   );
                 })}
               </div>
             ))}
           </div>
 
-          <div className="panel-inferior-mobile" style={{ display:"grid", gridTemplateColumns:"190px 190px 1fr", gap:14, flex:1, minHeight:200 }}>
+          {/* ── PANEL INFERIOR: 4 ZONAS ── */}
+          <div className="panel-inferior-pc">
 
-            <div className="zona-patron" style={{ background:"rgba(255,255,255,0.07)", borderRadius:16, padding:16, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:10, border:`1px solid ${gc}33` }}>
-              <div style={{ fontSize:10, fontWeight:700, color:"#64748b", letterSpacing:2 }}>PATRÓN ACTIVO</div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:3, width:105 }}>
-                {["B","I","N","G","O"].map((l,i)=>(<div key={l} style={{ height:17, borderRadius:3, background:BINGO_LETTER_COLORS[i], display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:800, color:"#fff" }}>{l}</div>))}
+            {/* ZONA 1 — Patrón activo */}
+            <div className="zona-patron" style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:"12px 10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, border:`1px solid ${gc}44` }}>
+              <div style={{ background:gc, borderRadius:8, padding:"3px 14px", fontSize:13, fontWeight:800, color:"#fff", letterSpacing:1 }}>JUEGO {gameNum}</div>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:2, width:100 }}>
+                {Object.keys(COLS).map((l,i)=>(<div key={l} style={{ height:15, borderRadius:3, background:BINGO_LETTER_COLORS[i], display:"flex", alignItems:"center", justifyContent:"center", fontSize:8, fontWeight:800, color:"#fff" }}>{l}</div>))}
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:3, width:105 }}>
-                {activePattern.grid.flat().map((cell,i)=>(<div key={i} style={{ height:17, borderRadius:3, background:cell?gc:"rgba(255,255,255,0.07)", border:cell?"none":"1px solid rgba(255,255,255,0.08)" }} />))}
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:2, width:100 }}>
+                {activePattern.grid.flat().map((cell,i)=>(<div key={i} style={{ height:15, borderRadius:3, background:cell?gc:"rgba(255,255,255,0.07)", border:cell?"none":"1px solid rgba(255,255,255,0.1)" }} />))}
               </div>
-              <div style={{ fontSize:12, fontWeight:700, color:"#e2e8f0", textAlign:"center", lineHeight:1.3 }}>{activePattern.name}</div>
-              <div style={{ fontSize:11, color:gc, fontWeight:700 }}>{activeGame.name}</div>
+              <div style={{ fontSize:11, fontWeight:700, color:"#e2e8f0", textAlign:"center", lineHeight:1.3 }}>{activePattern.name}</div>
             </div>
 
-            <div className="zona-ultimo" style={{ background:"rgba(255,255,255,0.07)", borderRadius:16, padding:16, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", border:`2px solid ${gc}`, boxShadow:`0 0 28px ${gc}44` }}>
-              {lastDrawn?(
+            {/* ZONA 2 — Último número */}
+            <div className="zona-ultimo" style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:12, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", border:`2px solid ${gc}`, boxShadow:`0 0 24px ${gc}44` }}>
+              {lastDrawn ? (
                 <>
-                  <div style={{ fontSize:10, fontWeight:700, color:"#64748b", letterSpacing:3, marginBottom:4 }}>ÚLTIMO</div>
-                  <div style={{ fontSize:18, fontWeight:800, color:gc, marginBottom:6 }}>{getLetterForNum(lastDrawn)} – {lastDrawn}</div>
-                  <div style={{ fontSize:80, fontWeight:900, color:gc, lineHeight:1, fontFamily:"'Poller One',cursive", textShadow:`0 0 40px ${gc}` }}>{lastDrawn}</div>
+                  <div style={{ fontSize:15, fontWeight:800, color:gc, marginBottom:2, fontFamily:"'Poller One',cursive" }}>{getLetterForNum(lastDrawn)} – {lastDrawn}</div>
+                  <div style={{ fontSize:72, fontWeight:900, color:gc, lineHeight:1, fontFamily:"'Poller One',cursive", textShadow:`0 0 30px ${gc}` }}>{lastDrawn}</div>
                 </>
               ):(
-                <div style={{ fontSize:13, color:"#64748b", textAlign:"center", fontWeight:600, lineHeight:1.6 }}>{isAdmin?"Toca un número\npara empezar":"Esperando\nsorteo..."}</div>
+                <div style={{ fontSize:12, color:"#64748b", textAlign:"center", fontWeight:600, lineHeight:1.7 }}>{isAdmin?"Toca un\nnúmero":"Esperando\nsorteo..."}</div>
               )}
             </div>
 
-            <div className="zona-premio" style={{ borderRadius:16, overflow:"hidden", border:`1px solid ${gc}33`, background:`linear-gradient(135deg,${gc}11,${gc}22)`, display:"flex", alignItems:"center", justifyContent:"center", minHeight:180 }}>
+            {/* ZONA 3 — Premio */}
+            <div className="zona-premio" style={{ borderRadius:14, overflow:"hidden", border:`1px solid ${gc}33`, background:`linear-gradient(135deg,${gc}11,${gc}22)`, display:"flex", alignItems:"center", justifyContent:"center" }}>
               <img src="/img.png" alt="Premio" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
-                onError={e=>{ e.target.style.display="none"; e.target.parentNode.innerHTML=`<div style="color:${gc};font-size:16px;font-weight:700;text-align:center;padding:24px;line-height:1.8;font-family:sans-serif">🏅<br><span style='font-size:13px;color:#64748b'>Sube <code>img.png</code><br>a la carpeta <code>public/</code></span></div>`; }}
+                onError={e=>{ e.target.style.display="none"; e.target.parentNode.innerHTML=`<div style="color:${gc};font-size:15px;font-weight:700;text-align:center;padding:20px;line-height:1.8;font-family:sans-serif">🏅 Información<br>del premio<br><span style='font-size:11px;color:#64748b'>Sube <code>img.png</code> a <code>public/</code></span></div>`; }}
               />
+            </div>
+
+            {/* ZONA 4 — Nº Jugadores */}
+            <div className="zona-jugadores" style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:"12px 10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, border:`1px solid ${gc}44` }}>
+              <div style={{ fontSize:10, fontWeight:700, color:"#94a3b8", letterSpacing:2, textTransform:"uppercase" }}>Jugadores</div>
+              <div style={{ fontSize:54, fontWeight:900, color:"#ffffff", lineHeight:1, fontFamily:"'Poller One',cursive", textShadow:`0 0 20px ${gc}88` }}>{jugadoresActuales}</div>
+              <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
+                <div style={{ background:gc, borderRadius:6, padding:"2px 12px", fontSize:11, fontWeight:800, color:"#fff" }}>{activeGame.name}</div>
+                <div style={{ fontSize:10, color:"#64748b" }}>cartones vendidos</div>
+              </div>
             </div>
 
           </div>
 
+          {/* ── BOTONES FLOTANTES ADMIN ── */}
           {isAdmin&&!isFullscreen&&(
             <div className="btn-flotantes-mobile" style={{ position:"fixed", bottom:0, left:0, right:0, display:"flex", flexDirection:"row", justifyContent:"center", gap:12, padding:"12px 16px", background:"rgba(10,16,31,0.95)", backdropFilter:"blur(10px)", borderTop:"1px solid rgba(255,255,255,0.1)", zIndex:100 }}>
               <button onClick={()=>setShowPatternModal(true)} style={{ background:"rgba(255,255,255,0.08)", border:`2px solid ${gc}`, borderRadius:14, padding:"11px 24px", color:gc, fontWeight:700, fontSize:13, cursor:"pointer", backdropFilter:"blur(10px)", display:"flex", alignItems:"center", gap:8 }}>🎯 Patrón</button>
@@ -534,7 +508,7 @@ export default function BingoAdmin() {
         </div>
       )}
 
-      {/* OTROS TABS */}
+      {/* ══ OTROS TABS ══ */}
       {tab!==2&&(
         <div style={{ padding:"18px 14px", maxWidth:760, margin:"0 auto" }}>
 
@@ -627,14 +601,12 @@ export default function BingoAdmin() {
         </div>
       )}
 
-      {/* TOASTS Y MODALES */}
       {toast&&<div style={{ position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", background:toast.type==="err"?"#ef4444":"#10b981", color:"#fff", padding:"12px 24px", borderRadius:12, fontWeight:700, fontSize:14, zIndex:999, boxShadow:"0 10px 15px -3px rgba(0,0,0,0.1)", whiteSpace:"nowrap", fontFamily:"sans-serif" }}>{toast.msg}</div>}
       {showLogin&&<LoginModal pwInput={pwInput} setPwInput={setPwInput} pwError={pwError} onLogin={handleLogin} onClose={()=>{setShowLogin(false);setPwInput("");setPwError(false);}} />}
       {showPatternModal&&<PatternModal activePattern={activePattern} activeGame={activeGame} onSelect={handleSelectPattern} onClose={()=>setShowPatternModal(false)} />}
       {showGameModal&&<GameModal activeGame={activeGame} onSelect={handleSelectGame} onClose={()=>setShowGameModal(false)} />}
       {showResetModal&&<ResetModal onConfirm={resetSort} onClose={()=>setShowResetModal(false)} />}
       {winnerPopup&&<WinnerPopup winner={winnerPopup} onClose={()=>setWinnerPopup(null)} />}
-
     </div>
   );
 }
