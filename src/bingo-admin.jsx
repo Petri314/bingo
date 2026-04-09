@@ -442,7 +442,7 @@ useEffect(()=>{
               style={{ borderRadius:16, overflow:"hidden", border:`1px solid ${gc}33`, background:`linear-gradient(135deg,${gc}11,${gc}22)`, display:"flex", alignItems:"center", justifyContent:"center", minHeight:180 }}
             >
               <img
-                src="/public/img.png"
+                src="/img.png"
                 alt="Premio"
                 style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}
                 onError={e=>{
