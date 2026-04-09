@@ -153,6 +153,15 @@ export default function BingoAdmin() {
   const [showPatternModal, setShowPatternModal] = useState(false);
   const [showGameModal, setShowGameModal]       = useState(false);
   const [showResetModal, setShowResetModal]     = useState(false);
+const [isFullscreen, setIsFullscreen]         = useState(false);
+
+useEffect(()=>{
+  const handleResize = () => {
+    setIsFullscreen(window.innerHeight === window.screen.height);
+  };
+  window.addEventListener("resize", handleResize);
+  return () => window.removeEventListener("resize", handleResize);
+},[]);
 
   const handleLogin = () => {
     if (pwInput===PIN) { setIsAdmin(true); setShowLogin(false); setPwInput(""); setPwError(false); }
@@ -303,7 +312,7 @@ export default function BingoAdmin() {
           TAB SORTEO
       ══════════════════════════════════════════════ */}
       {tab===2&&(
-        <div style={{ padding:"16px 20px", width:"100%", boxSizing:"border-box", minHeight:"calc(100vh - 112px)", display:"flex", flexDirection:"column", gap:14 }}>
+  <div style={{ padding:"16px 20px", width:"100%", boxSizing:"border-box", minHeight:"calc(100vh - 112px)", display:"flex", flexDirection:"column", gap:14, paddingBottom: isAdmin ? 90 : 60 }}>
           <style>{`
             @media (max-width: 768px) {
               .bingo-board-mobile { display: grid !important; grid-template-columns: repeat(5, 1fr) !important; gap: 8px !important; }
@@ -433,7 +442,7 @@ export default function BingoAdmin() {
               style={{ borderRadius:16, overflow:"hidden", border:`1px solid ${gc}33`, background:`linear-gradient(135deg,${gc}11,${gc}22)`, display:"flex", alignItems:"center", justifyContent:"center", minHeight:180 }}
             >
               <img
-                src="/premio.jpg"
+                src="/img.png"
                 alt="Premio"
                 style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}
                 onError={e=>{
@@ -446,20 +455,20 @@ export default function BingoAdmin() {
           </div>{/* fin panel inferior */}
 
           {/* ── BOTONES FLOTANTES (solo admin) ── */}
-          {isAdmin&&(
-            <div className="btn-flotantes-mobile" style={{ position:"fixed", bottom:24, right:24, display:"flex", flexDirection:"column", gap:10, zIndex:100 }}>
+          {isAdmin&&!isFullscreen&&(
+  <div className="btn-flotantes-mobile" style={{ position:"fixed", bottom:0, left:0, right:0, display:"flex", flexDirection:"row", justifyContent:"center", gap:12, padding:"12px 16px", background:"rgba(10,16,31,0.95)", backdropFilter:"blur(10px)", borderTop:"1px solid rgba(255,255,255,0.1)", zIndex:100 }}>
               <button
-                onClick={()=>setShowPatternModal(true)}
-                style={{ background:"rgba(10,16,31,0.92)", border:`2px solid ${gc}`, borderRadius:14, padding:"11px 20px", color:gc, fontWeight:700, fontSize:13, cursor:"pointer", backdropFilter:"blur(10px)", display:"flex", alignItems:"center", gap:8, boxShadow:"0 4px 20px rgba(0,0,0,0.5)" }}
-              >🎯 Patrón</button>
-              <button
-                onClick={()=>setShowGameModal(true)}
-                style={{ background:gc, border:"none", borderRadius:14, padding:"11px 20px", color:"#fff", fontWeight:700, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:8, boxShadow:`0 4px 20px ${gc}66` }}
-              >🎮 Juego</button>
-              <button
-                onClick={()=>setShowResetModal(true)}
-                style={{ background:"rgba(10,16,31,0.92)", border:"2px solid #ef4444", borderRadius:14, padding:"11px 20px", color:"#ef4444", fontWeight:700, fontSize:13, cursor:"pointer", backdropFilter:"blur(10px)", display:"flex", alignItems:"center", gap:8, boxShadow:"0 4px 20px rgba(0,0,0,0.5)" }}
-              >🔄 Reiniciar</button>
+  onClick={()=>setShowPatternModal(true)}
+  style={{ background:"rgba(255,255,255,0.08)", border:`2px solid ${gc}`, borderRadius:14, padding:"11px 24px", color:gc, fontWeight:700, fontSize:13, cursor:"pointer", backdropFilter:"blur(10px)", display:"flex", alignItems:"center", gap:8 }}
+>🎯 Patrón</button>
+<button
+  onClick={()=>setShowGameModal(true)}
+  style={{ background:gc, border:"none", borderRadius:14, padding:"11px 24px", color:"#fff", fontWeight:700, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:8, boxShadow:`0 4px 20px ${gc}66` }}
+>🎮 Juego</button>
+<button
+  onClick={()=>setShowResetModal(true)}
+  style={{ background:"rgba(255,255,255,0.08)", border:"2px solid #ef4444", borderRadius:14, padding:"11px 24px", color:"#ef4444", fontWeight:700, fontSize:13, cursor:"pointer", backdropFilter:"blur(10px)", display:"flex", alignItems:"center", gap:8 }}
+>🔄 Reiniciar</button>
             </div>
           )}
 
