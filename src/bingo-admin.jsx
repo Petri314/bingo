@@ -64,12 +64,26 @@ const TABS = ["🎟️ Cartones","📋 Asistentes","🎱 Sorteo","🏆 Ganadores
 const inpS = { background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:"10px 12px", color:"#334155", fontSize:14, outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"sans-serif" };
 const btnS = (color, extra={}) => ({ background:color, border:"none", borderRadius:8, padding:"9px 15px", fontWeight:700, fontSize:14, cursor:"pointer", color:"#fff", fontFamily:"sans-serif", whiteSpace:"nowrap", ...extra });
 
-function CardGrid({ card, drawn }) {
+function CardGrid({ card, drawn, pattern }) {
   const gameColor = GAMES.find(g=>g.id===card.gameId)?.color||"#64748b";
   return (
     <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:5, maxWidth:260, margin:"0 auto" }}>
       {Object.keys(COLS).map(l=>(<div key={l} style={{ background:gameColor, borderRadius:6, textAlign:"center", padding:"6px 0", fontWeight:800, fontSize:16, color:"#fff", opacity:0.9 }}>{l}</div>))}
-      {card.grid[0].map((_,row)=>card.grid.map((col,colIdx)=>{ const val=col[row]; const isFree=val==="FREE"; const isOut=!isFree&&drawn.includes(val); return (<div key={`${colIdx}-${row}`} style={{ background:isFree?"#e0ded8":isOut?gameColor:"#f8fafc", borderRadius:6, padding:"2px", textAlign:"center", fontSize:isFree?9:14, fontWeight:700, color:isFree?"#000":isOut?"#fff":"#64748b", border:"1px solid #e2e8f0" }}>{isFree?"👁️":val}</div>); }))}
+      {card.grid[0].map((_,row)=>card.grid.map((col,colIdx)=>{ 
+        const val=col[row]; 
+        const isFree=val==="FREE"; 
+        const isOut=!isFree&&drawn.includes(val); 
+        const isPattern=pattern?pattern.grid[row][colIdx]:false;
+        if (pattern&&!isPattern&&!isFree) return (<div key={`${colIdx}-${row}`} style={{ background:"#f1f5f9", borderRadius:6, aspectRatio:"1/1", border:"1px solid #e2e8f0" }} />);
+        return (<div key={`${colIdx}-${row}`} style={{ 
+          background:isFree?"#e0ded8":isOut?gameColor:"#f8fafc", 
+          borderRadius:6, padding:"2px", textAlign:"center", fontSize:isFree?9:14, fontWeight:700, 
+          color:isFree?"#000":isOut?"#fff":"#64748b", 
+          border:isPattern?`2.5px solid ${isOut?"#fbbf24":"#f59e0b"}`:"1px solid #e2e8f0",
+          boxShadow:isPattern&&isOut?"0 0 8px #fbbf2488":"none",
+          position:"relative" 
+        }}>{isFree?"👁️":val}{isPattern&&isOut&&<span style={{position:"absolute",top:-2,right:-2,fontSize:8}}>⭐</span>}</div>); 
+      }))}
     </div>
   );
 }
@@ -210,6 +224,7 @@ export default function BingoAdmin() {
   const [showResetModal, setShowResetModal]     = useState(false);
   const [isFullscreen, setIsFullscreen]         = useState(false);
   const [winnerPopup, setWinnerPopup]   = useState(null);
+  const [selectedWinner, setSelectedWinner] = useState(null);
 
   useEffect(()=>{
     const handleResize = () => setIsFullscreen(window.innerHeight === window.screen.height);
@@ -233,7 +248,16 @@ export default function BingoAdmin() {
   };
 
   useEffect(()=>{
-    const uC = onValue(ref(db,DB_CARDS),   s=>{ const v=s.val(); setCards(v?Object.values(v).sort((a,b)=>a.id-b.id):[]); });
+    const uC = onValue(ref(db,DB_CARDS), s=>{ 
+  const v=s.val(); 
+  const parsed = v ? Object.values(v).map(c => ({
+    ...c,
+    grid: c.grid ? [0,1,2,3,4].map(ci => 
+      c.grid[ci] ? [0,1,2,3,4].map(ri => c.grid[ci][ri] ?? c.grid[ci][String(ri)]) : []
+    ) : null
+  })).sort((a,b)=>a.id-b.id) : [];
+  setCards(parsed);
+});
     const uD = onValue(ref(db,DB_DRAWN),   s=>{ const v=s.val(); if(v){const n=Object.values(v); setDrawn(n); setLastDrawn(n.at(-1)??null);} else{setDrawn([]); setLastDrawn(null);} });
     const uW = onValue(ref(db,DB_WINNERS), s=>{ const v=s.val(); setWinners(v?Object.values(v).sort((a,b)=>a.ts-b.ts):[]); });
     const uS = onValue(ref(db,DB_STATE), s=>{
@@ -262,7 +286,13 @@ export default function BingoAdmin() {
     if (qty>500) return showToast("Máximo 500 por vez","err");
     const startIdx=cards.filter(c=>c.gameId===activeGame.id).length+1;
     const updates={};
-    for (let i=0;i<qty;i++) { const id=Date.now()+i; updates[`${DB_CARDS}/${id}`]={id,cardNum:pad(startIdx+i),gameId:activeGame.id,gameName:activeGame.name,boleto:null,owner:null,paid:false,grid:generateCardGrid()}; }
+    for (let i=0;i<qty;i++) { 
+  const id=Date.now()+(i*10); 
+  const grid = generateCardGrid();
+  const gridObj = {};
+  grid.forEach((col, ci) => { gridObj[ci] = {...col}; });
+  updates[`${DB_CARDS}/${id}`]={id,cardNum:pad(startIdx+i),gameId:activeGame.id,gameName:activeGame.name,boleto:null,owner:null,paid:false,grid:gridObj}; 
+}
     await update(ref(db),updates);
     showToast(`✓ ${activeGame.name}: ${startIdx} al ${pad(startIdx+qty-1)}`);
     setGenQty("");
@@ -289,20 +319,22 @@ export default function BingoAdmin() {
 
   const deleteCard = async (id) => { if (!isAdmin) return; await remove(ref(db,`${DB_CARDS}/${id}`)); if(selectedCard?.id===id) setSelectedCard(null); showToast("Eliminado"); };
 
-  const toggleNumber = async (n) => {
+      const toggleNumber = async (n) => {
     if (!isAdmin) return;
     const isMarking=!drawn.includes(n);
     const next=isMarking?[...drawn,n]:drawn.filter(x=>x!==n);
     await set(ref(db,DB_DRAWN),next.length?Object.fromEntries(next.map((v,i)=>[i,v])):null);
     if (isMarking) speakNumber(n);
 
-        if (isMarking) {
+    if (isMarking) {
       const soldCards = cards.filter(c => c.paid && c.gameId === activeGame.id);
       for (const card of soldCards) {
         if (!card.grid) continue;
         if (checkPattern(card, next, activePattern)) {
-                    const winnerKey = `${activeGame.id}_${card.cardNum}`;
-          const winnerData = { id:winnerKey, name:card.owner, card:card.cardNum, game:activeGame.name, gameId:activeGame.id, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now() };
+          const winnerKey = `${activeGame.id}_${card.cardNum}`;
+          const alreadyExists = winners.some(w => w.id === winnerKey);
+          if (alreadyExists) break;
+          const winnerData = { id:winnerKey, name:card.owner, card:card.cardNum, game:activeGame.name, gameId:activeGame.id, patternId: activePattern.id, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now(), drawn:[...next] };
           set(ref(db,`${DB_WINNERS}/${winnerKey}`), winnerData);
           update(ref(db,DB_STATE),{ alreadyWon:true, currentWinner:winnerData });
           break;
@@ -321,7 +353,7 @@ export default function BingoAdmin() {
     if (!winnerName.trim()||!winnerCard.trim()) return showToast("Completa campos","err");
     const ts=Date.now();
     const winnerKey = `${activeGame.id}_${winnerCard.trim()}`;
-    await set(ref(db,`${DB_WINNERS}/${winnerKey}`),{ id:winnerKey, name:winnerName.trim(), card:winnerCard.trim(), game:activeGame.name, gameId:activeGame.id, time:new Date().toLocaleTimeString("es-CL"), ts });
+            await set(ref(db,`${DB_WINNERS}/${winnerKey}`),{ id:winnerKey, name:winnerName.trim(), card:winnerCard.trim(), game:activeGame.name, gameId:activeGame.id, time:new Date().toLocaleTimeString("es-CL"), ts, drawn:[...drawn] });
     showToast("🏆 ¡Ganador registrado!"); setWinnerName(""); setWinnerCard("");
   };
 
@@ -357,7 +389,7 @@ export default function BingoAdmin() {
       <div class="game-info">JUEGO ${gn} | CARTÓN ${c.cardNum}</div>
       <div class="bingo-grid">
         ${Object.keys(COLS).map(l=>`<div class="bingo-cell" style="background:${gc2};color:white;border:none;font-size:20px;">${l}</div>`).join('')}
-        ${c.grid[0].map((_,row)=>c.grid.map((col,ci)=>{ const val=col[row]; const isFree=val==="FREE"; return `<div class="bingo-cell" style="background:${isFree?"#facc15":"#f8fafc"};color:${isFree?"#000":"#222"};padding:2px;">${isFree?'<img src="qr-code.png" style="width:100%;height:100%;object-fit:contain;">':val}</div>`; }).join('')).join('')}
+        ${Array.isArray(c.grid)&&c.grid[0]?c.grid[0].map((_,row)=>c.grid.map((col,ci)=>{ const val=col[row]; const isFree=val==="FREE"; return `<div class="bingo-cell" style="background:${isFree?"#facc15":"#f8fafc"};color:${isFree?"#000":"#222"};padding:2px;">${isFree?'<img src="qr-code.png" style="width:100%;height:100%;object-fit:contain;">':val}</div>`; }).join('')).join(''):''}
       </div>
       <div class="footer-info">BINGO SOLIDARIO CRISTIAN HIDALGO<br>ESCANEA EL QR DEL CENTRO PARA VER INFO DEL JUEGO</div></div>`;
     });
@@ -580,7 +612,7 @@ export default function BingoAdmin() {
             </div>))}
           </div>)}
 
-          {tab===3&&(<div>
+                    {tab===3&&(<div>
             {isAdmin&&(<div style={{ background:"#ffffff", borderRadius:13, padding:16, border:"2px solid #fde68a", marginBottom:22, boxShadow:"0 4px 6px -1px rgba(0,0,0,0.1)" }}>
               <h3 style={{ margin:"0 0 12px", fontSize:14, color:"#92400e" }}>Registrar ganador manualmente</h3>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
@@ -589,14 +621,36 @@ export default function BingoAdmin() {
               </div>
               <button onClick={addWinner} style={{...btnS("#f59e0b"),width:"100%",padding:"11px"}}>🏆 Registrar</button>
             </div>)}
-            {winners.length===0?<div style={{ textAlign:"center", color:"#94a3b8", padding:40 }}>Sin ganadores</div>:winners.map(w=>(<div key={w.ts} style={{ background:"#ffffff", borderRadius:12, padding:"14px 16px", display:"flex", alignItems:"center", gap:12, border:"1px solid #fde68a", marginBottom:8 }}>
-              <div style={{ fontSize:26 }}>🏆</div>
-              <div style={{ flex:1 }}>
-                <div style={{ fontWeight:700, fontSize:15, color:"#92400e" }}>{w.name}</div>
-                <div style={{ fontSize:12, color:"#64748b" }}>Cartón #{w.card} · {w.game||""} · {w.time}</div>
-              </div>
-                            {isAdmin&&<button onClick={()=>deleteWinner(w.id || w.ts)} style={{ background:"none", border:"none", color:"#94a3b8", cursor:"pointer", fontSize:16 }}>✕</button>}
-            </div>))}
+            {winners.length===0?<div style={{ textAlign:"center", color:"#94a3b8", padding:40 }}>Sin ganadores</div>:winners.map(w=>{
+              const isExpanded = selectedWinner===(w.id||w.ts);
+              const winnerCardData = cards.find(c=>c.cardNum===w.card&&c.gameId===w.gameId);
+              const winnerPattern = PATTERNS.find(p => p.id === w.patternId) || activePattern;
+              return (<div key={w.id||w.ts}>
+                <div onClick={()=>setSelectedWinner(isExpanded?null:(w.id||w.ts))} style={{ background:"#ffffff", borderRadius:isExpanded?"12px 12px 0 0":12, padding:"14px 16px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", border:"1px solid #fde68a", boxShadow:"0 1px 3px rgba(0,0,0,0.05)" }}>
+                  <div style={{ fontSize:26 }}>🏆</div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontWeight:700, fontSize:15, color:"#92400e" }}>{w.name}</div>
+                    <div style={{ fontSize:12, color:"#64748b" }}>Cartón #{w.card} · {w.game||""} · {w.time}</div>
+                  </div>
+                  {isAdmin&&<button onClick={e=>{e.stopPropagation();deleteWinner(w.id||w.ts);setSelectedWinner(null);}} style={{ background:"none", border:"none", color:"#94a3b8", cursor:"pointer", fontSize:16 }}>✕</button>}
+                  <span style={{ color:"#94a3b8", fontSize:12 }}>{isExpanded?"▲":"▼"}</span>
+                </div>
+                {isExpanded&&winnerCardData&&winnerCardData.grid&&(
+                  <div style={{ background:"#ffffff", borderRadius:"0 0 12px 12px", padding:16, border:"1px solid #fde68a", borderTop:"none", boxShadow:"0 4px 6px -1px rgba(0,0,0,0.1)" }}>
+                    <p style={{ fontSize:12, color:"#92400e", textAlign:"center", marginBottom:4, fontWeight:700 }}>Patrón ganador</p>
+                    <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:2, width:80, height:80, margin:"0 auto 12px" }}>
+                      {winnerPattern.grid.flat().map((cell,i)=>(<div key={i} style={{ borderRadius:2, background:cell?"#f59e0b":"#f1f5f9", border:cell?"none":"1px solid #e2e8f0" }} />))}
+                    </div>
+                                                           <CardGrid card={winnerCardData} drawn={Array.isArray(w.drawn)?w.drawn:w.drawn?Object.values(w.drawn):drawn} pattern={winnerPattern} />
+                  </div>
+                )}
+                {isExpanded&&!winnerCardData&&(
+                  <div style={{ background:"#ffffff", borderRadius:"0 0 12px 12px", padding:16, border:"1px solid #fde68a", borderTop:"none", textAlign:"center", color:"#94a3b8", fontSize:13 }}>
+                    Cartón #{w.card} no encontrado en los datos actuales
+                  </div>
+                )}
+              </div>);
+            })}
           </div>)}
 
         </div>
