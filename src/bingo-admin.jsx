@@ -442,12 +442,12 @@ useEffect(()=>{
               style={{ borderRadius:16, overflow:"hidden", border:`1px solid ${gc}33`, background:`linear-gradient(135deg,${gc}11,${gc}22)`, display:"flex", alignItems:"center", justifyContent:"center", minHeight:180 }}
             >
               <img
-                src="/img.png"
+                src="/public/img.png"
                 alt="Premio"
                 style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}
                 onError={e=>{
                   e.target.style.display="none";
-                  e.target.parentNode.innerHTML=`<div style="color:${gc};font-size:16px;font-weight:700;text-align:center;padding:24px;line-height:1.8;font-family:sans-serif">🏅<br><span style='font-size:13px;color:#64748b'>Sube <code>premio.jpg</code><br>a la carpeta <code>public/</code></span></div>`;
+                  e.target.parentNode.innerHTML=`<div style="color:${gc};font-size:16px;font-weight:700;text-align:center;padding:24px;line-height:1.8;font-family:sans-serif">🏅<br><span style='font-size:13px;color:#64748b'>Sube <code><img src="premio" alt="" className="png" /></code><br>a la carpeta <code>public/</code></span></div>`;
                 }}
               />
             </div>
