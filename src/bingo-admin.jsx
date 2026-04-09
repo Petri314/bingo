@@ -202,7 +202,9 @@ export default function BingoAdmin() {
   const [cards, setCards]               = useState([]);
   const [drawn, setDrawn]               = useState([]);
   const [lastDrawn, setLastDrawn]       = useState(null);
-  const [winners, setWinners]           = useState([]);
+  const [winners, setWinners] = useState([]);
+const winnersRef = React.useRef([]);
+const savingWinnerRef = React.useRef(false);
   const [activePattern, setActivePattern] = useState(PATTERNS[0]);
   const [activeGame, setActiveGame]     = useState(GAMES[0]);
   const [alreadyWon, setAlreadyWon]     = useState(false);
@@ -259,7 +261,19 @@ export default function BingoAdmin() {
   setCards(parsed);
 });
     const uD = onValue(ref(db,DB_DRAWN),   s=>{ const v=s.val(); if(v){const n=Object.values(v); setDrawn(n); setLastDrawn(n.at(-1)??null);} else{setDrawn([]); setLastDrawn(null);} });
-    const uW = onValue(ref(db,DB_WINNERS), s=>{ const v=s.val(); setWinners(v?Object.values(v).sort((a,b)=>a.ts-b.ts):[]); });
+    const uW = onValue(ref(db,DB_WINNERS), s=>{ 
+  const v=s.val(); 
+  const all = v ? Object.values(v) : [];
+  const unique = Object.values(
+    all.reduce((acc, w) => {
+      const key = `${w.gameId}_${w.card}`;
+      if (!acc[key] || w.ts > acc[key].ts) acc[key] = w;
+      return acc;
+    }, {})
+  ).sort((a,b) => a.ts - b.ts);
+  winnersRef.current = unique;
+  setWinners(unique);
+});
     const uS = onValue(ref(db,DB_STATE), s=>{
       const v = s.val(); if (!v) return;
       if (v.gameId)   { const g=GAMES.find(g=>g.id===v.gameId);     if(g) setActiveGame(g); }
@@ -332,11 +346,15 @@ export default function BingoAdmin() {
         if (!card.grid) continue;
         if (checkPattern(card, next, activePattern)) {
           const winnerKey = `${activeGame.id}_${card.cardNum}`;
-          const alreadyExists = winners.some(w => w.id === winnerKey);
-          if (alreadyExists) break;
-          const winnerData = { id:winnerKey, name:card.owner, card:card.cardNum, game:activeGame.name, gameId:activeGame.id, patternId: activePattern.id, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now(), drawn:[...next] };
-          set(ref(db,`${DB_WINNERS}/${winnerKey}`), winnerData);
-          update(ref(db,DB_STATE),{ alreadyWon:true, currentWinner:winnerData });
+          const winnerRef = ref(db, `${DB_WINNERS}/${winnerKey}`);
+          await runTransaction(winnerRef, (existing) => {
+            if (existing !== null) return;
+            return { id:winnerKey, name:card.owner, card:card.cardNum, game:activeGame.name, gameId:activeGame.id, patternId:activePattern.id, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now(), drawn:[...next] };
+          });
+          const snap = await new Promise(res => onValue(winnerRef, res, { onlyOnce: true }));
+          if (snap.val()) {
+            update(ref(db,DB_STATE),{ alreadyWon:true, currentWinner:snap.val() });
+          }
           break;
         }
       }
@@ -351,13 +369,12 @@ export default function BingoAdmin() {
 
     const addWinner = async () => {
     if (!winnerName.trim()||!winnerCard.trim()) return showToast("Completa campos","err");
-    const ts=Date.now();
     const winnerKey = `${activeGame.id}_${winnerCard.trim()}`;
-            await set(ref(db,`${DB_WINNERS}/${winnerKey}`),{ id:winnerKey, name:winnerName.trim(), card:winnerCard.trim(), game:activeGame.name, gameId:activeGame.id, time:new Date().toLocaleTimeString("es-CL"), ts, drawn:[...drawn] });
+            await set(ref(db,`${DB_WINNERS}/${winnerKey}`),{ id:winnerKey, name:winnerName.trim(), card:winnerCard.trim(), game:activeGame.name, gameId:activeGame.id, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now(), drawn:[...drawn] });
     showToast("🏆 ¡Ganador registrado!"); setWinnerName(""); setWinnerCard("");
   };
 
-  const deleteWinner = async (ts) => await remove(ref(db,`${DB_WINNERS}/${ts}`));
+  const deleteWinner = async (id) => await remove(ref(db,`${DB_WINNERS}/${id}`));
 
   const handlePrintCards = () => {
     const cardsToPrint=cards.filter(c=>c.grid);
