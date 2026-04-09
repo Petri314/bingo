@@ -299,41 +299,108 @@ export default function BingoAdmin() {
         {TABS.map((t,i)=>(<button key={t} onClick={()=>setTab(i)} style={{ flex:1, padding:"12px 4px", background:"none", border:"none", color:tab===i?"#7c3aed":"#94a3b8", fontWeight:tab===i?700:400, fontSize:13, cursor:"pointer", borderBottom:tab===i?"2px solid #7c3aed":"2px solid transparent", fontFamily:"sans-serif" }}>{t}</button>))}
       </div>
 
-      {/* TAB SORTEO — fuera del contenedor limitado */}
-      {tab === 2 && (
-  <div style={{ padding: '20px 24px', width: '100%', boxSizing: 'border-box', minHeight: 'calc(100vh - 50px)', display: 'flex', alignItems: 'center' }}>
-    <div className="sorteo-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)', gap: 24, alignItems: 'start', width: '100%' }}>
+      {/* ══════════════════════════════════════════════
+          TAB SORTEO
+      ══════════════════════════════════════════════ */}
+      {tab===2&&(
+        <div style={{ padding:"16px 20px", width:"100%", boxSizing:"border-box", minHeight:"calc(100vh - 112px)", display:"flex", flexDirection:"column", gap:14 }}>
+          <style>{`
+            @media (max-width: 768px) {
+              .bingo-board-mobile { display: grid !important; grid-template-columns: repeat(5, 1fr) !important; gap: 8px !important; }
+              .bingo-board-mobile .bingo-row { display: contents !important; }
+              .bingo-board-mobile .bingo-letter { display: none !important; }
+              .bingo-board-mobile .bingo-number { flex: unset !important; }
+              
+              .panel-inferior-mobile { 
+                display: grid !important; 
+                grid-template-columns: 1fr 1fr !important; 
+                grid-template-rows: auto auto !important;
+                gap: 14px !important;
+              }
+              .zona-patron { grid-column: 1 !important; grid-row: 1 !important; }
+              .zona-ultimo { grid-column: 2 !important; grid-row: 1 !important; }
+              .zona-premio { grid-column: 1 / -1 !important; grid-row: 2 !important; min-height: 200px !important; }
+              
+              .btn-flotantes-mobile { 
+                bottom: 80px !important; 
+                right: 12px !important; 
+                gap: 8px !important;
+              }
+              .btn-flotantes-mobile button {
+                padding: 8px 12px !important;
+                font-size: 12px !important;
+              }
+              
+              .mobile-bingo-letters { display: flex !important; }
+            }
+          `}</style>
 
-      {/* FILA SUPERIOR EN MÓVIL: COL1 + COL3 */}
-      <div className="sorteo-top-row">
+          {/* ── LETRAS BINGO PARA MÓVIL ── */}
+          <div className="mobile-bingo-letters" style={{ display: 'none', justifyContent: 'space-around', marginBottom: 10 }}>
+            {Object.keys(COLS).map((letter, idx) => (
+              <div key={letter} style={{
+                width: 50, height: 50, borderRadius: 12, flexShrink: 0,
+                background: BINGO_LETTER_COLORS[idx],
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontFamily: "'Poller One', cursive", fontWeight: 900, fontSize: 24, color: "#fff",
+                boxShadow: `0 0 12px ${BINGO_LETTER_COLORS[idx]}99`,
+              }}>{letter}</div>
+            ))}
+          </div>
 
-        {/* COL 1: Patrón */}
-        <div className="sorteo-col1" style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
-          <div style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.6) 60%, rgba(255,255,255,0) 100%)', border: 'none', borderRadius: 16, padding: 24, textAlign: 'center', boxSizing: 'border-box', width: '100%' }}>
-            <div style={{ fontWeight: 800, fontSize: 26, color: activeGame.color, marginBottom: 20 }}>
-              {activeGame.name}
-            </div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: 2, marginBottom: 14 }}>PATRÓN ACTIVO</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 5, width: 120, height: 120, margin: '0 auto 16px' }}>
-              {activePattern.grid.flat().map((cell, i) => (
-                <div key={i} style={{ borderRadius: 4, background: cell ? activeGame.color : '#f1f5f9' }} />
-              ))}
-            </div>
-            {isAdmin && (
-              <select
-                value={activePattern.id}
-                onChange={e => setActivePattern(PATTERNS.find(p => p.id === e.target.value))}
-                style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid #e2e8f0', outline: 'none', fontSize: 13 }}
-              >
-                {PATTERNS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            )}
-            {isAdmin && (
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center', marginTop: 16 }}>
-                {GAMES.map(g => (
-                  <button key={g.id} onClick={() => setActiveGame(g)} style={{ background: activeGame.id === g.id ? g.color : '#fff', color: activeGame.id === g.id ? '#fff' : g.color, border: `2px solid ${g.color}`, padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-                    {g.name}
-                  </button>
+          {/* ── TABLERO: Horizontal en PC, Vertical en móvil ── */}
+          <div className="bingo-board-mobile" style={{ background:"rgba(255,255,255,0.06)", borderRadius:18, padding:"14px 16px", border:`1px solid ${gc}33`, display:"flex", flexDirection:"column" }}>
+            {Object.entries(COLS).map(([letter,[min,max]],rowIdx)=>(
+              <div key={letter} className="bingo-row" style={{ display:"flex", gap:5, marginBottom:rowIdx<4?6:0, alignItems:"center" }}>
+
+                {/* letra */}
+                <div className="bingo-letter" style={{
+                  width:44, height:44, borderRadius:10, flexShrink:0,
+                  background:BINGO_LETTER_COLORS[rowIdx],
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  fontFamily:"'Poller One',cursive", fontWeight:900, fontSize:22, color:"#fff",
+                  boxShadow:`0 0 12px ${BINGO_LETTER_COLORS[rowIdx]}99`,
+                }}>{letter}</div>
+
+                {/* bolillas */}
+                {Array.from({length:15},(_,i)=>i+min).map(n=>{
+                  const isLast  = n===lastDrawn;
+                  const isDrawn = drawn.includes(n);
+                  return (
+                    <div
+                      key={n}
+                      className="bingo-number"
+                      onClick={()=>toggleNumber(n)}
+                      style={{
+                        flex:1, aspectRatio:"1/1", borderRadius:"50%",
+                        display:"flex", alignItems:"center", justifyContent:"center",
+                        fontSize:"clamp(29px,3vw,50px)", fontWeight:700, fontFamily:"'Poller One',cursive",
+                        cursor:isAdmin?"pointer":"default",
+                        animation:isLast?"bingoFlash 0.8s ease-in-out infinite":"none",
+                        background:isDrawn?gc:"rgba(255,255,255,0.10)",
+                        color:isDrawn?"#fff":"rgba(131, 128, 128, 0.72)",
+                        border:isLast?`3px solid #fff`:isDrawn?`2px solid ${gc}`:"1px solid rgba(255,255,255,0.15)",
+                        boxShadow:isLast?`0 0 16px ${gc}`:isDrawn?`0 0 6px ${gc}88`:"none",
+                        transform:isLast?"scale(1.18)":"scale(1)",
+                        transition:"transform 0.15s",
+                      }}
+                    >{n}</div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+
+          {/* ── PANEL INFERIOR ── */}
+          <div className="panel-inferior-mobile" style={{ display:"grid", gridTemplateColumns:"190px 190px 1fr", gap:14, flex:1, minHeight:200 }}>
+
+            {/* ZONA 1 — patrón */}
+            <div className="zona-patron" style={{ background:"rgba(255,255,255,0.07)", borderRadius:16, padding:16, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:10, border:`1px solid ${gc}33` }}>
+              <div style={{ fontSize:10, fontWeight:700, color:"#64748b", letterSpacing:2 }}>PATRÓN ACTIVO</div>
+              {/* letras encima */}
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:3, width:105 }}>
+                {["B","I","N","G","O"].map((l,i)=>(
+                  <div key={l} style={{ height:17, borderRadius:3, background:BINGO_LETTER_COLORS[i], display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:800, color:"#fff" }}>{l}</div>
                 ))}
               </div>
               {/* grilla */}
