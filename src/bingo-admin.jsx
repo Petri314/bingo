@@ -328,7 +328,7 @@ useEffect(()=>{
               }
               .zona-patron { grid-column: 1 !important; grid-row: 1 !important; }
               .zona-ultimo { grid-column: 2 !important; grid-row: 1 !important; }
-              .zona-premio { grid-column: 1 / -1 !important; grid-row: 2 !important; min-height: 200px !important; }
+              .zona-premio { grid-column: 1 / -1 !important; grid-row: 2 !important; min-height: 300px !important; }
               
               .btn-flotantes-mobile { 
                 bottom: 80px !important; 
