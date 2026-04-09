@@ -105,3 +105,5 @@ Definida en `index.html` dentro de `<style>`:
 ---
 **PRÓXIMOS PASOS:**
 *(Aquí anotaremos lo que hagamos a continuación)*
+
+ver qr del carton que no carga, hay que subirla a git

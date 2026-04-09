@@ -412,7 +412,7 @@ export default function BingoAdmin() {
       <div class="game-info">JUEGO ${gn} | CARTÓN ${c.cardNum}</div>
       <div class="bingo-grid">
         ${Object.keys(COLS).map(l=>`<div class="bingo-cell" style="background:${gc2};color:white;border:none;font-size:20px;">${l}</div>`).join('')}
-        ${c.grid[0].map((_,row)=>c.grid.map((col,ci)=>{ const val=col[row]; const isFree=val==="FREE"; return `<div class="bingo-cell" style="background:${isFree?"#facc15":"#f8fafc"};color:${isFree?"#000":"#222"};padding:2px;">${isFree?'<img src="/QR.png" style="width:100%;height:100%;object-fit:contain;">':val}</div>`; }).join('')).join('')}
+        ${c.grid[0].map((_,row)=>c.grid.map((col,ci)=>{ const val=col[row]; const isFree=val==="FREE"; return `<div class="bingo-cell" style="background:${isFree?"#facc15":"#f8fafc"};color:${isFree?"#000":"#222"};padding:2px;">${isFree?'<img src="./QR.png" style="width:100%;height:100%;object-fit:contain;">':val}</div>`; }).join('')).join('')}
       </div>
       <div class="footer-info">BINGO SOLIDARIO CRISTIAN HIDALGO<br>ESCANEA EL QR DEL CENTRO PARA VER INFO DEL JUEGO</div></div>`;
     });
