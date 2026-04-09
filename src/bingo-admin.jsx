@@ -45,6 +45,19 @@ function generateCardGrid() {
   grid[2][2] = "FREE"; return grid;
 }
 
+// ─── VERIFICAR PATRÓN ─────────────────────────────────────────────────────────
+function checkPattern(card, drawn, pattern) {
+  for (let row = 0; row < 5; row++) {
+    for (let col = 0; col < 5; col++) {
+      if (!pattern.grid[row][col]) continue;
+      const val = card.grid[col][row];
+      if (val === "FREE") continue;
+      if (!drawn.includes(val)) return false;
+    }
+  }
+  return true;
+}
+
 const TABS = ["🎟️ Cartones","📋 Asistentes","🎱 Sorteo","🏆 Ganadores"];
 const inpS = { background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:"10px 12px", color:"#334155", fontSize:14, outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"sans-serif" };
 const btnS = (color, extra={}) => ({ background:color, border:"none", borderRadius:8, padding:"9px 15px", fontWeight:700, fontSize:14, cursor:"pointer", color:"#fff", fontFamily:"sans-serif", whiteSpace:"nowrap", ...extra });
@@ -128,6 +141,200 @@ function ResetModal({ onConfirm, onClose }) {
   );
 }
 
+// ─── MODAL GANADOR 🏆 ─────────────────────────────────────────────────────────
+function WinnerPopup({ winner, onClose }) {
+  const game = GAMES.find(g => g.id === winner.gameId);
+  const gc = game?.color || "#f59e0b";
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 500,
+        background: "rgba(0,0,0,0.88)",
+        display: "flex", alignItems: "center",
+        justifyContent: "center",
+        backdropFilter: "blur(6px)",
+      }}
+    >
+      <style>{`
+        @keyframes popIn {
+          0%   { transform: scale(0.3) rotate(-8deg); opacity: 0; }
+          70%  { transform: scale(1.08) rotate(2deg); opacity: 1; }
+          100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        @keyframes floatBalloon {
+          0%   { transform: translateY(0) rotate(0deg);   opacity: 1; }
+          100% { transform: translateY(-110vh) rotate(720deg); opacity: 0; }
+        }
+        @keyframes shimmerWinner {
+          0%, 100% { opacity: 1; }
+          50%       { opacity: 0.55; }
+        }
+        @keyframes starPop {
+          0%   { transform: scale(0) rotate(0deg); opacity: 0; }
+          60%  { transform: scale(1.3) rotate(180deg); opacity: 1; }
+          100% { transform: scale(1) rotate(360deg); opacity: 1; }
+        }
+        .winner-pop-card {
+          animation: popIn 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        .shimmer-winner {
+          animation: shimmerWinner 1.4s ease-in-out infinite;
+        }
+        .star-pop {
+          animation: starPop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        .balloon-float {
+          position: fixed;
+          bottom: -90px;
+          font-size: 44px;
+          animation: floatBalloon linear infinite;
+          pointer-events: none;
+          line-height: 1;
+          z-index: 501;
+        }
+        .confetti-piece {
+          position: fixed;
+          bottom: -20px;
+          pointer-events: none;
+          animation: floatBalloon linear infinite;
+          z-index: 501;
+        }
+      `}</style>
+
+      {/* Globos */}
+      {[
+        { l:"8%",  delay:"0s",    dur:"3.2s" },
+        { l:"20%", delay:"0.35s", dur:"2.8s" },
+        { l:"34%", delay:"0.8s",  dur:"3.6s" },
+        { l:"50%", delay:"0.15s", dur:"3.0s" },
+        { l:"63%", delay:"0.6s",  dur:"2.6s" },
+        { l:"77%", delay:"1.0s",  dur:"3.4s" },
+        { l:"90%", delay:"0.45s", dur:"2.9s" },
+        { l:"42%", delay:"1.3s",  dur:"3.1s" },
+      ].map((b, i) => (
+        <div
+          key={"b"+i}
+          className="balloon-float"
+          style={{ left: b.l, animationDelay: b.delay, animationDuration: b.dur }}
+        >🎈</div>
+      ))}
+
+      {/* Confetti */}
+      {Array.from({ length: 22 }).map((_, i) => (
+        <div
+          key={"cf"+i}
+          className="confetti-piece"
+          style={{
+            left: `${(i * 4.5) % 100}%`,
+            width: i % 4 === 0 ? 12 : 8,
+            height: i % 4 === 0 ? 12 : 8,
+            borderRadius: i % 3 === 0 ? "50%" : 2,
+            background: ["#ef4444","#3b82f6","#f59e0b","#22c55e","#a855f7","#ec4899","#14b8a6","#f97316"][i % 8],
+            animationDuration: `${2.2 + (i % 5) * 0.35}s`,
+            animationDelay: `${(i * 0.14).toFixed(2)}s`,
+          }}
+        />
+      ))}
+
+      {/* Tarjeta ganadora */}
+      <div
+        className="winner-pop-card"
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: "#0f1221",
+          border: `3px solid ${gc}`,
+          borderRadius: 26,
+          padding: "38px 44px",
+          textAlign: "center",
+          maxWidth: 400,
+          width: "92vw",
+          boxShadow: `0 0 80px ${gc}66, 0 0 160px ${gc}22`,
+          position: "relative",
+          zIndex: 502,
+        }}
+      >
+        {/* Estrellas decorativas */}
+        <div className="star-pop" style={{ fontSize: 20, position:"absolute", top:18, left:22, animationDelay:"0.2s" }}>⭐</div>
+        <div className="star-pop" style={{ fontSize: 16, position:"absolute", top:22, right:26, animationDelay:"0.4s" }}>✨</div>
+        <div className="star-pop" style={{ fontSize: 14, position:"absolute", bottom:60, left:18, animationDelay:"0.6s" }}>🌟</div>
+        <div className="star-pop" style={{ fontSize: 14, position:"absolute", bottom:64, right:20, animationDelay:"0.5s" }}>⭐</div>
+
+        <div style={{ fontSize: 62, marginBottom: 6, lineHeight: 1 }}>🏆</div>
+
+        <div
+          className="shimmer-winner"
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            letterSpacing: 5,
+            color: gc,
+            marginBottom: 20,
+            textTransform: "uppercase",
+            fontFamily: "sans-serif",
+          }}
+        >
+          ¡Tenemos ganador!
+        </div>
+
+        {/* Bloque nombre + cartón */}
+        <div style={{
+          background: `${gc}18`,
+          borderRadius: 16,
+          padding: "20px 24px",
+          marginBottom: 18,
+          border: `1.5px solid ${gc}55`,
+        }}>
+          <div style={{ fontSize: 30, fontWeight: 800, color: "#ffffff", marginBottom: 6, fontFamily: "sans-serif", lineHeight: 1.2 }}>
+            {winner.name}
+          </div>
+          <div style={{ fontSize: 16, color: "#94a3b8", fontFamily: "sans-serif" }}>
+            Cartón{" "}
+            <span style={{ color: gc, fontWeight: 800, fontSize: 18 }}>{winner.card}</span>
+          </div>
+        </div>
+
+        {/* Juego y felicitaciones */}
+        <div style={{ marginBottom: 28, fontFamily: "sans-serif" }}>
+          <div style={{ fontSize: 15, color: "#e2e8f0", marginBottom: 6 }}>
+            Ha ganado el{" "}
+            <span style={{ color: gc, fontWeight: 700 }}>{winner.game}</span>
+          </div>
+          <div style={{
+            fontSize: 20,
+            fontWeight: 800,
+            color: "#ffffff",
+            letterSpacing: 1,
+          }}>
+            ¡Felicitaciones! 🎉
+          </div>
+        </div>
+
+        <button
+          onClick={onClose}
+          style={{
+            background: gc,
+            border: "none",
+            borderRadius: 14,
+            padding: "14px 0",
+            color: "#fff",
+            fontWeight: 700,
+            fontSize: 16,
+            cursor: "pointer",
+            width: "100%",
+            fontFamily: "sans-serif",
+            letterSpacing: 0.5,
+            boxShadow: `0 4px 24px ${gc}66`,
+          }}
+        >
+          Cerrar
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
 export default function BingoAdmin() {
   const [tab, setTab]                   = useState(2);
@@ -153,15 +360,19 @@ export default function BingoAdmin() {
   const [showPatternModal, setShowPatternModal] = useState(false);
   const [showGameModal, setShowGameModal]       = useState(false);
   const [showResetModal, setShowResetModal]     = useState(false);
-const [isFullscreen, setIsFullscreen]         = useState(false);
+  const [isFullscreen, setIsFullscreen]         = useState(false);
 
-useEffect(()=>{
-  const handleResize = () => {
-    setIsFullscreen(window.innerHeight === window.screen.height);
-  };
-  window.addEventListener("resize", handleResize);
-  return () => window.removeEventListener("resize", handleResize);
-},[]);
+  // ── NUEVO: estado ganador popup ──
+  const [winnerPopup, setWinnerPopup]   = useState(null);
+  const [alreadyWon, setAlreadyWon]     = useState(false);
+
+  useEffect(()=>{
+    const handleResize = () => {
+      setIsFullscreen(window.innerHeight === window.screen.height);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  },[]);
 
   const handleLogin = () => {
     if (pwInput===PIN) { setIsAdmin(true); setShowLogin(false); setPwInput(""); setPwError(false); }
@@ -184,6 +395,35 @@ useEffect(()=>{
     const uW = onValue(ref(db,DB_WINNERS), s=>{ const v=s.val(); setWinners(v?Object.values(v).sort((a,b)=>a.ts-b.ts):[]); });
     return ()=>{ uC(); uD(); uW(); };
   },[]);
+
+  // ── NUEVO: detectar ganador automáticamente ──
+  useEffect(() => {
+    if (!drawn.length || alreadyWon) return;
+    const soldCards = cards.filter(c => c.paid && c.gameId === activeGame.id);
+    for (const card of soldCards) {
+      if (!card.grid) continue;
+      if (checkPattern(card, drawn, activePattern)) {
+        const winnerData = {
+          name: card.owner,
+          card: card.cardNum,
+          game: activeGame.name,
+          gameId: activeGame.id,
+          time: new Date().toLocaleTimeString("es-CL"),
+          ts: Date.now(),
+        };
+        set(ref(db, `${DB_WINNERS}/${winnerData.ts}`), winnerData);
+        setWinnerPopup(winnerData);
+        setAlreadyWon(true);
+        break;
+      }
+    }
+  }, [drawn, activePattern, activeGame, cards]);
+
+  // ── NUEVO: resetear flag cuando cambia juego o patrón ──
+  useEffect(() => {
+    setAlreadyWon(false);
+    setWinnerPopup(null);
+  }, [activeGame.id, activePattern.id]);
 
   const generatePool = async () => {
     const qty=parseInt(genQty);
@@ -228,12 +468,25 @@ useEffect(()=>{
     if (isMarking) speakNumber(n);
   };
 
-  const resetSort = async () => { await set(ref(db,DB_DRAWN),null); setShowResetModal(false); showToast("Sorteo reiniciado"); };
+  const resetSort = async () => {
+    await set(ref(db,DB_DRAWN),null);
+    setShowResetModal(false);
+    setAlreadyWon(false);
+    setWinnerPopup(null);
+    showToast("Sorteo reiniciado");
+  };
 
   const addWinner = async () => {
     if (!winnerName.trim()||!winnerCard.trim()) return showToast("Completa campos","err");
     const ts=Date.now();
-    await set(ref(db,`${DB_WINNERS}/${ts}`),{name:winnerName.trim(),card:winnerCard.trim(),time:new Date().toLocaleTimeString("es-CL"),ts});
+    await set(ref(db,`${DB_WINNERS}/${ts}`),{
+      name:winnerName.trim(),
+      card:winnerCard.trim(),
+      game:activeGame.name,
+      gameId:activeGame.id,
+      time:new Date().toLocaleTimeString("es-CL"),
+      ts,
+    });
     showToast("🏆 ¡Ganador registrado!"); setWinnerName(""); setWinnerCard("");
   };
 
@@ -312,7 +565,7 @@ useEffect(()=>{
           TAB SORTEO
       ══════════════════════════════════════════════ */}
       {tab===2&&(
-  <div style={{ padding:"16px 20px", width:"100%", boxSizing:"border-box", minHeight:"calc(100vh - 112px)", display:"flex", flexDirection:"column", gap:14, paddingBottom: isAdmin ? 90 : 60 }}>
+        <div style={{ padding:"16px 20px", width:"100%", boxSizing:"border-box", minHeight:"calc(100vh - 112px)", display:"flex", flexDirection:"column", gap:14, paddingBottom: isAdmin ? 90 : 60 }}>
           <style>{`
             @media (max-width: 768px) {
               .bingo-board-mobile { display: grid !important; grid-template-columns: repeat(5, 1fr) !important; gap: 8px !important; }
@@ -357,12 +610,10 @@ useEffect(()=>{
             ))}
           </div>
 
-          {/* ── TABLERO: Horizontal en PC, Vertical en móvil ── */}
+          {/* ── TABLERO ── */}
           <div className="bingo-board-mobile" style={{ background:"rgba(255,255,255,0.06)", borderRadius:18, padding:"14px 16px", border:`1px solid ${gc}33`, display:"flex", flexDirection:"column" }}>
             {Object.entries(COLS).map(([letter,[min,max]],rowIdx)=>(
               <div key={letter} className="bingo-row" style={{ display:"flex", gap:5, marginBottom:rowIdx<4?6:0, alignItems:"center" }}>
-
-                {/* letra */}
                 <div className="bingo-letter" style={{
                   width:44, height:44, borderRadius:10, flexShrink:0,
                   background:BINGO_LETTER_COLORS[rowIdx],
@@ -371,7 +622,6 @@ useEffect(()=>{
                   boxShadow:`0 0 12px ${BINGO_LETTER_COLORS[rowIdx]}99`,
                 }}>{letter}</div>
 
-                {/* bolillas */}
                 {Array.from({length:15},(_,i)=>i+min).map(n=>{
                   const isLast  = n===lastDrawn;
                   const isDrawn = drawn.includes(n);
@@ -406,13 +656,11 @@ useEffect(()=>{
             {/* ZONA 1 — patrón */}
             <div className="zona-patron" style={{ background:"rgba(255,255,255,0.07)", borderRadius:16, padding:16, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:10, border:`1px solid ${gc}33` }}>
               <div style={{ fontSize:10, fontWeight:700, color:"#64748b", letterSpacing:2 }}>PATRÓN ACTIVO</div>
-              {/* letras encima */}
               <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:3, width:105 }}>
                 {["B","I","N","G","O"].map((l,i)=>(
                   <div key={l} style={{ height:17, borderRadius:3, background:BINGO_LETTER_COLORS[i], display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:800, color:"#fff" }}>{l}</div>
                 ))}
               </div>
-              {/* grilla */}
               <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:3, width:105 }}>
                 {activePattern.grid.flat().map((cell,i)=>(
                   <div key={i} style={{ height:17, borderRadius:3, background:cell?gc:"rgba(255,255,255,0.07)", border:cell?"none":"1px solid rgba(255,255,255,0.08)" }} />
@@ -447,28 +695,28 @@ useEffect(()=>{
                 style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
                 onError={e=>{
                   e.target.style.display="none";
-                  e.target.parentNode.innerHTML=`<div style="color:${gc};font-size:16px;font-weight:700;text-align:center;padding:24px;line-height:1.8;font-family:sans-serif">🏅<br><span style='font-size:13px;color:#64748b'>Sube <code><img src="premio" alt="" className="png" /></code><br>a la carpeta <code>public/</code></span></div>`;
+                  e.target.parentNode.innerHTML=`<div style="color:${gc};font-size:16px;font-weight:700;text-align:center;padding:24px;line-height:1.8;font-family:sans-serif">🏅<br><span style='font-size:13px;color:#64748b'>Sube <code>img.png</code><br>a la carpeta <code>public/</code></span></div>`;
                 }}
               />
             </div>
 
-          </div>{/* fin panel inferior */}
+          </div>
 
           {/* ── BOTONES FLOTANTES (solo admin) ── */}
           {isAdmin&&!isFullscreen&&(
-  <div className="btn-flotantes-mobile" style={{ position:"fixed", bottom:0, left:0, right:0, display:"flex", flexDirection:"row", justifyContent:"center", gap:12, padding:"12px 16px", background:"rgba(10,16,31,0.95)", backdropFilter:"blur(10px)", borderTop:"1px solid rgba(255,255,255,0.1)", zIndex:100 }}>
+            <div className="btn-flotantes-mobile" style={{ position:"fixed", bottom:0, left:0, right:0, display:"flex", flexDirection:"row", justifyContent:"center", gap:12, padding:"12px 16px", background:"rgba(10,16,31,0.95)", backdropFilter:"blur(10px)", borderTop:"1px solid rgba(255,255,255,0.1)", zIndex:100 }}>
               <button
-  onClick={()=>setShowPatternModal(true)}
-  style={{ background:"rgba(255,255,255,0.08)", border:`2px solid ${gc}`, borderRadius:14, padding:"11px 24px", color:gc, fontWeight:700, fontSize:13, cursor:"pointer", backdropFilter:"blur(10px)", display:"flex", alignItems:"center", gap:8 }}
->🎯 Patrón</button>
-<button
-  onClick={()=>setShowGameModal(true)}
-  style={{ background:gc, border:"none", borderRadius:14, padding:"11px 24px", color:"#fff", fontWeight:700, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:8, boxShadow:`0 4px 20px ${gc}66` }}
->🎮 Juego</button>
-<button
-  onClick={()=>setShowResetModal(true)}
-  style={{ background:"rgba(255,255,255,0.08)", border:"2px solid #ef4444", borderRadius:14, padding:"11px 24px", color:"#ef4444", fontWeight:700, fontSize:13, cursor:"pointer", backdropFilter:"blur(10px)", display:"flex", alignItems:"center", gap:8 }}
->🔄 Reiniciar</button>
+                onClick={()=>setShowPatternModal(true)}
+                style={{ background:"rgba(255,255,255,0.08)", border:`2px solid ${gc}`, borderRadius:14, padding:"11px 24px", color:gc, fontWeight:700, fontSize:13, cursor:"pointer", backdropFilter:"blur(10px)", display:"flex", alignItems:"center", gap:8 }}
+              >🎯 Patrón</button>
+              <button
+                onClick={()=>setShowGameModal(true)}
+                style={{ background:gc, border:"none", borderRadius:14, padding:"11px 24px", color:"#fff", fontWeight:700, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:8, boxShadow:`0 4px 20px ${gc}66` }}
+              >🎮 Juego</button>
+              <button
+                onClick={()=>setShowResetModal(true)}
+                style={{ background:"rgba(255,255,255,0.08)", border:"2px solid #ef4444", borderRadius:14, padding:"11px 24px", color:"#ef4444", fontWeight:700, fontSize:13, cursor:"pointer", backdropFilter:"blur(10px)", display:"flex", alignItems:"center", gap:8 }}
+              >🔄 Reiniciar</button>
             </div>
           )}
 
@@ -548,7 +796,7 @@ useEffect(()=>{
 
           {tab===3&&(<div>
             {isAdmin&&(<div style={{ background:"#ffffff", borderRadius:13, padding:16, border:"2px solid #fde68a", marginBottom:22, boxShadow:"0 4px 6px -1px rgba(0,0,0,0.1)" }}>
-              <h3 style={{ margin:"0 0 12px", fontSize:14, color:"#92400e" }}>Registrar ganador</h3>
+              <h3 style={{ margin:"0 0 12px", fontSize:14, color:"#92400e" }}>Registrar ganador manualmente</h3>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
                 <input placeholder="Nombre" value={winnerName} onChange={e=>setWinnerName(e.target.value)} style={inpS} />
                 <input placeholder="N° cartón" value={winnerCard} onChange={e=>setWinnerCard(e.target.value)} style={inpS} />
@@ -557,7 +805,10 @@ useEffect(()=>{
             </div>)}
             {winners.length===0?<div style={{ textAlign:"center", color:"#94a3b8", padding:40 }}>Sin ganadores</div>:winners.map(w=>(<div key={w.ts} style={{ background:"#ffffff", borderRadius:12, padding:"14px 16px", display:"flex", alignItems:"center", gap:12, border:"1px solid #fde68a", marginBottom:8 }}>
               <div style={{ fontSize:26 }}>🏆</div>
-              <div style={{ flex:1 }}><div style={{ fontWeight:700, fontSize:15, color:"#92400e" }}>{w.name}</div><div style={{ fontSize:12, color:"#64748b" }}>Cartón #{w.card} · {w.time}</div></div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontWeight:700, fontSize:15, color:"#92400e" }}>{w.name}</div>
+                <div style={{ fontSize:12, color:"#64748b" }}>Cartón #{w.card} · {w.game || ""} · {w.time}</div>
+              </div>
               {isAdmin&&<button onClick={()=>deleteWinner(w.ts)} style={{ background:"none", border:"none", color:"#94a3b8", cursor:"pointer", fontSize:16 }}>✕</button>}
             </div>))}
           </div>)}
@@ -571,6 +822,10 @@ useEffect(()=>{
       {showPatternModal&&<PatternModal activePattern={activePattern} activeGame={activeGame} onSelect={setActivePattern} onClose={()=>setShowPatternModal(false)} />}
       {showGameModal&&<GameModal activeGame={activeGame} onSelect={setActiveGame} onClose={()=>setShowGameModal(false)} />}
       {showResetModal&&<ResetModal onConfirm={resetSort} onClose={()=>setShowResetModal(false)} />}
+
+      {/* ── NUEVO: POPUP GANADOR ── */}
+      {winnerPopup&&<WinnerPopup winner={winnerPopup} onClose={()=>setWinnerPopup(null)} />}
+
     </div>
   );
 }
