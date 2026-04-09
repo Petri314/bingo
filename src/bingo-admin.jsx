@@ -444,7 +444,7 @@ useEffect(()=>{
               <img
                 src="/img.png"
                 alt="Premio"
-                style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}
+                style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
                 onError={e=>{
                   e.target.style.display="none";
                   e.target.parentNode.innerHTML=`<div style="color:${gc};font-size:16px;font-weight:700;text-align:center;padding:24px;line-height:1.8;font-family:sans-serif">🏅<br><span style='font-size:13px;color:#64748b'>Sube <code><img src="premio" alt="" className="png" /></code><br>a la carpeta <code>public/</code></span></div>`;
