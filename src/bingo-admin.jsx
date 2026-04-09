@@ -1,7 +1,7 @@
 import React from "react";
 import { useState, useEffect } from "react";
 import { db, PIN } from "./firebase.js";
-import { ref, onValue, set, remove, update } from "firebase/database";
+import { ref, onValue, set, remove, update, runTransaction } from "firebase/database";
 
 const COLS = { B: [1,15], I: [16,30], N: [31,45], G: [46,60], O: [61,75] };
 const TOTAL = 75; const PRICE = 1000;
@@ -255,20 +255,6 @@ export default function BingoAdmin() {
     await update(ref(db,DB_STATE),{ patternId:pattern.id, alreadyWon:false, currentWinner:null });
   };
 
-  useEffect(() => {
-    if (!drawn.length || alreadyWon) return;
-    const soldCards = cards.filter(c => c.paid && c.gameId === activeGame.id);
-    for (const card of soldCards) {
-      if (!card.grid) continue;
-      if (checkPattern(card, drawn, activePattern)) {
-        const winnerData = { name:card.owner, card:card.cardNum, game:activeGame.name, gameId:activeGame.id, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now() };
-        setAlreadyWon(true);
-        set(ref(db,`${DB_WINNERS}/${winnerData.ts}`), winnerData);
-        update(ref(db,DB_STATE),{ alreadyWon:true, currentWinner:winnerData });
-        break;
-      }
-    }
-  }, [drawn, activePattern, activeGame, cards, alreadyWon]);
 
   const generatePool = async () => {
     const qty=parseInt(genQty);
@@ -309,6 +295,20 @@ export default function BingoAdmin() {
     const next=isMarking?[...drawn,n]:drawn.filter(x=>x!==n);
     await set(ref(db,DB_DRAWN),next.length?Object.fromEntries(next.map((v,i)=>[i,v])):null);
     if (isMarking) speakNumber(n);
+
+        if (isMarking) {
+      const soldCards = cards.filter(c => c.paid && c.gameId === activeGame.id);
+      for (const card of soldCards) {
+        if (!card.grid) continue;
+        if (checkPattern(card, next, activePattern)) {
+                    const winnerKey = `${activeGame.id}_${card.cardNum}`;
+          const winnerData = { id:winnerKey, name:card.owner, card:card.cardNum, game:activeGame.name, gameId:activeGame.id, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now() };
+          set(ref(db,`${DB_WINNERS}/${winnerKey}`), winnerData);
+          update(ref(db,DB_STATE),{ alreadyWon:true, currentWinner:winnerData });
+          break;
+        }
+      }
+    }
   };
 
   const resetSort = async () => {
@@ -317,10 +317,11 @@ export default function BingoAdmin() {
     setShowResetModal(false); showToast("Sorteo reiniciado");
   };
 
-  const addWinner = async () => {
+    const addWinner = async () => {
     if (!winnerName.trim()||!winnerCard.trim()) return showToast("Completa campos","err");
     const ts=Date.now();
-    await set(ref(db,`${DB_WINNERS}/${ts}`),{ name:winnerName.trim(), card:winnerCard.trim(), game:activeGame.name, gameId:activeGame.id, time:new Date().toLocaleTimeString("es-CL"), ts });
+    const winnerKey = `${activeGame.id}_${winnerCard.trim()}`;
+    await set(ref(db,`${DB_WINNERS}/${winnerKey}`),{ id:winnerKey, name:winnerName.trim(), card:winnerCard.trim(), game:activeGame.name, gameId:activeGame.id, time:new Date().toLocaleTimeString("es-CL"), ts });
     showToast("🏆 ¡Ganador registrado!"); setWinnerName(""); setWinnerCard("");
   };
 
@@ -594,7 +595,7 @@ export default function BingoAdmin() {
                 <div style={{ fontWeight:700, fontSize:15, color:"#92400e" }}>{w.name}</div>
                 <div style={{ fontSize:12, color:"#64748b" }}>Cartón #{w.card} · {w.game||""} · {w.time}</div>
               </div>
-              {isAdmin&&<button onClick={()=>deleteWinner(w.ts)} style={{ background:"none", border:"none", color:"#94a3b8", cursor:"pointer", fontSize:16 }}>✕</button>}
+                            {isAdmin&&<button onClick={()=>deleteWinner(w.id || w.ts)} style={{ background:"none", border:"none", color:"#94a3b8", cursor:"pointer", fontSize:16 }}>✕</button>}
             </div>))}
           </div>)}
 
