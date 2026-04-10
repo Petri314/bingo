@@ -11,14 +11,18 @@ const DB_WINNERS = "bingo_winners";
 const DB_STATE   = "bingo_state";
 
 const GAMES = [
-  { id: "j1", name: "Juego 1", color: "#ef4444" },
-  { id: "j2", name: "Juego 2", color: "#3b82f6" },
-  { id: "j3", name: "Juego 3", color: "#22c55e" },
-  { id: "j4", name: "Juego 4", color: "#f59e0b" },
-  { id: "j5", name: "Juego 5", color: "#a855f7" },
-  { id: "j6", name: "Juego 6", color: "#ec4899" },
-  { id: "j7", name: "Juego 7", color: "#14b8a6" },
-  { id: "j8", name: "Juego 8", color: "#f97316" },
+  { id: "j1",  name: "Juego 1",  color: "#FF0000" }, // Rojo
+  { id: "j2",  name: "Juego 2",  color: "#00FFFF" }, // Cian (Opuesto del Rojo)
+  { id: "j3",  name: "Juego 3",  color: "#FFFF00" }, // Amarillo
+  { id: "j4",  name: "Juego 4",  color: "#7F00FF" }, // Violeta (Opuesto del Amarillo)
+  { id: "j5",  name: "Juego 5",  color: "#00FF00" }, // Verde
+  { id: "j6",  name: "Juego 6",  color: "#FF00FF" }, // Magenta (Opuesto del Verde)
+  { id: "j7",  name: "Juego 7",  color: "#FF7F00" }, // Naranja
+  { id: "j8",  name: "Juego 8",  color: "#007FFF" }, // Azul Cielo (Opuesto del Naranja)
+  { id: "j9",  name: "Juego 9",  color: "#7FFF00" }, // Verde Lima
+  { id: "j10", name: "Juego 10", color: "#FF007F" }, // Rosa Intenso (Opuesto del Lima)
+  { id: "j11", name: "Juego 11", color: "#0000FF" }, // Azul
+  { id: "j12", name: "Juego 12", color: "#00FF7F" }, // Verde Primavera (Opuesto del Azul)
 ];
 
 const PATTERNS = [
@@ -461,10 +465,10 @@ const savingWinnerRef = React.useRef(false);
               }
             }
             @media (max-width: 768px) {
-              .bingo-board-mobile { display: grid !important; grid-template-columns: repeat(5, 1fr) !important; gap: 8px !important; }
-              .bingo-board-mobile .bingo-row { display: contents !important; }
+              .bingo-board-mobile { display: flex !important; flex-direction: row !important; gap: 4px !important; }
+              .bingo-board-mobile .bingo-row { display: flex !important; flex-direction: column !important; flex: 1 !important; gap: 4px !important; }
               .bingo-board-mobile .bingo-letter { display: none !important; }
-              .bingo-board-mobile .bingo-number { flex: unset !important; }
+              .bingo-board-mobile .bingo-number { flex: unset !important; width: 100% !important; aspect-ratio: 1/1 !important; }
               .panel-inferior-pc {
                 display: grid !important;
                 grid-template-columns: 1fr 1fr !important;
@@ -564,8 +568,8 @@ const savingWinnerRef = React.useRef(false);
 
           {tab===0&&(<div style={{ marginTop:10 }}>
             {isAdmin&&(<>
-              <div style={{ display:"flex", gap:6, marginBottom:15, flexWrap:"wrap" }}>
-                {GAMES.map(g=>(<button key={g.id} onClick={()=>handleSelectGame(g)} style={{ background:activeGame.id===g.id?g.color:"#ffffff", color:activeGame.id===g.id?"#fff":g.color, border:`2px solid ${g.color}`, borderRadius:8, padding:"6px 12px", fontSize:12, fontWeight:700, cursor:"pointer" }}>{g.name}</button>))}
+              <div style={{ marginBottom:15 }}>
+                <button onClick={()=>setShowGameModal(true)} style={{ background:activeGame.color, border:"none", borderRadius:10, padding:"10px 20px", fontSize:14, fontWeight:700, cursor:"pointer", color:"#fff", display:"flex", alignItems:"center", gap:8 }}>🎮 {activeGame.name} ▼</button>
               </div>
               <div style={{ background:activeGame.color+"15", borderRadius:13, padding:16, marginBottom:12, border:`1px solid ${activeGame.color}40` }}>
                 <h3 style={{ margin:"0 0 12px", fontSize:14, color:activeGame.color }}>1. Generar cartones — {activeGame.name}</h3>
