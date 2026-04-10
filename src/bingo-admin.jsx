@@ -331,13 +331,14 @@ const savingWinnerRef = React.useRef(false);
     const available=cards.filter(c=>!c.paid&&c.gameId===activeGame.id);
     if (available.length<qty) return showToast(`Solo quedan ${available.length} cartones en ${activeGame.name}`,"err");
     const nums=available.slice(0,qty).map(c=>c.cardNum);
-    setConfirmAssign({ owner:newOwner.trim(), qty, nums, available });
+    setConfirmAssign({ owner:newOwner.trim(), qty, nums, available, selected:available.slice(0,qty).map(c=>c.id) });
   };
 
   const confirmAssignCard = async () => {
     if (!confirmAssign) return;
     const updates={};
-    for (let i=0;i<confirmAssign.qty;i++) { updates[`${DB_CARDS}/${confirmAssign.available[i].id}`]={...confirmAssign.available[i],owner:confirmAssign.owner,paid:true}; }
+    const toAssign=confirmAssign.available.filter(c=>confirmAssign.selected.includes(c.id));
+    toAssign.forEach(c=>{ updates[`${DB_CARDS}/${c.id}`]={...c,owner:confirmAssign.owner,paid:true}; });
     await update(ref(db),updates);
     showToast(`✓ ${activeGame.name}: ${confirmAssign.nums.join(', ')}`);
     setNewOwner(""); setNewQty("1"); setConfirmAssign(null);
@@ -704,8 +705,20 @@ const gameTextColor=["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff"
         </div>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
           <span style={{ color:"#64748b", fontSize:14 }}>Cartones</span>
-          <div style={{ display:"flex", gap:6, flexWrap:"wrap", justifyContent:"flex-end", maxWidth:"60%" }}>
-            {confirmAssign.nums.map(n=>(<span key={n} style={{ background:activeGame.color, color:["j2","j3","j5","j9","j12"].includes(activeGame.id)?"#000":"#fff", borderRadius:6, padding:"2px 8px", fontSize:13, fontWeight:700 }}>{n}</span>))}
+          <div style={{ display:"flex", gap:6, flexWrap:"wrap", justifyContent:"flex-end", maxWidth:"70%", maxHeight:120, overflowY:"auto", padding:"4px 0" }}>
+            {confirmAssign.available.filter(c=>!c.paid).map(c=>{
+              const isSel=confirmAssign.selected.includes(c.id);
+              return (<span key={c.id} onClick={()=>{
+                const alreadySel=confirmAssign.selected.includes(c.id);
+                if (alreadySel) {
+                  if (confirmAssign.selected.length<=1) return;
+                  setConfirmAssign(p=>({...p, selected:p.selected.filter(id=>id!==c.id), nums:p.available.filter(x=>p.selected.filter(id=>id!==c.id).includes(x.id)).map(x=>x.cardNum)}));
+                } else {
+                  if (confirmAssign.selected.length>=confirmAssign.qty) return;
+                  setConfirmAssign(p=>({...p, selected:[...p.selected,c.id], nums:p.available.filter(x=>[...p.selected,c.id].includes(x.id)).map(x=>x.cardNum)}));
+                }
+              }} style={{ background:isSel?activeGame.color:"#e2e8f0", color:isSel?(["j2","j3","j5","j9","j12"].includes(activeGame.id)?"#000":"#fff"):"#64748b", borderRadius:6, padding:"4px 10px", fontSize:13, fontWeight:700, cursor:"pointer", border:isSel?`2px solid ${activeGame.color}`:"2px solid #e2e8f0" }}>{c.cardNum}</span>);
+            })}
           </div>
         </div>
       </div>
