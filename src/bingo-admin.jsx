@@ -604,7 +604,7 @@ export default function BingoAdmin() {
 
       {/* ══ OTROS TABS ══ */}
       {tab!==2&&(
-        <div style={{ padding:"18px 14px", maxWidth: tab===1&&!isAdmin ? "100%" : 760, margin:"0 auto" }}>
+        <div style={{ padding: tab===1&&!isAdmin ? "0" : "18px 14px", maxWidth: tab===1&&!isAdmin ? "100%" : 760, margin:"0 auto" }}>
 
           {/* ══ TAB CARTONES ══ */}
           {tab===0&&(<div style={{ marginTop:10 }}>
@@ -696,10 +696,12 @@ export default function BingoAdmin() {
               <div style={{
                 background:"linear-gradient(135deg,#0f1221 0%,#1a1d2b 100%)",
                 height:"calc(100vh - 112px)",
+                width:"100vw",
                 padding:"12px 16px",
                 display:"grid",
                 gridTemplateColumns:"264px 1fr",
                 gridTemplateRows:"auto auto 1fr",
+                minHeight:"calc(100vh - 112px)",
                 gap:10,
                 boxSizing:"border-box",
                 width:"100%",
@@ -737,7 +739,7 @@ export default function BingoAdmin() {
                 ) : null}
 
                 {/* COLUMNA IZQUIERDA */}
-                <div style={{ display:"flex", flexDirection:"column", gap:10, overflow:"hidden", minHeight:0 }}>
+                <div style={{ display:"flex", flexDirection:"column", gap:10, overflow:"hidden", minHeight:0, flex:1, paddingBottom:12 }}>
 
                   {/* Patrón activo */}
                   <div style={{ background:"#1a1d2b", borderRadius:12, padding:"12px 14px", border:`1px solid ${gc}44`, flexShrink:0 }}>
@@ -754,9 +756,9 @@ export default function BingoAdmin() {
                   </div>
 
                   {/* Últimos compradores */}
-                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"12px 14px", border:`1px solid ${gc}44`, flex:1, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"12px 14px", border:`1px solid ${gc}44`, flex:2, overflow:"auto", display:"flex", flexDirection:"column" }}>
                     <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:10, letterSpacing:2 }}>ÚLTIMOS COMPRADORES</div>
-                    <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column", gap:1 }}>
+                    <div style={{ flex:2, overflow:"auto", display:"flex", flexDirection:"column", gap:1 }}>
                       {cards.filter(c=>c.paid&&c.gameId===activeGame.id).slice(-20).reverse().map((c,i,arr)=>(
                         <div key={c.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"6px 0", borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none", animation:"slideIn 0.3s ease" }}>
                           <span style={{ fontWeight:700, color:"#fff", fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:130 }}>{c.owner}</span>
@@ -793,7 +795,12 @@ export default function BingoAdmin() {
                     <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:99, height:10, overflow:"hidden" }}>
                       <div style={{ background:gc, height:"100%", borderRadius:99, width:`${cards.filter(c=>c.gameId===activeGame.id).length>0?(cards.filter(c=>c.paid&&c.gameId===activeGame.id).length/cards.filter(c=>c.gameId===activeGame.id).length)*100:0}%`, transition:"width 0.5s ease" }} />
                     </div>
-                    <div style={{ textAlign:"right", marginTop:6, fontSize:12, color:gc, fontWeight:700 }}>Precio cartón: ${PRICE.toLocaleString("es-CL")}</div>
+                  </div>
+
+                  {/* Precio cartón */}
+                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, flexShrink:0, textAlign:"center" }}>
+                    <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, letterSpacing:2, marginBottom:4 }}>PRECIO CARTÓN</div>
+                    <div style={{ fontSize:28, fontWeight:900, color:gc, fontFamily:"'Poller One',cursive" }}>${PRICE.toLocaleString("es-CL")}</div>
                   </div>
 
                   {/* Imagen del premio */}
