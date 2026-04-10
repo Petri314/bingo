@@ -131,8 +131,8 @@ function GameModal({ activeGame, onSelect, onClose }) {
             const sel = activeGame.id===g.id;
             return (
               <button key={g.id} onClick={()=>{ onSelect(g); onClose(); }} style={{ background:sel?g.color:"#252838", border:`2px solid ${sel?g.color:"#2e3244"}`, borderRadius:14, padding:"16px 12px", cursor:"pointer", display:"flex", alignItems:"center", gap:12 }}>
-                <div style={{ width:18, height:18, borderRadius:"50%", background:g.color, flexShrink:0, border:sel?"2px solid #fff":"none" }} />
-                <span style={{ fontSize:14, fontWeight:700, color:sel?"#fff":"#e2e8f0" }}>{g.name}</span>
+                <div style={{ width:18, height:18, borderRadius:"50%", background:g.color, flexShrink:0, border:sel?(["j2","j3","j5","j9","j12"].includes(g.id)?"2px solid #000":"2px solid #fff"):"none" }} />
+                <span style={{ fontSize:14, fontWeight:700, color:sel?(["j2","j3","j5","j9","j12"].includes(g.id)?"#000":"#fff"):"#e2e8f0" }}>{g.name}</span>
               </button>
             );
           })}
@@ -231,6 +231,7 @@ const savingWinnerRef = React.useRef(false);
   const [isFullscreen, setIsFullscreen]         = useState(false);
   const [winnerPopup, setWinnerPopup]   = useState(null);
   const [selectedWinner, setSelectedWinner] = useState(null);
+  const [confirmAssign, setConfirmAssign] = useState(null);
 
   useEffect(()=>{
     const handleResize = () => setIsFullscreen(window.innerHeight === window.screen.height);
@@ -329,10 +330,17 @@ const savingWinnerRef = React.useRef(false);
     if (!newOwner.trim()) return showToast("Ingresa el nombre","err");
     const available=cards.filter(c=>!c.paid&&c.gameId===activeGame.id);
     if (available.length<qty) return showToast(`Solo quedan ${available.length} cartones en ${activeGame.name}`,"err");
-    const updates={}; const nums=[];
-    for (let i=0;i<qty;i++) { updates[`${DB_CARDS}/${available[i].id}`]={...available[i],owner:newOwner.trim(),paid:true}; nums.push(available[i].cardNum); }
-    await update(ref(db),updates); showToast(`✓ ${activeGame.name}: ${nums.join(', ')}`);
-    setNewOwner(""); setNewQty("1");
+    const nums=available.slice(0,qty).map(c=>c.cardNum);
+    setConfirmAssign({ owner:newOwner.trim(), qty, nums, available });
+  };
+
+  const confirmAssignCard = async () => {
+    if (!confirmAssign) return;
+    const updates={};
+    for (let i=0;i<confirmAssign.qty;i++) { updates[`${DB_CARDS}/${confirmAssign.available[i].id}`]={...confirmAssign.available[i],owner:confirmAssign.owner,paid:true}; }
+    await update(ref(db),updates);
+    showToast(`✓ ${activeGame.name}: ${confirmAssign.nums.join(', ')}`);
+    setNewOwner(""); setNewQty("1"); setConfirmAssign(null);
   };
 
   const deleteCard = async (id) => { if (!isAdmin) return; await remove(ref(db,`${DB_CARDS}/${id}`)); if(selectedCard?.id===id) setSelectedCard(null); showToast("Eliminado"); };
@@ -419,6 +427,7 @@ const savingWinnerRef = React.useRef(false);
   };
 
   const filteredCards    = cards.filter(c=>c.gameId===activeGame.id&&(c.cardNum.includes(search)||(c.owner&&c.owner.toLowerCase().includes(search.toLowerCase()))));
+const visibleCards     = search ? filteredCards : filteredCards.slice(-10).reverse();
   const totalRecaudado   = cards.filter(c=>c.paid).length*PRICE;
   const jugadoresActuales = cards.filter(c=>c.paid&&c.gameId===activeGame.id).length;
   const gc = activeGame.color;
@@ -498,7 +507,8 @@ const savingWinnerRef = React.useRef(false);
                 {Array.from({length:15},(_,i)=>i+min).map(n=>{
                   const isLast=n===lastDrawn; const isDrawn=drawn.includes(n);
                   return (
-                    <div key={n} className="bingo-number" onClick={()=>toggleNumber(n)} style={{ flex:1, aspectRatio:"1/1", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"clamp(29px,3vw,50px)", fontWeight:700, fontFamily:"'Poller One',cursive", cursor:isAdmin?"pointer":"default", background:isDrawn?gc:"rgba(255,255,255,0.10)", color:isDrawn?"#fff":"rgba(131,128,128,0.72)", border:isLast?`3px solid #fff`:isDrawn?`2px solid ${gc}`:"1px solid rgba(255,255,255,0.15)", boxShadow:isLast?`0 0 16px ${gc}`:isDrawn?`0 0 6px ${gc}88`:"none", transform:isLast?"scale(1.18)":"scale(1)", transition:"transform 0.15s" }}>{n}</div>
+                    <div key={n} className="bingo-number" onClick={()=>toggleNumber(n)} style={{ flex:1, aspectRatio:"1/1", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"clamp(29px,3vw,50px)", fontWeight:700, fontFamily:"'Poller One',cursive", cursor:isAdmin?"pointer":"default", background:isDrawn?gc:"rgba(255,255,255,0.10)", color:isDrawn?"#fff":"rgba(131,128,128,0.72)",
+textShadow:isDrawn?"0 0 15px #000, 0 0 5px #000":"none", border:isLast?`3px solid #fff`:isDrawn?`2px solid ${gc}`:"1px solid rgba(255,255,255,0.15)", boxShadow:isLast?`0 0 16px ${gc}`:isDrawn?`0 0 6px ${gc}88`:"none", transform:isLast?"scale(1.18)":"scale(1)", transition:"transform 0.15s" }}>{n}</div>
                   );
                 })}
               </div>
@@ -569,13 +579,13 @@ const savingWinnerRef = React.useRef(false);
           {tab===0&&(<div style={{ marginTop:10 }}>
             {isAdmin&&(<>
               <div style={{ marginBottom:15 }}>
-                <button onClick={()=>setShowGameModal(true)} style={{ background:activeGame.color, border:"none", borderRadius:10, padding:"10px 20px", fontSize:14, fontWeight:700, cursor:"pointer", color:"#fff", display:"flex", alignItems:"center", gap:8 }}>🎮 {activeGame.name} ▼</button>
+                <button onClick={()=>setShowGameModal(true)} style={{ background:activeGame.color, border:"none", borderRadius:10, padding:"10px 20px", fontSize:14, fontWeight:700, cursor:"pointer", color:["j2","j3","j5","j9","j12"].includes(activeGame.id)?"#000":"#fff", display:"flex", alignItems:"center", gap:8 }}>🎮 {activeGame.name} ▼</button>
               </div>
               <div style={{ background:activeGame.color+"15", borderRadius:13, padding:16, marginBottom:12, border:`1px solid ${activeGame.color}40` }}>
                 <h3 style={{ margin:"0 0 12px", fontSize:14, color:activeGame.color }}>1. Generar cartones — {activeGame.name}</h3>
                 <div style={{ display:"flex", gap:10 }}>
                   <input type="number" placeholder="Cantidad (ej: 50)" value={genQty} onChange={e=>setGenQty(e.target.value)} style={{...inpS,maxWidth:"60%"}} />
-                  <button onClick={generatePool} style={{...btnS(activeGame.color),flex:1}}>Generar</button>
+                  <button onClick={generatePool} style={{...btnS(activeGame.color),flex:1,color:["j2","j3","j5","j9","j12"].includes(activeGame.id)?"#000":"#fff"}}>Generar</button>
                 </div>
                 {cards.filter(c=>!c.paid&&c.gameId===activeGame.id).length>0&&(
                   <button onClick={deleteUnsoldPool} style={{...btnS("#64748b"),width:"100%",marginTop:10}}>🗑️ Borrar disponibles de {activeGame.name} ({cards.filter(c=>!c.paid&&c.gameId===activeGame.id).length})</button>
@@ -590,7 +600,7 @@ const savingWinnerRef = React.useRef(false);
                   <input placeholder="Nombre completo *" value={newOwner} onChange={e=>setNewOwner(e.target.value)} style={inpS} />
                   <input type="number" placeholder="Cant." value={newQty} onChange={e=>setNewQty(e.target.value)} onKeyDown={e=>e.key==="Enter"&&assignCard()} style={{...inpS,textAlign:"center"}} />
                 </div>
-                <button onClick={assignCard} style={{...btnS(activeGame.color),width:"100%",padding:"11px"}}>Asignar</button>
+                <button onClick={assignCard} style={{...btnS(activeGame.color),width:"100%",padding:"11px",color:["j2","j3","j5","j9","j12"].includes(activeGame.id)?"#000":"#fff"}}>Asignar</button>
               </div>
             </>)}
             <input placeholder="🔍 Buscar por N° cartón o nombre..." value={search} onChange={e=>setSearch(e.target.value)} style={{...inpS,width:"100%",marginBottom:12}} />
@@ -598,12 +608,14 @@ const savingWinnerRef = React.useRef(false);
               <span style={{ minWidth:45 }}>CARTÓN</span><span style={{ flex:1 }}>ASISTENTE</span><span style={{ minWidth:70, textAlign:"center" }}>JUEGO</span><span style={{ textAlign:"right" }}>ESTADO</span>
             </div>)}
             {filteredCards.length===0&&<div style={{ textAlign:"center", color:"#94a3b8", padding:36 }}>Sin cartones</div>}
+{!search&&filteredCards.length>10&&<div style={{ textAlign:"center", color:"#94a3b8", fontSize:12, padding:"8px 0" }}>Mostrando últimos 10 de {filteredCards.length} — busca por nombre o número para filtrar</div>}
             <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-              {filteredCards.map(c=>{
+              {visibleCards.map(c=>{
                 const gameColor=GAMES.find(g=>g.id===c.gameId)?.color||"#94a3b8";
+const gameTextColor=["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff";
                 return (<div key={c.id}>
                   <div onClick={()=>setSelectedCard(selectedCard?.id===c.id?null:c)} style={{ background:"#ffffff", borderRadius:selectedCard?.id===c.id?"12px 12px 0 0":12, padding:"12px 16px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", border:"1px solid #e2e8f0", boxShadow:"0 1px 3px rgba(0,0,0,0.05)", borderLeft:`4px solid ${gameColor}` }}>
-                    <div style={{ background:gameColor, borderRadius:8, padding:"4px 10px", fontSize:13, fontWeight:800, color:"#fff", minWidth:45, textAlign:"center" }}>{c.cardNum}</div>
+                    <div style={{ background:gameColor, borderRadius:8, padding:"4px 10px", fontSize:13, fontWeight:800, color:gameTextColor, minWidth:45, textAlign:"center" }}>{c.cardNum}</div>
                     <div style={{ flex:1 }}>
                       <div style={{ fontWeight:700, fontSize:14, color:c.paid?"#1e293b":"#94a3b8" }}>{c.paid?c.owner:"Disponible"}</div>
                       <div style={{ fontSize:11, color:"#94a3b8" }}>{c.gameName||"Sin juego"}</div>
@@ -676,6 +688,34 @@ const savingWinnerRef = React.useRef(false);
 
         </div>
       )}
+      {confirmAssign&&(
+  <div onClick={()=>setConfirmAssign(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300, backdropFilter:"blur(4px)" }}>
+    <div onClick={e=>e.stopPropagation()} style={{ background:"#fff", borderRadius:20, padding:28, width:"min(400px,92vw)", boxShadow:"0 20px 60px rgba(0,0,0,0.3)" }}>
+      <div style={{ fontSize:32, textAlign:"center", marginBottom:8 }}>🎟️</div>
+      <h3 style={{ textAlign:"center", margin:"0 0 20px", fontSize:18, color:"#1e293b" }}>Confirmar asignación</h3>
+      <div style={{ background:"#f8fafc", borderRadius:12, padding:16, marginBottom:20, border:"1px solid #e2e8f0" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
+          <span style={{ color:"#64748b", fontSize:14 }}>Nombre</span>
+          <span style={{ fontWeight:700, fontSize:14, color:"#1e293b" }}>{confirmAssign.owner}</span>
+        </div>
+        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
+          <span style={{ color:"#64748b", fontSize:14 }}>Cantidad</span>
+          <span style={{ fontWeight:700, fontSize:14, color:"#1e293b" }}>{confirmAssign.qty} cartón{confirmAssign.qty>1?"es":""}</span>
+        </div>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+          <span style={{ color:"#64748b", fontSize:14 }}>Cartones</span>
+          <div style={{ display:"flex", gap:6, flexWrap:"wrap", justifyContent:"flex-end", maxWidth:"60%" }}>
+            {confirmAssign.nums.map(n=>(<span key={n} style={{ background:activeGame.color, color:["j2","j3","j5","j9","j12"].includes(activeGame.id)?"#000":"#fff", borderRadius:6, padding:"2px 8px", fontSize:13, fontWeight:700 }}>{n}</span>))}
+          </div>
+        </div>
+      </div>
+      <div style={{ display:"flex", gap:12 }}>
+        <button onClick={()=>setConfirmAssign(null)} style={{ flex:1, background:"#f1f5f9", border:"none", borderRadius:10, padding:"12px", color:"#64748b", fontWeight:700, fontSize:14, cursor:"pointer" }}>Cancelar</button>
+        <button onClick={confirmAssignCard} style={{ flex:1, background:activeGame.color, border:"none", borderRadius:10, padding:"12px", color:["j2","j3","j5","j9","j12"].includes(activeGame.id)?"#000":"#fff", fontWeight:700, fontSize:14, cursor:"pointer" }}>Confirmar</button>
+      </div>
+    </div>
+  </div>
+)}
 
       {toast&&<div style={{ position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", background:toast.type==="err"?"#ef4444":"#10b981", color:"#fff", padding:"12px 24px", borderRadius:12, fontWeight:700, fontSize:14, zIndex:999, boxShadow:"0 10px 15px -3px rgba(0,0,0,0.1)", whiteSpace:"nowrap", fontFamily:"sans-serif" }}>{toast.msg}</div>}
       {showLogin&&<LoginModal pwInput={pwInput} setPwInput={setPwInput} pwError={pwError} onLogin={handleLogin} onClose={()=>{setShowLogin(false);setPwInput("");setPwError(false);}} />}
