@@ -232,6 +232,7 @@ const savingWinnerRef = React.useRef(false);
   const [winnerPopup, setWinnerPopup]   = useState(null);
   const [selectedWinner, setSelectedWinner] = useState(null);
   const [confirmAssign, setConfirmAssign] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   useEffect(()=>{
     const handleResize = () => setIsFullscreen(window.innerHeight === window.screen.height);
@@ -428,7 +429,8 @@ const savingWinnerRef = React.useRef(false);
   };
 
   const filteredCards    = cards.filter(c=>c.gameId===activeGame.id&&(c.cardNum.includes(search)||(c.owner&&c.owner.toLowerCase().includes(search.toLowerCase()))));
-const visibleCards     = search ? filteredCards : filteredCards.slice(-10).reverse();
+const filteredSold     = filteredCards.filter(c=>c.paid);
+const visibleCards     = search ? filteredCards : filteredSold.slice(-10).reverse();
   const totalRecaudado   = cards.filter(c=>c.paid).length*PRICE;
   const jugadoresActuales = cards.filter(c=>c.paid&&c.gameId===activeGame.id).length;
   const gc = activeGame.color;
@@ -623,7 +625,7 @@ const gameTextColor=["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff"
                     </div>
                     <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                       <div style={{ fontSize:11, fontWeight:700, color:c.paid?"#16a34a":"#94a3b8" }}>{c.paid?"✓ Vendido":"⏳ Espera"}</div>
-                      {isAdmin&&<button onClick={e=>{e.stopPropagation();deleteCard(c.id);}} style={{...btnS("#ef4444"),padding:"4px 8px",fontSize:11}}>✕</button>}
+                      {isAdmin&&<button onClick={e=>{e.stopPropagation();setConfirmDelete(c);}} style={{...btnS("#ef4444"),padding:"4px 8px",fontSize:11}}>✕</button>}
                     </div>
                   </div>
                   {selectedCard?.id===c.id&&c.grid&&(<div style={{ background:"#ffffff", borderRadius:"0 0 12px 12px", padding:16, border:"1px solid #e2e8f0", borderTop:"none", boxShadow:"0 4px 6px -1px rgba(0,0,0,0.1)" }}>
@@ -689,6 +691,20 @@ const gameTextColor=["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff"
 
         </div>
       )}
+      {confirmDelete&&(
+  <div onClick={()=>setConfirmDelete(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300, backdropFilter:"blur(4px)" }}>
+    <div onClick={e=>e.stopPropagation()} style={{ background:"#fff", borderRadius:20, padding:28, width:"min(360px,92vw)", textAlign:"center" }}>
+      <div style={{ fontSize:40, marginBottom:12 }}>🗑️</div>
+      <h3 style={{ margin:"0 0 8px", fontSize:18, color:"#1e293b" }}>¿Eliminar cartón?</h3>
+      <p style={{ color:"#64748b", fontSize:14, margin:"0 0 8px" }}>Cartón <strong>{confirmDelete.cardNum}</strong></p>
+      {confirmDelete.paid&&<p style={{ color:"#64748b", fontSize:14, margin:"0 0 20px" }}>Asignado a <strong>{confirmDelete.owner}</strong></p>}
+      <div style={{ display:"flex", gap:12 }}>
+        <button onClick={()=>setConfirmDelete(null)} style={{ flex:1, background:"#f1f5f9", border:"none", borderRadius:10, padding:"12px", color:"#64748b", fontWeight:700, fontSize:14, cursor:"pointer" }}>Cancelar</button>
+        <button onClick={()=>{ deleteCard(confirmDelete.id); setConfirmDelete(null); }} style={{ flex:1, background:"#ef4444", border:"none", borderRadius:10, padding:"12px", color:"#fff", fontWeight:700, fontSize:14, cursor:"pointer" }}>Eliminar</button>
+      </div>
+    </div>
+  </div>
+)}
       {confirmAssign&&(
   <div onClick={()=>setConfirmAssign(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300, backdropFilter:"blur(4px)" }}>
     <div onClick={e=>e.stopPropagation()} style={{ background:"#fff", borderRadius:20, padding:28, width:"min(400px,92vw)", boxShadow:"0 20px 60px rgba(0,0,0,0.3)" }}>
@@ -703,12 +719,41 @@ const gameTextColor=["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff"
           <span style={{ color:"#64748b", fontSize:14 }}>Cantidad</span>
           <span style={{ fontWeight:700, fontSize:14, color:"#1e293b" }}>{confirmAssign.qty} cartón{confirmAssign.qty>1?"es":""}</span>
         </div>
+
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+          <span style={{ color:"#64748b", fontSize:14 }}>Buscar y agregar</span>
+          <input placeholder="Ej: 045" style={{ background:"#f1f5f9", border:"1px solid #e2e8f0", borderRadius:8, padding:"6px 10px", fontSize:13, width:"60%", outline:"none", fontFamily:"sans-serif" }}
+            onChange={e=>{
+              const val=e.target.value.trim();
+              if (!val) return;
+              const found=confirmAssign.available.filter(c=>!c.paid&&c.cardNum.includes(val.padStart(3,"0")));
+              if (found.length===1) {
+                const alreadySel=confirmAssign.selected.includes(found[0].id);
+                if (!alreadySel && confirmAssign.selected.length<confirmAssign.qty) {
+                  setConfirmAssign(p=>{
+                    const newSelected=[...p.selected, found[0].id];
+                    return {...p, selected:newSelected, nums:p.available.filter(x=>newSelected.includes(x.id)).map(x=>x.cardNum)};
+                  });
+                } else if (!alreadySel && confirmAssign.selected.length>=confirmAssign.qty) {
+                  showToast(`Máximo ${confirmAssign.qty} cartón${confirmAssign.qty>1?"es":""}`, "err");
+                }
+                e.target.value="";
+                setTimeout(()=>{
+                  const el=document.getElementById(`carton-${found[0].id}`);
+                  if(el) el.scrollIntoView({behavior:"smooth", block:"center"});
+                },100);
+              }
+            }}
+          />
+        </div>
+
+
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
           <span style={{ color:"#64748b", fontSize:14 }}>Cartones</span>
-          <div style={{ display:"flex", gap:6, flexWrap:"wrap", justifyContent:"flex-end", maxWidth:"70%", maxHeight:120, overflowY:"auto", padding:"4px 0" }}>
+          <div id="cartones-list" style={{ display:"flex", gap:6, flexWrap:"wrap", justifyContent:"flex-end", maxWidth:"70%", maxHeight:120, overflowY:"auto", padding:"4px 0" }}>
             {confirmAssign.available.filter(c=>!c.paid).map(c=>{
               const isSel=confirmAssign.selected.includes(c.id);
-              return (<span key={c.id} onClick={()=>{
+              return (<span id={`carton-${c.id}`} key={c.id} onClick={()=>{
                 const alreadySel=confirmAssign.selected.includes(c.id);
                 if (alreadySel) {
                   if (confirmAssign.selected.length<=1) return;
@@ -722,6 +767,24 @@ const gameTextColor=["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff"
           </div>
         </div>
       </div>
+
+      {confirmAssign.selected.length>0&&(
+  <div style={{ background:"#f8fafc", borderRadius:10, padding:"10px 14px", marginBottom:16, border:"1px solid #e2e8f0" }}>
+    <div style={{ fontSize:12, color:"#64748b", marginBottom:8, fontWeight:600 }}>Cartones seleccionados ({confirmAssign.selected.length}/{confirmAssign.qty})</div>
+    <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+      {confirmAssign.available.filter(c=>confirmAssign.selected.includes(c.id)).map(c=>(
+        <span key={c.id} onClick={()=>{
+          setConfirmAssign(p=>{
+            const newSelected=p.selected.filter(id=>id!==c.id);
+            return {...p, selected:newSelected, nums:p.available.filter(x=>newSelected.includes(x.id)).map(x=>x.cardNum)};
+          });
+        }} style={{ background:activeGame.color, color:["j2","j3","j5","j9","j12"].includes(activeGame.id)?"#000":"#fff", borderRadius:6, padding:"4px 10px", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:4 }}>
+          {c.cardNum} <span style={{ fontSize:10, opacity:0.7 }}>✕</span>
+        </span>
+      ))}
+    </div>
+  </div>
+)}
       <div style={{ display:"flex", gap:12 }}>
         <button onClick={()=>setConfirmAssign(null)} style={{ flex:1, background:"#f1f5f9", border:"none", borderRadius:10, padding:"12px", color:"#64748b", fontWeight:700, fontSize:14, cursor:"pointer" }}>Cancelar</button>
         <button onClick={confirmAssignCard} style={{ flex:1, background:activeGame.color, border:"none", borderRadius:10, padding:"12px", color:["j2","j3","j5","j9","j12"].includes(activeGame.id)?"#000":"#fff", fontWeight:700, fontSize:14, cursor:"pointer" }}>Confirmar</button>
