@@ -11,18 +11,18 @@ const DB_WINNERS = "bingo_winners";
 const DB_STATE   = "bingo_state";
 
 const GAMES = [
-  { id: "j1",  name: "Juego 1",  color: "#FF0000" }, // Rojo
-  { id: "j2",  name: "Juego 2",  color: "#00FFFF" }, // Cian (Opuesto del Rojo)
-  { id: "j3",  name: "Juego 3",  color: "#FFFF00" }, // Amarillo
-  { id: "j4",  name: "Juego 4",  color: "#7F00FF" }, // Violeta (Opuesto del Amarillo)
-  { id: "j5",  name: "Juego 5",  color: "#00FF00" }, // Verde
-  { id: "j6",  name: "Juego 6",  color: "#FF00FF" }, // Magenta (Opuesto del Verde)
-  { id: "j7",  name: "Juego 7",  color: "#FF7F00" }, // Naranja
-  { id: "j8",  name: "Juego 8",  color: "#007FFF" }, // Azul Cielo (Opuesto del Naranja)
-  { id: "j9",  name: "Juego 9",  color: "#7FFF00" }, // Verde Lima
-  { id: "j10", name: "Juego 10", color: "#FF007F" }, // Rosa Intenso (Opuesto del Lima)
-  { id: "j11", name: "Juego 11", color: "#0000FF" }, // Azul
-  { id: "j12", name: "Juego 12", color: "#00FF7F" }, // Verde Primavera (Opuesto del Azul)
+  { id: "j1",  name: "Juego 1",  color: "#FF0000" },
+  { id: "j2",  name: "Juego 2",  color: "#00FFFF" },
+  { id: "j3",  name: "Juego 3",  color: "#FFFF00" },
+  { id: "j4",  name: "Juego 4",  color: "#7F00FF" },
+  { id: "j5",  name: "Juego 5",  color: "#00FF00" },
+  { id: "j6",  name: "Juego 6",  color: "#FF00FF" },
+  { id: "j7",  name: "Juego 7",  color: "#FF7F00" },
+  { id: "j8",  name: "Juego 8",  color: "#007FFF" },
+  { id: "j9",  name: "Juego 9",  color: "#7FFF00" },
+  { id: "j10", name: "Juego 10", color: "#FF007F" },
+  { id: "j11", name: "Juego 11", color: "#0000FF" },
+  { id: "j12", name: "Juego 12", color: "#00FF7F" },
 ];
 
 const PATTERNS = [
@@ -73,20 +73,20 @@ function CardGrid({ card, drawn, pattern }) {
   return (
     <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:5, maxWidth:260, margin:"0 auto" }}>
       {Object.keys(COLS).map(l=>(<div key={l} style={{ background:gameColor, borderRadius:6, textAlign:"center", padding:"6px 0", fontWeight:800, fontSize:16, color:"#fff", opacity:0.9 }}>{l}</div>))}
-      {card.grid[0].map((_,row)=>card.grid.map((col,colIdx)=>{ 
-        const val=col[row]; 
-        const isFree=val==="FREE"; 
-        const isOut=!isFree&&drawn.includes(val); 
+      {card.grid[0].map((_,row)=>card.grid.map((col,colIdx)=>{
+        const val=col[row];
+        const isFree=val==="FREE";
+        const isOut=!isFree&&drawn.includes(val);
         const isPattern=pattern?pattern.grid[row][colIdx]:false;
         if (pattern&&!isPattern&&!isFree) return (<div key={`${colIdx}-${row}`} style={{ background:"#f1f5f9", borderRadius:6, aspectRatio:"1/1", border:"1px solid #e2e8f0" }} />);
-        return (<div key={`${colIdx}-${row}`} style={{ 
-          background:isFree?"#e0ded8":isOut?gameColor:"#f8fafc", 
-          borderRadius:6, padding:"2px", textAlign:"center", fontSize:isFree?9:14, fontWeight:700, 
-          color:isFree?"#000":isOut?"#fff":"#64748b", 
+        return (<div key={`${colIdx}-${row}`} style={{
+          background:isFree?"#e0ded8":isOut?gameColor:"#f8fafc",
+          borderRadius:6, padding:"2px", textAlign:"center", fontSize:isFree?9:14, fontWeight:700,
+          color:isFree?"#000":isOut?"#fff":"#64748b",
           border:isPattern?`2.5px solid ${isOut?"#fbbf24":"#f59e0b"}`:"1px solid #e2e8f0",
           boxShadow:isPattern&&isOut?"0 0 8px #fbbf2488":"none",
-          position:"relative" 
-        }}>{isFree?"👁️":val}{isPattern&&isOut&&<span style={{position:"absolute",top:-2,right:-2,fontSize:8}}>⭐</span>}</div>); 
+          position:"relative"
+        }}>{isFree?"👁️":val}{isPattern&&isOut&&<span style={{position:"absolute",top:-2,right:-2,fontSize:8}}>⭐</span>}</div>);
       }))}
     </div>
   );
@@ -207,8 +207,8 @@ export default function BingoAdmin() {
   const [drawn, setDrawn]               = useState([]);
   const [lastDrawn, setLastDrawn]       = useState(null);
   const [winners, setWinners] = useState([]);
-const winnersRef = React.useRef([]);
-const savingWinnerRef = React.useRef(false);
+  const winnersRef = React.useRef([]);
+  const savingWinnerRef = React.useRef(false);
   const [activePattern, setActivePattern] = useState(PATTERNS[0]);
   const [activeGame, setActiveGame]     = useState(GAMES[0]);
   const [alreadyWon, setAlreadyWon]     = useState(false);
@@ -236,7 +236,7 @@ const savingWinnerRef = React.useRef(false);
   const [countdown, setCountdown] = useState(null);
   const [countdownInput, setCountdownInput] = useState("5");
   const [newSaleAnim, setNewSaleAnim] = useState(null);
-const prevSoldCount = React.useRef(0);
+  const prevSoldCount = React.useRef(0);
 
   useEffect(()=>{
     if (countdown===null||countdown<=0) return;
@@ -277,36 +277,36 @@ const prevSoldCount = React.useRef(0);
 
   useEffect(()=>{
     const uC = onValue(ref(db,DB_CARDS), s=>{
-  const v=s.val();
-  const parsed = v ? Object.values(v).map(c => ({
-    ...c,
-    grid: c.grid ? [0,1,2,3,4].map(ci => 
-      c.grid[ci] ? [0,1,2,3,4].map(ri => c.grid[ci][ri] ?? c.grid[ci][String(ri)]) : []
-    ) : null
-  })).sort((a,b)=>a.id-b.id) : [];
-  const soldNow = parsed.filter(c=>c.paid);
-  if (soldNow.length > prevSoldCount.current && prevSoldCount.current > 0) {
-    const newest = soldNow[soldNow.length-1];
-    setNewSaleAnim(newest);
-    setTimeout(()=>setNewSaleAnim(null), 3000);
-  }
-  prevSoldCount.current = soldNow.length;
-  setCards(parsed);
-});
+      const v=s.val();
+      const parsed = v ? Object.values(v).map(c => ({
+        ...c,
+        grid: c.grid ? [0,1,2,3,4].map(ci =>
+          c.grid[ci] ? [0,1,2,3,4].map(ri => c.grid[ci][ri] ?? c.grid[ci][String(ri)]) : []
+        ) : null
+      })).sort((a,b)=>a.id-b.id) : [];
+      const soldNow = parsed.filter(c=>c.paid);
+      if (soldNow.length > prevSoldCount.current && prevSoldCount.current > 0) {
+        const newest = soldNow[soldNow.length-1];
+        setNewSaleAnim(newest);
+        setTimeout(()=>setNewSaleAnim(null), 3000);
+      }
+      prevSoldCount.current = soldNow.length;
+      setCards(parsed);
+    });
     const uD = onValue(ref(db,DB_DRAWN),   s=>{ const v=s.val(); if(v){const n=Object.values(v); setDrawn(n); setLastDrawn(n.at(-1)??null);} else{setDrawn([]); setLastDrawn(null);} });
-    const uW = onValue(ref(db,DB_WINNERS), s=>{ 
-  const v=s.val(); 
-  const all = v ? Object.values(v) : [];
-  const unique = Object.values(
-    all.reduce((acc, w) => {
-      const key = `${w.gameId}_${w.card}`;
-      if (!acc[key] || w.ts > acc[key].ts) acc[key] = w;
-      return acc;
-    }, {})
-  ).sort((a,b) => a.ts - b.ts);
-  winnersRef.current = unique;
-  setWinners(unique);
-});
+    const uW = onValue(ref(db,DB_WINNERS), s=>{
+      const v=s.val();
+      const all = v ? Object.values(v) : [];
+      const unique = Object.values(
+        all.reduce((acc, w) => {
+          const key = `${w.gameId}_${w.card}`;
+          if (!acc[key] || w.ts > acc[key].ts) acc[key] = w;
+          return acc;
+        }, {})
+      ).sort((a,b) => a.ts - b.ts);
+      winnersRef.current = unique;
+      setWinners(unique);
+    });
     const uS = onValue(ref(db,DB_STATE), s=>{
       const v = s.val(); if (!v) return;
       if (v.gameId)   { const g=GAMES.find(g=>g.id===v.gameId);     if(g) setActiveGame(g); }
@@ -327,20 +327,19 @@ const prevSoldCount = React.useRef(0);
     await update(ref(db,DB_STATE),{ patternId:pattern.id, alreadyWon:false, currentWinner:null });
   };
 
-
   const generatePool = async () => {
     const qty=parseInt(genQty);
     if (!qty||qty<1) return showToast("Ingresa una cantidad válida","err");
     if (qty>500) return showToast("Máximo 500 por vez","err");
     const startIdx=cards.filter(c=>c.gameId===activeGame.id).length+1;
     const updates={};
-    for (let i=0;i<qty;i++) { 
-  const id=Date.now()+(i*10); 
-  const grid = generateCardGrid();
-  const gridObj = {};
-  grid.forEach((col, ci) => { gridObj[ci] = {...col}; });
-  updates[`${DB_CARDS}/${id}`]={id,cardNum:pad(startIdx+i),gameId:activeGame.id,gameName:activeGame.name,boleto:null,owner:null,paid:false,grid:gridObj}; 
-}
+    for (let i=0;i<qty;i++) {
+      const id=Date.now()+(i*10);
+      const grid = generateCardGrid();
+      const gridObj = {};
+      grid.forEach((col, ci) => { gridObj[ci] = {...col}; });
+      updates[`${DB_CARDS}/${id}`]={id,cardNum:pad(startIdx+i),gameId:activeGame.id,gameName:activeGame.name,boleto:null,owner:null,paid:false,grid:gridObj};
+    }
     await update(ref(db),updates);
     showToast(`✓ ${activeGame.name}: ${startIdx} al ${pad(startIdx+qty-1)}`);
     setGenQty("");
@@ -375,7 +374,7 @@ const prevSoldCount = React.useRef(0);
 
   const deleteCard = async (id) => { if (!isAdmin) return; await remove(ref(db,`${DB_CARDS}/${id}`)); if(selectedCard?.id===id) setSelectedCard(null); showToast("Eliminado"); };
 
-      const toggleNumber = async (n) => {
+  const toggleNumber = async (n) => {
     if (!isAdmin) return;
     const isMarking=!drawn.includes(n);
     const next=isMarking?[...drawn,n]:drawn.filter(x=>x!==n);
@@ -409,10 +408,10 @@ const prevSoldCount = React.useRef(0);
     setShowResetModal(false); showToast("Sorteo reiniciado");
   };
 
-    const addWinner = async () => {
+  const addWinner = async () => {
     if (!winnerName.trim()||!winnerCard.trim()) return showToast("Completa campos","err");
     const winnerKey = `${activeGame.id}_${winnerCard.trim()}`;
-            await set(ref(db,`${DB_WINNERS}/${winnerKey}`),{ id:winnerKey, name:winnerName.trim(), card:winnerCard.trim(), game:activeGame.name, gameId:activeGame.id, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now(), drawn:[...drawn] });
+    await set(ref(db,`${DB_WINNERS}/${winnerKey}`),{ id:winnerKey, name:winnerName.trim(), card:winnerCard.trim(), game:activeGame.name, gameId:activeGame.id, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now(), drawn:[...drawn] });
     showToast("🏆 ¡Ganador registrado!"); setWinnerName(""); setWinnerCard("");
   };
 
@@ -457,8 +456,8 @@ const prevSoldCount = React.useRef(0);
   };
 
   const filteredCards    = cards.filter(c=>c.gameId===activeGame.id&&(c.cardNum.includes(search)||(c.owner&&c.owner.toLowerCase().includes(search.toLowerCase()))));
-const filteredSold     = filteredCards.filter(c=>c.paid);
-const visibleCards     = search ? filteredCards : filteredSold.slice(-10).reverse();
+  const filteredSold     = filteredCards.filter(c=>c.paid);
+  const visibleCards     = search ? filteredCards : filteredSold.slice(-10).reverse();
   const totalRecaudado   = cards.filter(c=>c.paid).length*PRICE;
   const jugadoresActuales = cards.filter(c=>c.paid&&c.gameId===activeGame.id).length;
   const gc = activeGame.color;
@@ -539,7 +538,7 @@ const visibleCards     = search ? filteredCards : filteredSold.slice(-10).revers
                   const isLast=n===lastDrawn; const isDrawn=drawn.includes(n);
                   return (
                     <div key={n} className="bingo-number" onClick={()=>toggleNumber(n)} style={{ flex:1, aspectRatio:"1/1", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"clamp(29px,3vw,50px)", fontWeight:700, fontFamily:"'Poller One',cursive", cursor:isAdmin?"pointer":"default", background:isDrawn?gc:"rgba(255,255,255,0.10)", color:isDrawn?"#fff":"rgba(131,128,128,0.72)",
-textShadow:isDrawn?"0 0 15px #000, 0 0 5px #000":"none", border:isLast?`3px solid #fff`:isDrawn?`2px solid ${gc}`:"1px solid rgba(255,255,255,0.15)", boxShadow:isLast?`0 0 16px ${gc}`:isDrawn?`0 0 6px ${gc}88`:"none", transform:isLast?"scale(1.18)":"scale(1)", transition:"transform 0.15s" }}>{n}</div>
+                    textShadow:isDrawn?"0 0 15px #000, 0 0 5px #000":"none", border:isLast?`3px solid #fff`:isDrawn?`2px solid ${gc}`:"1px solid rgba(255,255,255,0.15)", boxShadow:isLast?`0 0 16px ${gc}`:isDrawn?`0 0 6px ${gc}88`:"none", transform:isLast?"scale(1.18)":"scale(1)", transition:"transform 0.15s" }}>{n}</div>
                   );
                 })}
               </div>
@@ -607,6 +606,7 @@ textShadow:isDrawn?"0 0 15px #000, 0 0 5px #000":"none", border:isLast?`3px soli
       {tab!==2&&(
         <div style={{ padding:"18px 14px", maxWidth: tab===1&&!isAdmin ? "100%" : 760, margin:"0 auto" }}>
 
+          {/* ══ TAB CARTONES ══ */}
           {tab===0&&(<div style={{ marginTop:10 }}>
             {isAdmin&&(<>
               <div style={{ marginBottom:15 }}>
@@ -639,11 +639,11 @@ textShadow:isDrawn?"0 0 15px #000, 0 0 5px #000":"none", border:isLast?`3px soli
               <span style={{ minWidth:45 }}>CARTÓN</span><span style={{ flex:1 }}>ASISTENTE</span><span style={{ minWidth:70, textAlign:"center" }}>JUEGO</span><span style={{ textAlign:"right" }}>ESTADO</span>
             </div>)}
             {filteredCards.length===0&&<div style={{ textAlign:"center", color:"#94a3b8", padding:36 }}>Sin cartones</div>}
-{!search&&filteredCards.length>10&&<div style={{ textAlign:"center", color:"#94a3b8", fontSize:12, padding:"8px 0" }}>Mostrando últimos 10 de {filteredCards.length} — busca por nombre o número para filtrar</div>}
+            {!search&&filteredCards.length>10&&<div style={{ textAlign:"center", color:"#94a3b8", fontSize:12, padding:"8px 0" }}>Mostrando últimos 10 de {filteredCards.length} — busca por nombre o número para filtrar</div>}
             <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
               {visibleCards.map(c=>{
                 const gameColor=GAMES.find(g=>g.id===c.gameId)?.color||"#94a3b8";
-const gameTextColor=["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff";
+                const gameTextColor=["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff";
                 return (<div key={c.id}>
                   <div onClick={()=>setSelectedCard(selectedCard?.id===c.id?null:c)} style={{ background:"#ffffff", borderRadius:selectedCard?.id===c.id?"12px 12px 0 0":12, padding:"12px 16px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", border:"1px solid #e2e8f0", boxShadow:"0 1px 3px rgba(0,0,0,0.05)", borderLeft:`4px solid ${gameColor}` }}>
                     <div style={{ background:gameColor, borderRadius:8, padding:"4px 10px", fontSize:13, fontWeight:800, color:gameTextColor, minWidth:45, textAlign:"center" }}>{c.cardNum}</div>
@@ -665,163 +665,180 @@ const gameTextColor=["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff"
             </div>
           </div>)}
 
+          {/* ══ TAB ASISTENTES ══ */}
           {tab===1&&(<div style={{ minHeight:"calc(100vh - 160px)" }}>
-  {isAdmin?(
-    <div>
-      {/* PANEL ADMIN */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
-        {[{label:"Vendidos",val:cards.filter(c=>c.paid).length,color:"#3b82f6"},{label:"Recaudado",val:`$${totalRecaudado.toLocaleString("es-CL")}`,color:"#16a34a"}].map(s=>(<div key={s.label} style={{ background:"#ffffff", borderRadius:12, padding:"14px 18px", border:"1px solid #e2e8f0" }}><div style={{ fontSize:26, fontWeight:800, color:s.color }}>{s.val}</div><div style={{ fontSize:13, color:"#64748b" }}>{s.label}</div></div>))}
-      </div>
-      {/* COUNTDOWN ADMIN */}
-      <div style={{ background:"#ffffff", borderRadius:13, padding:16, marginBottom:16, border:"1px solid #e2e8f0" }}>
-        <h3 style={{ margin:"0 0 12px", fontSize:14, color:"#334155" }}>⏱️ Countdown</h3>
-        <div style={{ display:"flex", gap:10, alignItems:"center" }}>
-          <input type="number" placeholder="Minutos" value={countdownInput} onChange={e=>setCountdownInput(e.target.value)} style={{...inpS, maxWidth:120}} />
-          <button onClick={()=>{ const mins=parseInt(countdownInput)||5; update(ref(db,DB_STATE),{ countdown:mins*60 }); }} style={{...btnS("#3b82f6"), flex:1}}>▶ Iniciar</button>
-          <button onClick={()=>update(ref(db,DB_STATE),{ countdown:0 })} style={{...btnS("#ef4444")}}>■ Detener</button>
-        </div>
-      </div>
-      {/* LISTA */}
-      {cards.filter(c=>c.paid).length===0?<div style={{ textAlign:"center", color:"#94a3b8", padding:36 }}>Sin ventas aún</div>:cards.filter(c=>c.paid).map((c,i)=>(<div key={c.id} style={{ background:"#ffffff", borderRadius:9, padding:"11px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", border:"1px solid #e2e8f0", marginBottom:7, borderLeft:`4px solid ${GAMES.find(g=>g.id===c.gameId)?.color||"#000"}` }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}><span style={{ color:"#94a3b8", fontSize:12, minWidth:20 }}>{i+1}</span><div><span style={{ fontWeight:700 }}>{c.owner}</span><span style={{ fontSize:12, color:"#64748b", marginLeft:8 }}>Cartón {c.cardNum}</span></div></div>
-        <span style={{ fontSize:12, color:"#16a34a", fontWeight:700 }}>✓ ${PRICE.toLocaleString("es-CL")}</span>
-      </div>))}
-    </div>
-  ):(
-    /* PANTALLA VISUALIZACIÓN */
-    <div style={{ background:"linear-gradient(135deg,#0f1221 0%,#1a1d2b 100%)", minHeight:"calc(100vh - 112px)", padding:"20px 40px", display:"grid", gridTemplateColumns:"1fr 1fr", gridTemplateRows:"auto auto 1fr", gap:16, boxSizing:"border-box", width:"100%", overflow:"hidden" }}>
-      <style>{`
-        @keyframes slideIn { from{transform:translateY(-20px);opacity:0} to{transform:translateY(0);opacity:1} }
-        @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
-        @keyframes ticker { 0%{transform:translateX(100%)} 100%{transform:translateX(-100%)} }
-@keyframes salePopIn { 0%{transform:scale(0.5) translateY(20px);opacity:0} 60%{transform:scale(1.1) translateY(-5px);opacity:1} 100%{transform:scale(1) translateY(0);opacity:1} }
-@keyframes saleFadeOut { 0%{opacity:1} 100%{opacity:0} }
-      `}</style>
-
-      {newSaleAnim&&(
-  <div style={{ position:"fixed", top:20, left:"50%", transform:"translateX(-50%)", zIndex:400, animation:"salePopIn 0.5s ease forwards", background:"linear-gradient(135deg,#16a34a,#22c55e)", borderRadius:20, padding:"16px 28px", textAlign:"center", boxShadow:"0 10px 40px rgba(34,197,94,0.5)", minWidth:260 }}>
-    <div style={{ fontSize:11, fontWeight:700, letterSpacing:3, color:"rgba(255,255,255,0.8)", marginBottom:4 }}>🎟️ NUEVO CARTÓN VENDIDO</div>
-    <div style={{ fontSize:22, fontWeight:900, color:"#fff", marginBottom:2 }}>{newSaleAnim.owner}</div>
-    <div style={{ fontSize:14, color:"rgba(255,255,255,0.85)", fontWeight:600 }}>Cartón #{newSaleAnim.cardNum} · {newSaleAnim.gameName}</div>
-  </div>
-)}
-
-      {/* 1 — JUEGO ACTIVO — ancho completo */}
-      <div style={{ gridColumn:"1/-1", background:`linear-gradient(135deg,${gc}22,${gc}44)`, borderRadius:16, padding:"16px 20px", border:`2px solid ${gc}`, textAlign:"center" }}>
-        <div style={{ fontSize:12, fontWeight:700, color:gc, letterSpacing:3, textTransform:"uppercase", marginBottom:4 }}>Juego Activo</div>
-        <div style={{ fontSize:32, fontWeight:900, color:"#fff" }}>{activeGame.name}</div>
-        <div style={{ fontSize:16, color:gc, fontWeight:700, marginTop:4 }}>Precio del cartón: ${PRICE.toLocaleString("es-CL")}</div>
-      </div>
-
-      {/* 2 — COUNTDOWN — ancho completo */}
-      {countdown>0?(
-        <div style={{ gridColumn:"1/-1", background:"#1a1d2b", borderRadius:16, padding:"20px", border:"2px solid #f59e0b", textAlign:"center", animation:"pulse 1s ease infinite" }}>
-          <div style={{ fontSize:12, fontWeight:700, color:"#f59e0b", letterSpacing:3, marginBottom:8 }}>EL BINGO COMIENZA EN</div>
-          <div style={{ fontSize:64, fontWeight:900, color:"#f59e0b", lineHeight:1 }}>
-            {String(Math.floor(countdown/60)).padStart(2,"0")}:{String(countdown%60).padStart(2,"0")}
-          </div>
-        </div>
-      ):countdown===0&&(
-        <div style={{ gridColumn:"1/-1", background:"linear-gradient(135deg,#f59e0b22,#f59e0b44)", borderRadius:16, padding:"20px", border:"2px solid #f59e0b", textAlign:"center" }}>
-          <div style={{ fontSize:28, fontWeight:900, color:"#f59e0b" }}>🎰 ¡El bingo comienza en breve!</div>
-        </div>
-      )}
-
-      {/* COLUMNA IZQUIERDA */}
-      <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-
-        {/* 3 — PATRÓN ACTIVO */}
-        <div style={{ background:"#1a1d2b", borderRadius:14, padding:16, border:`1px solid ${gc}44`, display:"flex", alignItems:"center", gap:16 }}>
-          <div>
-            <div style={{ fontSize:12, color:"#94a3b8", fontWeight:600, marginBottom:8 }}>PATRÓN ACTIVO</div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:3, width:80 }}>
-              {activePattern.grid.flat().map((cell,i)=>(<div key={i} style={{ height:14, borderRadius:2, background:cell?gc:"rgba(255,255,255,0.07)" }} />))}
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize:22, fontWeight:800, color:"#fff" }}>{activePattern.name}</div>
-            <div style={{ fontSize:13, color:gc, fontWeight:600, marginTop:4 }}>{activeGame.name}</div>
-          </div>
-        </div>
-
-        {/* 4 — ÚLTIMOS COMPRADORES */}
-        <div style={{ background:"#1a1d2b", borderRadius:14, padding:16, border:`1px solid ${gc}44`, flex:1 }}>
-          <div style={{ fontSize:12, color:"#94a3b8", fontWeight:600, marginBottom:12 }}>ÚLTIMOS COMPRADORES</div>
-          {cards.filter(c=>c.paid&&c.gameId===activeGame.id).slice(-6).reverse().map((c,i,arr)=>(
-            <div key={c.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 0", borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none", animation:"slideIn 0.3s ease" }}>
-              <span style={{ fontWeight:700, color:"#fff", fontSize:15 }}>{c.owner}</span>
-              <span style={{ background:gc, borderRadius:6, padding:"3px 12px", fontSize:13, fontWeight:700, color:["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff" }}>#{c.cardNum}</span>
-            </div>
-          ))}
-          {cards.filter(c=>c.paid&&c.gameId===activeGame.id).length===0&&<div style={{ textAlign:"center", color:"#64748b", fontSize:13 }}>Sin compradores aún</div>}
-        </div>
-
-      </div>
-
-      {/* COLUMNA DERECHA */}
-      <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-
-        {/* 5 — STATS */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-          <div style={{ background:"#1a1d2b", borderRadius:14, padding:16, border:`1px solid ${gc}44`, textAlign:"center" }}>
-            <div style={{ fontSize:48, fontWeight:900, color:gc, lineHeight:1 }}>{cards.filter(c=>c.paid&&c.gameId===activeGame.id).length}</div>
-            <div style={{ fontSize:12, color:"#94a3b8", marginTop:4, fontWeight:600 }}>JUGADORES</div>
-          </div>
-          <div style={{ background:"#1a1d2b", borderRadius:14, padding:16, border:"1px solid #16a34a44", textAlign:"center" }}>
-            <div style={{ fontSize:28, fontWeight:900, color:"#16a34a", lineHeight:1 }}>${totalRecaudado.toLocaleString("es-CL")}</div>
-            <div style={{ fontSize:12, color:"#94a3b8", marginTop:4, fontWeight:600 }}>RECAUDADO</div>
-          </div>
-        </div>
-
-        {/* 6 — BARRA PROGRESO */}
-        <div style={{ background:"#1a1d2b", borderRadius:14, padding:16, border:`1px solid ${gc}44` }}>
-          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
-            <span style={{ fontSize:12, color:"#94a3b8", fontWeight:600 }}>CARTONES VENDIDOS</span>
-            <span style={{ fontSize:12, color:gc, fontWeight:700 }}>{cards.filter(c=>c.paid&&c.gameId===activeGame.id).length} / {cards.filter(c=>c.gameId===activeGame.id).length}</span>
-          </div>
-          <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:99, height:14, overflow:"hidden" }}>
-            <div style={{ background:gc, height:"100%", borderRadius:99, width:`${cards.filter(c=>c.gameId===activeGame.id).length>0?(cards.filter(c=>c.paid&&c.gameId===activeGame.id).length/cards.filter(c=>c.gameId===activeGame.id).length)*100:0}%`, transition:"width 0.5s ease" }} />
-          </div>
-        </div>
-
-        {/* 7 — IMAGEN PREMIO */}
-        <div style={{ borderRadius:16, overflow:"hidden", border:`2px solid ${gc}33`, width:"100%", background:"#000" }}>
-          <img src="/img.png" alt="Premio" style={{ width:"100%", height:"auto", objectFit:"contain", display:"block" }}
-            onError={e=>{ e.target.style.display="none"; e.target.parentNode.innerHTML=`<div style="height:220px;display:flex;align-items:center;justify-content:center;background:#1a1d2b;color:${gc};font-size:15px;font-weight:700;text-align:center;padding:20px;font-family:sans-serif">🏅 Imagen del premio<br><span style='font-size:11px;color:#64748b'>Sube img.png a public/</span></div>`; }}
-          />
-        </div>
-
-        {/* 8 — JUEGOS */}
-        <div style={{ background:"#1a1d2b", borderRadius:14, padding:16, border:`1px solid ${gc}44`, flex:1 }}>
-          <div style={{ fontSize:12, color:"#94a3b8", fontWeight:600, marginBottom:12 }}>JUEGOS</div>
-          <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-            {GAMES.map(g=>(
-              <div key={g.id} style={{ background:g.id===activeGame.id?g.color:"rgba(255,255,255,0.05)", borderRadius:10, padding:"6px 14px", border:`1px solid ${g.color}44`, display:"flex", alignItems:"center", gap:6 }}>
-                <div style={{ width:8, height:8, borderRadius:"50%", background:g.color, flexShrink:0 }} />
-                <span style={{ fontSize:12, fontWeight:700, color:g.id===activeGame.id?(["j2","j3","j5","j9","j12"].includes(g.id)?"#000":"#fff"):"#94a3b8" }}>{g.name}</span>
-                <span style={{ fontSize:11, color:g.id===activeGame.id?(["j2","j3","j5","j9","j12"].includes(g.id)?"#00000088":"rgba(255,255,255,0.7)"):"#64748b" }}>({cards.filter(c=>c.paid&&c.gameId===g.id).length})</span>
+            {isAdmin ? (
+              <div>
+                {/* PANEL ADMIN */}
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
+                  {[{label:"Vendidos",val:cards.filter(c=>c.paid).length,color:"#3b82f6"},{label:"Recaudado",val:`$${totalRecaudado.toLocaleString("es-CL")}`,color:"#16a34a"}].map(s=>(<div key={s.label} style={{ background:"#ffffff", borderRadius:12, padding:"14px 18px", border:"1px solid #e2e8f0" }}><div style={{ fontSize:26, fontWeight:800, color:s.color }}>{s.val}</div><div style={{ fontSize:13, color:"#64748b" }}>{s.label}</div></div>))}
+                </div>
+                {/* COUNTDOWN ADMIN */}
+                <div style={{ background:"#ffffff", borderRadius:13, padding:16, marginBottom:16, border:"1px solid #e2e8f0" }}>
+                  <h3 style={{ margin:"0 0 12px", fontSize:14, color:"#334155" }}>⏱️ Countdown</h3>
+                  <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+                    <input type="number" placeholder="Minutos" value={countdownInput} onChange={e=>setCountdownInput(e.target.value)} style={{...inpS, maxWidth:120}} />
+                    <button onClick={()=>{ const mins=parseInt(countdownInput)||5; update(ref(db,DB_STATE),{ countdown:mins*60 }); }} style={{...btnS("#3b82f6"), flex:1}}>▶ Iniciar</button>
+                    <button onClick={()=>update(ref(db,DB_STATE),{ countdown:0 })} style={{...btnS("#ef4444")}}>■ Detener</button>
+                  </div>
+                </div>
+                {/* LISTA */}
+                {cards.filter(c=>c.paid).length===0
+                  ? <div style={{ textAlign:"center", color:"#94a3b8", padding:36 }}>Sin ventas aún</div>
+                  : cards.filter(c=>c.paid).map((c,i)=>(<div key={c.id} style={{ background:"#ffffff", borderRadius:9, padding:"11px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", border:"1px solid #e2e8f0", marginBottom:7, borderLeft:`4px solid ${GAMES.find(g=>g.id===c.gameId)?.color||"#000"}` }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:10 }}><span style={{ color:"#94a3b8", fontSize:12, minWidth:20 }}>{i+1}</span><div><span style={{ fontWeight:700 }}>{c.owner}</span><span style={{ fontSize:12, color:"#64748b", marginLeft:8 }}>Cartón {c.cardNum}</span></div></div>
+                    <span style={{ fontSize:12, color:"#16a34a", fontWeight:700 }}>✓ ${PRICE.toLocaleString("es-CL")}</span>
+                  </div>))
+                }
               </div>
-            ))}
-          </div>
-        </div>
+            ) : (
+              /* ══ PANTALLA VISUALIZACIÓN ══ */
+              <div style={{
+                background:"linear-gradient(135deg,#0f1221 0%,#1a1d2b 100%)",
+                height:"calc(100vh - 112px)",
+                padding:"12px 16px",
+                display:"grid",
+                gridTemplateColumns:"264px 1fr",
+                gridTemplateRows:"auto auto 1fr",
+                gap:10,
+                boxSizing:"border-box",
+                width:"100%",
+                overflow:"hidden"
+              }}>
+                <style>{`
+                  @keyframes slideIn { from{transform:translateY(-10px);opacity:0} to{transform:translateY(0);opacity:1} }
+                  @keyframes pulseViz { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
+                  @keyframes ticker { 0%{transform:translateX(100%)} 100%{transform:translateX(-100%)} }
+                  @keyframes salePopIn { 0%{transform:scale(0.5) translateY(20px);opacity:0} 60%{transform:scale(1.1) translateY(-5px);opacity:1} 100%{transform:scale(1) translateY(0);opacity:1} }
+                `}</style>
 
-        {/* 9 — TICKER */}
-        {cards.filter(c=>c.paid&&c.gameId===activeGame.id).length>0&&(
-          <div style={{ background:"#1a1d2b", borderRadius:14, padding:"12px 0", border:`1px solid ${gc}44`, overflow:"hidden" }}>
-            <div style={{ display:"flex", animation:"ticker 20s linear infinite", whiteSpace:"nowrap" }}>
-              {[...cards.filter(c=>c.paid&&c.gameId===activeGame.id),...cards.filter(c=>c.paid&&c.gameId===activeGame.id)].map((c,i)=>(
-                <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:8, marginRight:40, fontSize:14, fontWeight:700, color:"#fff" }}>
-                  <span style={{ background:gc, borderRadius:6, padding:"2px 8px", fontSize:12, color:["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff", fontWeight:700 }}>#{c.cardNum}</span>
-                  {c.owner}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+                {newSaleAnim&&(
+                  <div style={{ position:"fixed", top:20, left:"50%", transform:"translateX(-50%)", zIndex:400, animation:"salePopIn 0.5s ease forwards", background:"linear-gradient(135deg,#16a34a,#22c55e)", borderRadius:20, padding:"14px 24px", textAlign:"center", boxShadow:"0 10px 40px rgba(34,197,94,0.5)", minWidth:240 }}>
+                    <div style={{ fontSize:10, fontWeight:700, letterSpacing:3, color:"rgba(255,255,255,0.8)", marginBottom:3 }}>🎟️ NUEVO CARTÓN VENDIDO</div>
+                    <div style={{ fontSize:20, fontWeight:900, color:"#fff", marginBottom:2 }}>{newSaleAnim.owner}</div>
+                    <div style={{ fontSize:13, color:"rgba(255,255,255,0.85)", fontWeight:600 }}>Cartón #{newSaleAnim.cardNum} · {newSaleAnim.gameName}</div>
+                  </div>
+                )}
 
-      </div>
+                {/* FILA 1: Juego activo — full width */}
+                <div style={{ gridColumn:"1/-1", background:`linear-gradient(135deg,${gc}22,${gc}44)`, borderRadius:12, padding:"10px 18px", border:`2px solid ${gc}`, textAlign:"center" }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:gc, letterSpacing:3, textTransform:"uppercase" }}>Juego Activo</div>
+                  <div style={{ fontSize:26, fontWeight:900, color:"#fff", lineHeight:1.1, textTransform:"uppercase", letterSpacing:2 }}>{activeGame.name}</div>
+                </div>
 
-                    {tab===3&&(<div>
+                {/* FILA 2: Countdown — full width (solo si activo) */}
+                {countdown>0 ? (
+                  <div style={{ gridColumn:"1/-1", background:"#1a1d2b", borderRadius:12, padding:"10px 20px", border:"2px solid #f59e0b", textAlign:"center", animation:"pulseViz 1s ease infinite", display:"flex", alignItems:"center", justifyContent:"center", gap:16 }}>
+                    <div style={{ fontSize:11, fontWeight:700, color:"#f59e0b", letterSpacing:3 }}>EL BINGO COMIENZA EN</div>
+                    <div style={{ fontSize:42, fontWeight:900, color:"#f59e0b", lineHeight:1, fontFamily:"'Poller One',cursive" }}>
+                      {String(Math.floor(countdown/60)).padStart(2,"0")}:{String(countdown%60).padStart(2,"0")}
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* COLUMNA IZQUIERDA */}
+                <div style={{ display:"flex", flexDirection:"column", gap:10, overflow:"hidden", minHeight:0 }}>
+
+                  {/* Patrón activo */}
+                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"12px 14px", border:`1px solid ${gc}44`, flexShrink:0 }}>
+                    <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:8, letterSpacing:2 }}>PATRÓN ACTIVO</div>
+                    <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                      <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:2, width:65, flexShrink:0 }}>
+                        {activePattern.grid.flat().map((cell,i)=>(<div key={i} style={{ height:11, borderRadius:2, background:cell?gc:"rgba(255,255,255,0.07)" }} />))}
+                      </div>
+                      <div>
+                        <div style={{ fontSize:14, fontWeight:800, color:"#fff", lineHeight:1.2 }}>{activePattern.name}</div>
+                        <div style={{ fontSize:11, color:gc, fontWeight:600, marginTop:3 }}>{activeGame.name}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Últimos compradores */}
+                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"12px 14px", border:`1px solid ${gc}44`, flex:1, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+                    <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:10, letterSpacing:2 }}>ÚLTIMOS COMPRADORES</div>
+                    <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column", gap:1 }}>
+                      {cards.filter(c=>c.paid&&c.gameId===activeGame.id).slice(-20).reverse().map((c,i,arr)=>(
+                        <div key={c.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"6px 0", borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none", animation:"slideIn 0.3s ease" }}>
+                          <span style={{ fontWeight:700, color:"#fff", fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:130 }}>{c.owner}</span>
+                          <span style={{ background:gc, borderRadius:5, padding:"2px 8px", fontSize:11, fontWeight:700, color:["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff", flexShrink:0 }}>#{c.cardNum}</span>
+                        </div>
+                      ))}
+                      {cards.filter(c=>c.paid&&c.gameId===activeGame.id).length===0&&<div style={{ textAlign:"center", color:"#64748b", fontSize:12 }}>Sin compradores aún</div>}
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* COLUMNA DERECHA */}
+                <div style={{ display:"flex", flexDirection:"column", gap:10, overflow:"hidden", minHeight:0 }}>
+
+                  {/* Stats */}
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, flexShrink:0 }}>
+                    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, textAlign:"center" }}>
+                      <div style={{ fontSize:40, fontWeight:900, color:gc, lineHeight:1, fontFamily:"'Poller One',cursive" }}>{cards.filter(c=>c.paid&&c.gameId===activeGame.id).length}</div>
+                      <div style={{ fontSize:10, color:"#94a3b8", marginTop:3, fontWeight:600, letterSpacing:1 }}>JUGADORES</div>
+                    </div>
+                    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:"1px solid #16a34a44", textAlign:"center" }}>
+                      <div style={{ fontSize:20, fontWeight:900, color:"#16a34a", lineHeight:1.2 }}>${totalRecaudado.toLocaleString("es-CL")}</div>
+                      <div style={{ fontSize:10, color:"#94a3b8", marginTop:3, fontWeight:600, letterSpacing:1 }}>RECAUDADO</div>
+                    </div>
+                  </div>
+
+                  {/* Barra de progreso */}
+                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, flexShrink:0 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+                      <span style={{ fontSize:10, color:"#94a3b8", fontWeight:600, letterSpacing:1 }}>CARTONES VENDIDOS</span>
+                      <span style={{ fontSize:11, color:gc, fontWeight:700 }}>{cards.filter(c=>c.paid&&c.gameId===activeGame.id).length} / {cards.filter(c=>c.gameId===activeGame.id).length}</span>
+                    </div>
+                    <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:99, height:10, overflow:"hidden" }}>
+                      <div style={{ background:gc, height:"100%", borderRadius:99, width:`${cards.filter(c=>c.gameId===activeGame.id).length>0?(cards.filter(c=>c.paid&&c.gameId===activeGame.id).length/cards.filter(c=>c.gameId===activeGame.id).length)*100:0}%`, transition:"width 0.5s ease" }} />
+                    </div>
+                    <div style={{ textAlign:"right", marginTop:6, fontSize:12, color:gc, fontWeight:700 }}>Precio cartón: ${PRICE.toLocaleString("es-CL")}</div>
+                  </div>
+
+                  {/* Imagen del premio */}
+                  <div style={{ borderRadius:12, overflow:"hidden", border:`2px solid ${gc}33`, background:"#000", flex:1, minHeight:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    <img src="/img.png" alt="Premio" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
+                      onError={e=>{ e.target.style.display="none"; e.target.parentNode.innerHTML=`<div style="height:100%;display:flex;align-items:center;justify-content:center;background:#1a1d2b;color:${gc};font-size:14px;font-weight:700;text-align:center;padding:20px;font-family:sans-serif">🏅 Imagen del premio<br><span style='font-size:11px;color:#64748b'>Sube img.png a public/</span></div>`; }}
+                    />
+                  </div>
+
+                  {/* Juegos */}
+                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, flexShrink:0 }}>
+                    <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:8, letterSpacing:2 }}>JUEGOS</div>
+                    <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                      {GAMES.map(g=>(
+                        <div key={g.id} style={{ background:g.id===activeGame.id?g.color:"rgba(255,255,255,0.05)", borderRadius:8, padding:"4px 10px", border:`1px solid ${g.color}44`, display:"flex", alignItems:"center", gap:5 }}>
+                          <div style={{ width:7, height:7, borderRadius:"50%", background:g.color, flexShrink:0 }} />
+                          <span style={{ fontSize:11, fontWeight:700, color:g.id===activeGame.id?(["j2","j3","j5","j9","j12"].includes(g.id)?"#000":"#fff"):"#94a3b8" }}>{g.name}</span>
+                          <span style={{ fontSize:10, color:g.id===activeGame.id?(["j2","j3","j5","j9","j12"].includes(g.id)?"#00000088":"rgba(255,255,255,0.6)"):"#64748b" }}>({cards.filter(c=>c.paid&&c.gameId===g.id).length})</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Ticker */}
+                  {cards.filter(c=>c.paid&&c.gameId===activeGame.id).length>0&&(
+                    <div style={{ background:"#1a1d2b", borderRadius:10, padding:"8px 0", border:`1px solid ${gc}44`, overflow:"hidden", flexShrink:0 }}>
+                      <div style={{ display:"flex", animation:"ticker 20s linear infinite", whiteSpace:"nowrap" }}>
+                        {[...cards.filter(c=>c.paid&&c.gameId===activeGame.id),...cards.filter(c=>c.paid&&c.gameId===activeGame.id)].map((c,i)=>(
+                          <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:6, marginRight:32, fontSize:12, fontWeight:700, color:"#fff" }}>
+                            <span style={{ background:gc, borderRadius:5, padding:"2px 7px", fontSize:11, color:["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff", fontWeight:700 }}>#{c.cardNum}</span>
+                            {c.owner}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+
+              </div>
+            )}
+          </div>)}
+
+          {/* ══ TAB GANADORES ══ */}
+          {tab===3&&(<div>
             {isAdmin&&(<div style={{ background:"#ffffff", borderRadius:13, padding:16, border:"2px solid #fde68a", marginBottom:22, boxShadow:"0 4px 6px -1px rgba(0,0,0,0.1)" }}>
               <h3 style={{ margin:"0 0 12px", fontSize:14, color:"#92400e" }}>Registrar ganador manualmente</h3>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
@@ -830,145 +847,143 @@ const gameTextColor=["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff"
               </div>
               <button onClick={addWinner} style={{...btnS("#f59e0b"),width:"100%",padding:"11px"}}>🏆 Registrar</button>
             </div>)}
-            {winners.length===0?<div style={{ textAlign:"center", color:"#94a3b8", padding:40 }}>Sin ganadores</div>:winners.map(w=>{
-              const isExpanded = selectedWinner===(w.id||w.ts);
-              const winnerCardData = cards.find(c=>c.cardNum===w.card&&c.gameId===w.gameId);
-              const winnerPattern = PATTERNS.find(p => p.id === w.patternId) || activePattern;
-              return (<div key={w.id||w.ts}>
-                <div onClick={()=>setSelectedWinner(isExpanded?null:(w.id||w.ts))} style={{ background:"#ffffff", borderRadius:isExpanded?"12px 12px 0 0":12, padding:"14px 16px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", border:"1px solid #fde68a", boxShadow:"0 1px 3px rgba(0,0,0,0.05)" }}>
-                  <div style={{ fontSize:26 }}>🏆</div>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontWeight:700, fontSize:15, color:"#92400e" }}>{w.name}</div>
-                    <div style={{ fontSize:12, color:"#64748b" }}>Cartón #{w.card} · {w.game||""} · {w.time}</div>
-                  </div>
-                  {isAdmin&&<button onClick={e=>{e.stopPropagation();deleteWinner(w.id||w.ts);setSelectedWinner(null);}} style={{ background:"none", border:"none", color:"#94a3b8", cursor:"pointer", fontSize:16 }}>✕</button>}
-                  <span style={{ color:"#94a3b8", fontSize:12 }}>{isExpanded?"▲":"▼"}</span>
-                </div>
-                {isExpanded&&winnerCardData&&winnerCardData.grid&&(
-                  <div style={{ background:"#ffffff", borderRadius:"0 0 12px 12px", padding:16, border:"1px solid #fde68a", borderTop:"none", boxShadow:"0 4px 6px -1px rgba(0,0,0,0.1)" }}>
-                    <p style={{ fontSize:12, color:"#92400e", textAlign:"center", marginBottom:4, fontWeight:700 }}>Patrón ganador</p>
-                    <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:2, width:80, height:80, margin:"0 auto 12px" }}>
-                      {winnerPattern.grid.flat().map((cell,i)=>(<div key={i} style={{ borderRadius:2, background:cell?"#f59e0b":"#f1f5f9", border:cell?"none":"1px solid #e2e8f0" }} />))}
+            {winners.length===0
+              ? <div style={{ textAlign:"center", color:"#94a3b8", padding:40 }}>Sin ganadores</div>
+              : winners.map(w=>{
+                const isExpanded = selectedWinner===(w.id||w.ts);
+                const winnerCardData = cards.find(c=>c.cardNum===w.card&&c.gameId===w.gameId);
+                const winnerPattern = PATTERNS.find(p => p.id === w.patternId) || activePattern;
+                return (<div key={w.id||w.ts}>
+                  <div onClick={()=>setSelectedWinner(isExpanded?null:(w.id||w.ts))} style={{ background:"#ffffff", borderRadius:isExpanded?"12px 12px 0 0":12, padding:"14px 16px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", border:"1px solid #fde68a", boxShadow:"0 1px 3px rgba(0,0,0,0.05)" }}>
+                    <div style={{ fontSize:26 }}>🏆</div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontWeight:700, fontSize:15, color:"#92400e" }}>{w.name}</div>
+                      <div style={{ fontSize:12, color:"#64748b" }}>Cartón #{w.card} · {w.game||""} · {w.time}</div>
                     </div>
-                                                           <CardGrid card={winnerCardData} drawn={Array.isArray(w.drawn)?w.drawn:w.drawn?Object.values(w.drawn):drawn} pattern={winnerPattern} />
+                    {isAdmin&&<button onClick={e=>{e.stopPropagation();deleteWinner(w.id||w.ts);setSelectedWinner(null);}} style={{ background:"none", border:"none", color:"#94a3b8", cursor:"pointer", fontSize:16 }}>✕</button>}
+                    <span style={{ color:"#94a3b8", fontSize:12 }}>{isExpanded?"▲":"▼"}</span>
                   </div>
-                )}
-                {isExpanded&&!winnerCardData&&(
-                  <div style={{ background:"#ffffff", borderRadius:"0 0 12px 12px", padding:16, border:"1px solid #fde68a", borderTop:"none", textAlign:"center", color:"#94a3b8", fontSize:13 }}>
-                    Cartón #{w.card} no encontrado en los datos actuales
-                  </div>
-                )}
-              </div>);
-            })}
+                  {isExpanded&&winnerCardData&&winnerCardData.grid&&(
+                    <div style={{ background:"#ffffff", borderRadius:"0 0 12px 12px", padding:16, border:"1px solid #fde68a", borderTop:"none", boxShadow:"0 4px 6px -1px rgba(0,0,0,0.1)" }}>
+                      <p style={{ fontSize:12, color:"#92400e", textAlign:"center", marginBottom:4, fontWeight:700 }}>Patrón ganador</p>
+                      <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:2, width:80, height:80, margin:"0 auto 12px" }}>
+                        {winnerPattern.grid.flat().map((cell,i)=>(<div key={i} style={{ borderRadius:2, background:cell?"#f59e0b":"#f1f5f9", border:cell?"none":"1px solid #e2e8f0" }} />))}
+                      </div>
+                      <CardGrid card={winnerCardData} drawn={Array.isArray(w.drawn)?w.drawn:w.drawn?Object.values(w.drawn):drawn} pattern={winnerPattern} />
+                    </div>
+                  )}
+                  {isExpanded&&!winnerCardData&&(
+                    <div style={{ background:"#ffffff", borderRadius:"0 0 12px 12px", padding:16, border:"1px solid #fde68a", borderTop:"none", textAlign:"center", color:"#94a3b8", fontSize:13 }}>
+                      Cartón #{w.card} no encontrado en los datos actuales
+                    </div>
+                  )}
+                </div>);
+              })
+            }
           </div>)}
 
         </div>
       )}
+
+      {/* ── MODALES Y TOAST ── */}
       {confirmDelete&&(
-  <div onClick={()=>setConfirmDelete(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300, backdropFilter:"blur(4px)" }}>
-    <div onClick={e=>e.stopPropagation()} style={{ background:"#fff", borderRadius:20, padding:28, width:"min(360px,92vw)", textAlign:"center" }}>
-      <div style={{ fontSize:40, marginBottom:12 }}>🗑️</div>
-      <h3 style={{ margin:"0 0 8px", fontSize:18, color:"#1e293b" }}>¿Eliminar cartón?</h3>
-      <p style={{ color:"#64748b", fontSize:14, margin:"0 0 8px" }}>Cartón <strong>{confirmDelete.cardNum}</strong></p>
-      {confirmDelete.paid&&<p style={{ color:"#64748b", fontSize:14, margin:"0 0 20px" }}>Asignado a <strong>{confirmDelete.owner}</strong></p>}
-      <div style={{ display:"flex", gap:12 }}>
-        <button onClick={()=>setConfirmDelete(null)} style={{ flex:1, background:"#f1f5f9", border:"none", borderRadius:10, padding:"12px", color:"#64748b", fontWeight:700, fontSize:14, cursor:"pointer" }}>Cancelar</button>
-        <button onClick={()=>{ deleteCard(confirmDelete.id); setConfirmDelete(null); }} style={{ flex:1, background:"#ef4444", border:"none", borderRadius:10, padding:"12px", color:"#fff", fontWeight:700, fontSize:14, cursor:"pointer" }}>Eliminar</button>
-      </div>
-    </div>
-  </div>
-)}
-      {confirmAssign&&(
-  <div onClick={()=>setConfirmAssign(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300, backdropFilter:"blur(4px)" }}>
-    <div onClick={e=>e.stopPropagation()} style={{ background:"#fff", borderRadius:20, padding:28, width:"min(400px,92vw)", boxShadow:"0 20px 60px rgba(0,0,0,0.3)" }}>
-      <div style={{ fontSize:32, textAlign:"center", marginBottom:8 }}>🎟️</div>
-      <h3 style={{ textAlign:"center", margin:"0 0 20px", fontSize:18, color:"#1e293b" }}>Confirmar asignación</h3>
-      <div style={{ background:"#f8fafc", borderRadius:12, padding:16, marginBottom:20, border:"1px solid #e2e8f0" }}>
-        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
-          <span style={{ color:"#64748b", fontSize:14 }}>Nombre</span>
-          <span style={{ fontWeight:700, fontSize:14, color:"#1e293b" }}>{confirmAssign.owner}</span>
-        </div>
-        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
-          <span style={{ color:"#64748b", fontSize:14 }}>Cantidad</span>
-          <span style={{ fontWeight:700, fontSize:14, color:"#1e293b" }}>{confirmAssign.qty} cartón{confirmAssign.qty>1?"es":""}</span>
-        </div>
-
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-          <span style={{ color:"#64748b", fontSize:14 }}>Buscar y agregar</span>
-          <input placeholder="Ej: 045" style={{ background:"#f1f5f9", border:"1px solid #e2e8f0", borderRadius:8, padding:"6px 10px", fontSize:13, width:"60%", outline:"none", fontFamily:"sans-serif" }}
-            onChange={e=>{
-              const val=e.target.value.trim();
-              if (!val) return;
-              const found=confirmAssign.available.filter(c=>!c.paid&&c.cardNum.includes(val.padStart(3,"0")));
-              if (found.length===1) {
-                const alreadySel=confirmAssign.selected.includes(found[0].id);
-                if (!alreadySel && confirmAssign.selected.length<confirmAssign.qty) {
-                  setConfirmAssign(p=>{
-                    const newSelected=[...p.selected, found[0].id];
-                    return {...p, selected:newSelected, nums:p.available.filter(x=>newSelected.includes(x.id)).map(x=>x.cardNum)};
-                  });
-                } else if (!alreadySel && confirmAssign.selected.length>=confirmAssign.qty) {
-                  showToast(`Máximo ${confirmAssign.qty} cartón${confirmAssign.qty>1?"es":""}`, "err");
-                }
-                e.target.value="";
-                setTimeout(()=>{
-                  const el=document.getElementById(`carton-${found[0].id}`);
-                  if(el) el.scrollIntoView({behavior:"smooth", block:"center"});
-                },100);
-              }
-            }}
-          />
-        </div>
-
-
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-          <span style={{ color:"#64748b", fontSize:14 }}>Cartones</span>
-          <div id="cartones-list" style={{ display:"flex", gap:6, flexWrap:"wrap", justifyContent:"flex-end", maxWidth:"70%", maxHeight:120, overflowY:"auto", padding:"4px 0" }}>
-            {confirmAssign.available.filter(c=>!c.paid).map(c=>{
-              const isSel=confirmAssign.selected.includes(c.id);
-              return (<span id={`carton-${c.id}`} key={c.id} onClick={()=>{
-                const alreadySel=confirmAssign.selected.includes(c.id);
-                if (alreadySel) {
-                  if (confirmAssign.selected.length<=1) return;
-                  setConfirmAssign(p=>({...p, selected:p.selected.filter(id=>id!==c.id), nums:p.available.filter(x=>p.selected.filter(id=>id!==c.id).includes(x.id)).map(x=>x.cardNum)}));
-                } else {
-                  if (confirmAssign.selected.length>=confirmAssign.qty) return;
-                  setConfirmAssign(p=>({...p, selected:[...p.selected,c.id], nums:p.available.filter(x=>[...p.selected,c.id].includes(x.id)).map(x=>x.cardNum)}));
-                }
-              }} style={{ background:isSel?activeGame.color:"#e2e8f0", color:isSel?(["j2","j3","j5","j9","j12"].includes(activeGame.id)?"#000":"#fff"):"#64748b", borderRadius:6, padding:"4px 10px", fontSize:13, fontWeight:700, cursor:"pointer", border:isSel?`2px solid ${activeGame.color}`:"2px solid #e2e8f0" }}>{c.cardNum}</span>);
-            })}
+        <div onClick={()=>setConfirmDelete(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300, backdropFilter:"blur(4px)" }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:"#fff", borderRadius:20, padding:28, width:"min(360px,92vw)", textAlign:"center" }}>
+            <div style={{ fontSize:40, marginBottom:12 }}>🗑️</div>
+            <h3 style={{ margin:"0 0 8px", fontSize:18, color:"#1e293b" }}>¿Eliminar cartón?</h3>
+            <p style={{ color:"#64748b", fontSize:14, margin:"0 0 8px" }}>Cartón <strong>{confirmDelete.cardNum}</strong></p>
+            {confirmDelete.paid&&<p style={{ color:"#64748b", fontSize:14, margin:"0 0 20px" }}>Asignado a <strong>{confirmDelete.owner}</strong></p>}
+            <div style={{ display:"flex", gap:12 }}>
+              <button onClick={()=>setConfirmDelete(null)} style={{ flex:1, background:"#f1f5f9", border:"none", borderRadius:10, padding:"12px", color:"#64748b", fontWeight:700, fontSize:14, cursor:"pointer" }}>Cancelar</button>
+              <button onClick={()=>{ deleteCard(confirmDelete.id); setConfirmDelete(null); }} style={{ flex:1, background:"#ef4444", border:"none", borderRadius:10, padding:"12px", color:"#fff", fontWeight:700, fontSize:14, cursor:"pointer" }}>Eliminar</button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {confirmAssign.selected.length>0&&(
-  <div style={{ background:"#f8fafc", borderRadius:10, padding:"10px 14px", marginBottom:16, border:"1px solid #e2e8f0" }}>
-    <div style={{ fontSize:12, color:"#64748b", marginBottom:8, fontWeight:600 }}>Cartones seleccionados ({confirmAssign.selected.length}/{confirmAssign.qty})</div>
-    <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-      {confirmAssign.available.filter(c=>confirmAssign.selected.includes(c.id)).map(c=>(
-        <span key={c.id} onClick={()=>{
-          setConfirmAssign(p=>{
-            const newSelected=p.selected.filter(id=>id!==c.id);
-            return {...p, selected:newSelected, nums:p.available.filter(x=>newSelected.includes(x.id)).map(x=>x.cardNum)};
-          });
-        }} style={{ background:activeGame.color, color:["j2","j3","j5","j9","j12"].includes(activeGame.id)?"#000":"#fff", borderRadius:6, padding:"4px 10px", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:4 }}>
-          {c.cardNum} <span style={{ fontSize:10, opacity:0.7 }}>✕</span>
-        </span>
-      ))}
-    </div>
-  </div>
-)}
-      <div style={{ display:"flex", gap:12 }}>
-        <button onClick={()=>setConfirmAssign(null)} style={{ flex:1, background:"#f1f5f9", border:"none", borderRadius:10, padding:"12px", color:"#64748b", fontWeight:700, fontSize:14, cursor:"pointer" }}>Cancelar</button>
-        <button onClick={confirmAssignCard} style={{ flex:1, background:activeGame.color, border:"none", borderRadius:10, padding:"12px", color:["j2","j3","j5","j9","j12"].includes(activeGame.id)?"#000":"#fff", fontWeight:700, fontSize:14, cursor:"pointer" }}>Confirmar</button>
-      </div>
-    </div>
-  </div>
-)}
-
-    </div>
-  )}
-</div>)}
+      {confirmAssign&&(
+        <div onClick={()=>setConfirmAssign(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300, backdropFilter:"blur(4px)" }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:"#fff", borderRadius:20, padding:28, width:"min(400px,92vw)", boxShadow:"0 20px 60px rgba(0,0,0,0.3)" }}>
+            <div style={{ fontSize:32, textAlign:"center", marginBottom:8 }}>🎟️</div>
+            <h3 style={{ textAlign:"center", margin:"0 0 20px", fontSize:18, color:"#1e293b" }}>Confirmar asignación</h3>
+            <div style={{ background:"#f8fafc", borderRadius:12, padding:16, marginBottom:20, border:"1px solid #e2e8f0" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
+                <span style={{ color:"#64748b", fontSize:14 }}>Nombre</span>
+                <span style={{ fontWeight:700, fontSize:14, color:"#1e293b" }}>{confirmAssign.owner}</span>
+              </div>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
+                <span style={{ color:"#64748b", fontSize:14 }}>Cantidad</span>
+                <span style={{ fontWeight:700, fontSize:14, color:"#1e293b" }}>{confirmAssign.qty} cartón{confirmAssign.qty>1?"es":""}</span>
+              </div>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                <span style={{ color:"#64748b", fontSize:14 }}>Buscar y agregar</span>
+                <input placeholder="Ej: 045" style={{ background:"#f1f5f9", border:"1px solid #e2e8f0", borderRadius:8, padding:"6px 10px", fontSize:13, width:"60%", outline:"none", fontFamily:"sans-serif" }}
+                  onChange={e=>{
+                    const val=e.target.value.trim();
+                    if (!val) return;
+                    const found=confirmAssign.available.filter(c=>!c.paid&&c.cardNum.includes(val.padStart(3,"0")));
+                    if (found.length===1) {
+                      const alreadySel=confirmAssign.selected.includes(found[0].id);
+                      if (!alreadySel && confirmAssign.selected.length<confirmAssign.qty) {
+                        setConfirmAssign(p=>{
+                          const newSelected=[...p.selected, found[0].id];
+                          return {...p, selected:newSelected, nums:p.available.filter(x=>newSelected.includes(x.id)).map(x=>x.cardNum)};
+                        });
+                      } else if (!alreadySel && confirmAssign.selected.length>=confirmAssign.qty) {
+                        showToast(`Máximo ${confirmAssign.qty} cartón${confirmAssign.qty>1?"es":""}`, "err");
+                      }
+                      e.target.value="";
+                      setTimeout(()=>{
+                        const el=document.getElementById(`carton-${found[0].id}`);
+                        if(el) el.scrollIntoView({behavior:"smooth", block:"center"});
+                      },100);
+                    }
+                  }}
+                />
+              </div>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                <span style={{ color:"#64748b", fontSize:14 }}>Cartones</span>
+                <div id="cartones-list" style={{ display:"flex", gap:6, flexWrap:"wrap", justifyContent:"flex-end", maxWidth:"70%", maxHeight:120, overflowY:"auto", padding:"4px 0" }}>
+                  {confirmAssign.available.filter(c=>!c.paid).map(c=>{
+                    const isSel=confirmAssign.selected.includes(c.id);
+                    return (<span id={`carton-${c.id}`} key={c.id} onClick={()=>{
+                      const alreadySel=confirmAssign.selected.includes(c.id);
+                      if (alreadySel) {
+                        if (confirmAssign.selected.length<=1) return;
+                        setConfirmAssign(p=>({...p, selected:p.selected.filter(id=>id!==c.id), nums:p.available.filter(x=>p.selected.filter(id=>id!==c.id).includes(x.id)).map(x=>x.cardNum)}));
+                      } else {
+                        if (confirmAssign.selected.length>=confirmAssign.qty) return;
+                        setConfirmAssign(p=>({...p, selected:[...p.selected,c.id], nums:p.available.filter(x=>[...p.selected,c.id].includes(x.id)).map(x=>x.cardNum)}));
+                      }
+                    }} style={{ background:isSel?activeGame.color:"#e2e8f0", color:isSel?(["j2","j3","j5","j9","j12"].includes(activeGame.id)?"#000":"#fff"):"#64748b", borderRadius:6, padding:"4px 10px", fontSize:13, fontWeight:700, cursor:"pointer", border:isSel?`2px solid ${activeGame.color}`:"2px solid #e2e8f0" }}>{c.cardNum}</span>);
+                  })}
+                </div>
+              </div>
+            </div>
+            {confirmAssign.selected.length>0&&(
+              <div style={{ background:"#f8fafc", borderRadius:10, padding:"10px 14px", marginBottom:16, border:"1px solid #e2e8f0" }}>
+                <div style={{ fontSize:12, color:"#64748b", marginBottom:8, fontWeight:600 }}>Cartones seleccionados ({confirmAssign.selected.length}/{confirmAssign.qty})</div>
+                <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                  {confirmAssign.available.filter(c=>confirmAssign.selected.includes(c.id)).map(c=>(
+                    <span key={c.id} onClick={()=>{
+                      setConfirmAssign(p=>{
+                        const newSelected=p.selected.filter(id=>id!==c.id);
+                        return {...p, selected:newSelected, nums:p.available.filter(x=>newSelected.includes(x.id)).map(x=>x.cardNum)};
+                      });
+                    }} style={{ background:activeGame.color, color:["j2","j3","j5","j9","j12"].includes(activeGame.id)?"#000":"#fff", borderRadius:6, padding:"4px 10px", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:4 }}>
+                      {c.cardNum} <span style={{ fontSize:10, opacity:0.7 }}>✕</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div style={{ display:"flex", gap:12 }}>
+              <button onClick={()=>setConfirmAssign(null)} style={{ flex:1, background:"#f1f5f9", border:"none", borderRadius:10, padding:"12px", color:"#64748b", fontWeight:700, fontSize:14, cursor:"pointer" }}>Cancelar</button>
+              <button onClick={confirmAssignCard} style={{ flex:1, background:activeGame.color, border:"none", borderRadius:10, padding:"12px", color:["j2","j3","j5","j9","j12"].includes(activeGame.id)?"#000":"#fff", fontWeight:700, fontSize:14, cursor:"pointer" }}>Confirmar</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {toast&&<div style={{ position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", background:toast.type==="err"?"#ef4444":"#10b981", color:"#fff", padding:"12px 24px", borderRadius:12, fontWeight:700, fontSize:14, zIndex:999, boxShadow:"0 10px 15px -3px rgba(0,0,0,0.1)", whiteSpace:"nowrap", fontFamily:"sans-serif" }}>{toast.msg}</div>}
       {showLogin&&<LoginModal pwInput={pwInput} setPwInput={setPwInput} pwError={pwError} onLogin={handleLogin} onClose={()=>{setShowLogin(false);setPwInput("");setPwError(false);}} />}
