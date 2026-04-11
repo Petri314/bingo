@@ -615,12 +615,12 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
   )}
 </div>
 
-            {/* ZONA 3 — Premio */}
-            <div className="zona-premio" style={{ borderRadius:14, overflow:"visible", border:`1px solid ${gc}33`, background:`linear-gradient(135deg,${gc}11,${gc}22)`, display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <img src="/img.png" alt="Premio" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
-                onError={e=>{ e.target.style.display="none"; e.target.parentNode.innerHTML=`<div style="color:${gc};font-size:15px;font-weight:700;text-align:center;padding:20px;line-height:1.8;font-family:sans-serif">🏅 Información<br>del premio<br><span style='font-size:11px;color:#64748b'>Sube <code>img.png</code> a <code>public/</code></span></div>`; }}
-              />
-            </div>
+{/* ZONA 3 — Premio */}
+<div className="zona-premio" style={{ borderRadius:14, overflow:"hidden", border:`1px solid ${gc}33`, background:`linear-gradient(135deg,${gc}11,${gc}22)`, display:"flex", alignItems:"center", justifyContent:"center", maxHeight:300 }}>
+  <img key={activeGame.id} src={`/${activeGame.id}.png`} alt="Premio" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
+    onError={e=>{ e.target.src="/placeholder.png"; e.target.onerror=null; }}
+  />
+</div>
 
             {/* ZONA 4 — Nº Jugadores */}
             <div className="zona-jugadores" style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:"12px 10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, border:`1px solid ${gc}44` }}>
@@ -883,7 +883,7 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
 
     {/* Imagen del premio */}
 <div style={{ borderRadius:12, overflow:"hidden", border:`2px solid ${gc}33`, background:"#000", height:300, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <img src="/img.png" alt="Premio" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
+      <img key={activeGame.id} src={`/${activeGame.id}.png`} alt="Premio" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
         onError={e=>{ e.target.style.display="none"; e.target.parentNode.innerHTML=`<div style="height:100%;display:flex;align-items:center;justify-content:center;background:#1a1d2b;color:${gc};font-size:14px;font-weight:700;text-align:center;padding:20px;font-family:sans-serif">🏅 Imagen del premio<br><span style='font-size:11px;color:#64748b'>Sube img.png a public/</span></div>`; }}
       />
     </div>
