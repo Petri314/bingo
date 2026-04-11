@@ -64,14 +64,14 @@ function checkPattern(card, drawn, pattern) {
   return true;
 }
 
-const TABS = ["🎟️ Cartones","📋 Asistentes","🎱 Sorteo","🏆 Ganadores"];
+const TABS = ["🎟️ Cartones","📋 Información","🎱 Sorteo","🏆 Ganadores"];
 const inpS = { background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:"10px 12px", color:"#334155", fontSize:14, outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"sans-serif" };
 const btnS = (color, extra={}) => ({ background:color, border:"none", borderRadius:8, padding:"9px 15px", fontWeight:700, fontSize:14, cursor:"pointer", color:"#fff", fontFamily:"sans-serif", whiteSpace:"nowrap", ...extra });
 
 function CardGrid({ card, drawn, pattern }) {
   const gameColor = GAMES.find(g=>g.id===card.gameId)?.color||"#64748b";
   return (
-    <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:5, maxWidth:260, margin:"0 auto" }}>
+    <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:5, maxWidth:150, margin:"0 auto" }}>
       {Object.keys(COLS).map(l=>(<div key={l} style={{ background:gameColor, borderRadius:6, textAlign:"center", padding:"6px 0", fontWeight:800, fontSize:16, color:"#fff", opacity:0.9 }}>{l}</div>))}
       {card.grid[0].map((_,row)=>card.grid.map((col,colIdx)=>{
         const val=col[row];
@@ -237,22 +237,22 @@ export default function BingoAdmin() {
   const [countdownInput, setCountdownInput] = useState("5");
   const [newSaleAnim, setNewSaleAnim] = useState(null);
   const prevSoldCount = React.useRef(0);
+const prevSoldIds = React.useRef(new Set());
 
   useEffect(()=>{
-    if (countdown===null||countdown<=0) return;
-    const interval = setInterval(()=>{
-      setCountdown(prev=>{
-        if (prev<=1) {
-          clearInterval(interval);
-          update(ref(db,DB_STATE),{ countdown:0 });
-          return 0;
-        }
-        update(ref(db,DB_STATE),{ countdown:prev-1 });
-        return prev-1;
-      });
-    },1000);
-    return ()=>clearInterval(interval);
-  },[countdown>0]);
+  if (countdown===null||countdown<=0) return;
+  const interval = setInterval(()=>{
+    setCountdown(prev=>{
+      if (prev<=1) {
+        clearInterval(interval);
+        update(ref(db,DB_STATE),{ countdown:0 });
+        return 0;
+      }
+      return prev-1;
+    });
+  },1000);
+  return ()=>clearInterval(interval);
+},[countdown>0]);
 
   useEffect(()=>{
     const handleResize = () => setIsFullscreen(window.innerHeight === window.screen.height);
@@ -285,12 +285,15 @@ export default function BingoAdmin() {
         ) : null
       })).sort((a,b)=>a.id-b.id) : [];
       const soldNow = parsed.filter(c=>c.paid);
-      if (soldNow.length > prevSoldCount.current && prevSoldCount.current > 0) {
-        const newest = soldNow[soldNow.length-1];
-        setNewSaleAnim(newest);
-        setTimeout(()=>setNewSaleAnim(null), 3000);
-      }
-      prevSoldCount.current = soldNow.length;
+if (soldNow.length > prevSoldCount.current && prevSoldCount.current > 0) {
+  const newest = soldNow.find(c => !prevSoldIds.current.has(c.id));
+  if (newest) {
+    setNewSaleAnim(newest);
+    setTimeout(()=>setNewSaleAnim(null), 3000);
+  }
+}
+prevSoldCount.current = soldNow.length;
+prevSoldIds.current = new Set(soldNow.map(c=>c.id));
       setCards(parsed);
     });
     const uD = onValue(ref(db,DB_DRAWN),   s=>{ const v=s.val(); if(v){const n=Object.values(v); setDrawn(n); setLastDrawn(n.at(-1)??null);} else{setDrawn([]); setLastDrawn(null);} });
@@ -313,16 +316,19 @@ export default function BingoAdmin() {
       if (v.patternId){ const p=PATTERNS.find(p=>p.id===v.patternId); if(p) setActivePattern(p); }
       if (typeof v.alreadyWon==="boolean") setAlreadyWon(v.alreadyWon);
       if (v.countdown !== undefined) setCountdown(v.countdown);
-      if (v.currentWinner) {
-        if (Date.now()-v.currentWinner.ts < 30000) setWinnerPopup(v.currentWinner);
-      } else { setWinnerPopup(null); }
+      if (v.currentWinner && v.currentWinner.ts && Date.now()-v.currentWinner.ts < 8000) {
+        setWinnerPopup(v.currentWinner);
+      } else {
+        setWinnerPopup(null);
+      }
     });
     return ()=>{ uC(); uD(); uW(); uS(); };
   },[]);
 
-  const handleSelectGame = async (game) => {
-    await update(ref(db,DB_STATE),{ gameId:game.id, alreadyWon:false, currentWinner:null });
-  };
+ const handleSelectGame = async (game) => {
+  await update(ref(db,DB_STATE),{ gameId:game.id, alreadyWon:false, currentWinner:null });
+  setWinnerPopup(null);
+};
   const handleSelectPattern = async (pattern) => {
     await update(ref(db,DB_STATE),{ patternId:pattern.id, alreadyWon:false, currentWinner:null });
   };
@@ -366,7 +372,20 @@ export default function BingoAdmin() {
     if (!confirmAssign) return;
     const updates={};
     const toAssign=confirmAssign.available.filter(c=>confirmAssign.selected.includes(c.id));
-    toAssign.forEach(c=>{ updates[`${DB_CARDS}/${c.id}`]={...c,owner:confirmAssign.owner,paid:true}; });
+    toAssign.forEach(c=>{ 
+  console.log("soldAt:", Date.now());
+  console.log("updates key:", `${DB_CARDS}/${c.id}`);
+  updates[`${DB_CARDS}/${c.id}`]={
+    id:c.id,
+    cardNum:c.cardNum,
+    gameId:c.gameId,
+    gameName:c.gameName,
+    grid:c.grid,
+    owner:confirmAssign.owner,
+    paid:true,
+    soldAt:Date.now()
+  }; 
+});
     await update(ref(db),updates);
     showToast(`✓ ${activeGame.name}: ${confirmAssign.nums.join(', ')}`);
     setNewOwner(""); setNewQty("1"); setConfirmAssign(null);
@@ -683,13 +702,7 @@ export default function BingoAdmin() {
                   </div>
                 </div>
                 {/* LISTA */}
-                {cards.filter(c=>c.paid).length===0
-                  ? <div style={{ textAlign:"center", color:"#94a3b8", padding:36 }}>Sin ventas aún</div>
-                  : cards.filter(c=>c.paid).map((c,i)=>(<div key={c.id} style={{ background:"#ffffff", borderRadius:9, padding:"11px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", border:"1px solid #e2e8f0", marginBottom:7, borderLeft:`4px solid ${GAMES.find(g=>g.id===c.gameId)?.color||"#000"}` }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:10 }}><span style={{ color:"#94a3b8", fontSize:12, minWidth:20 }}>{i+1}</span><div><span style={{ fontWeight:700 }}>{c.owner}</span><span style={{ fontSize:12, color:"#64748b", marginLeft:8 }}>Cartón {c.cardNum}</span></div></div>
-                    <span style={{ fontSize:12, color:"#16a34a", fontWeight:700 }}>✓ ${PRICE.toLocaleString("es-CL")}</span>
-                  </div>))
-                }
+                {null}
               </div>
             ) : (
   <div className="viz-grid" style={{
@@ -709,7 +722,8 @@ export default function BingoAdmin() {
   <style>{`
     @keyframes slideIn { from{transform:translateY(-10px);opacity:0} to{transform:translateY(0);opacity:1} }
     @keyframes pulseViz { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
-    @keyframes ticker { 0%{transform:translateX(100%)} 100%{transform:translateX(-100%)} }
+    @keyframes ticker { from{transform:translateX(100%)} to{transform:translateX(-100%)} }
+    @keyframes tickerCompradores { from{transform:translateX(0)} to{transform:translateX(-50%)} }
     @keyframes salePopIn { 0%{transform:scale(0.5) translateY(20px);opacity:0} 60%{transform:scale(1.1) translateY(-5px);opacity:1} 100%{transform:scale(1) translateY(0);opacity:1} }
     @keyframes barGlow { 0%,100%{opacity:1} 50%{opacity:0.7} }
     @media (max-width: 768px) {
@@ -724,12 +738,18 @@ export default function BingoAdmin() {
   `}</style>
 
   {newSaleAnim&&(
-    <div style={{ position:"fixed", top:20, left:"50%", transform:"translateX(-50%)", zIndex:400, animation:"salePopIn 0.5s ease forwards", background:"linear-gradient(135deg,#16a34a,#22c55e)", borderRadius:20, padding:"14px 24px", textAlign:"center", boxShadow:"0 10px 40px rgba(34,197,94,0.5)", minWidth:240 }}>
-      <div style={{ fontSize:10, fontWeight:700, letterSpacing:3, color:"rgba(255,255,255,0.8)", marginBottom:3 }}>🎟️ NUEVO CARTÓN VENDIDO</div>
-      <div style={{ fontSize:20, fontWeight:900, color:"#fff", marginBottom:2 }}>{newSaleAnim.owner}</div>
-      <div style={{ fontSize:13, color:"rgba(255,255,255,0.85)", fontWeight:600 }}>Cartón #{newSaleAnim.cardNum} · {newSaleAnim.gameName}</div>
+  <div style={{ position:"fixed", top:20, left:"50%", transform:"translateX(-50%)", zIndex:400, animation:"salePopIn 0.5s ease forwards", minWidth:300 }}>
+    <div style={{ background:"#0f1221", border:`3px solid ${GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e"}`, borderRadius:20, padding:"18px 28px", textAlign:"center", boxShadow:`0 0 40px ${GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e"}66, 0 10px 40px rgba(0,0,0,0.5)`, position:"relative", overflow:"hidden" }}>
+      <div style={{ position:"absolute", top:0, left:0, right:0, height:4, background:GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e" }} />
+      <div style={{ fontSize:10, fontWeight:700, letterSpacing:4, color:GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e", marginBottom:8, textTransform:"uppercase" }}>🎟️ Nuevo cartón vendido</div>
+      <div style={{ fontSize:26, fontWeight:900, color:"#fff", marginBottom:6, letterSpacing:1 }}>{newSaleAnim.owner}</div>
+      <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:10 }}>
+        <span style={{ background:GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e", borderRadius:8, padding:"4px 14px", fontSize:14, fontWeight:800, color:["j2","j3","j5","j9","j12"].includes(newSaleAnim.gameId)?"#000":"#fff" }}>#{newSaleAnim.cardNum}</span>
+        <span style={{ fontSize:13, color:"#94a3b8", fontWeight:600 }}>{newSaleAnim.gameName}</span>
+      </div>
     </div>
-  )}
+  </div>
+)}
 
   {/* FILA 1: Juego activo */}
   <div style={{ gridColumn:"1/-1", background:`linear-gradient(135deg,${gc}22,${gc}44)`, borderRadius:12, padding:"10px 18px", border:`2px solid ${gc}`, textAlign:"center" }}>
@@ -740,15 +760,16 @@ export default function BingoAdmin() {
   {/* FILA 2: Countdown */}
   {countdown>0 ? (
     <div style={{ gridColumn:"1/-1", background:"#1a1d2b", borderRadius:12, padding:"10px 20px", border:"2px solid #f59e0b", textAlign:"center", animation:"pulseViz 1s ease infinite", display:"flex", alignItems:"center", justifyContent:"center", gap:16, flexWrap:"wrap" }}>
-      <div style={{ fontSize:11, fontWeight:700, color:"#f59e0b", letterSpacing:3 }}>EL BINGO COMIENZA EN</div>
+      <div style={{ fontSize:20, fontWeight:700, color:"#f59e0b", letterSpacing:3 }}>EL BINGO COMIENZA EN</div>
       <div style={{ fontSize:42, fontWeight:900, color:"#f59e0b", lineHeight:1, fontFamily:"'Poller One',cursive" }}>
         {String(Math.floor(countdown/60)).padStart(2,"0")}:{String(countdown%60).padStart(2,"0")}
       </div>
     </div>
   ) : (
-    <div style={{ gridColumn:"1/-1", background:"#1a1d2b", borderRadius:12, padding:"10px 20px", border:`2px solid ${gc}`, textAlign:"center", display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ fontSize:16, fontWeight:700, color:gc, letterSpacing:2 }}>El {activeGame.name} comenzará luego</div>
-    </div>
+    <div style={{ gridColumn:"1/-1", background:"#1a1d2b", borderRadius:12, padding:"10px 20px", border:`2px solid ${gc}`, textAlign:"center", display:"flex", alignItems:"center", justifyContent:"center", gap:16 }}>
+  <div style={{ fontSize:11, fontWeight:700, color:gc, letterSpacing:3 }}>EL BINGO COMIENZA EN</div>
+  <div style={{ fontSize:42, fontWeight:900, color:gc, lineHeight:1, fontFamily:"'Poller One',cursive" }}>¡YA!</div>
+</div>
   )}
 
   {/* COLUMNA IZQUIERDA */}
@@ -774,19 +795,19 @@ export default function BingoAdmin() {
       <div style={{ fontSize:28, fontWeight:900, color:gc, fontFamily:"'Poller One',cursive" }}>${PRICE.toLocaleString("es-CL")}</div>
     </div>
 
-    {/* Últimos compradores */}
-    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"12px 14px", border:`1px solid ${gc}44`, height:375, overflow:"hidden", display:"flex", flexDirection:"column" }}>
-      <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:10, letterSpacing:2 }}>ÚLTIMOS COMPRADORES</div>
-      <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column", gap:1 }}>
-        {cards.filter(c=>c.paid&&c.gameId===activeGame.id).slice(-12).reverse().map((c,i,arr)=>(
-          <div key={c.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"6px 0", borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none", animation:"slideIn 0.3s ease" }}>
-            <span style={{ fontWeight:700, color:"#fff", fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"70%" }}>{c.owner}</span>
-            <span style={{ background:gc, borderRadius:5, padding:"2px 8px", fontSize:11, fontWeight:700, color:["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff", flexShrink:0 }}>#{c.cardNum}</span>
-          </div>
-        ))}
-        {cards.filter(c=>c.paid&&c.gameId===activeGame.id).length===0&&<div style={{ textAlign:"center", color:"#64748b", fontSize:12 }}>Sin compradores aún</div>}
+   {/* Últimos compradores */}
+<div style={{ background:"#1a1d2b", borderRadius:12, padding:"12px 14px", border:`1px solid ${gc}44`, height:375, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+  <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:10, letterSpacing:2 }}>ÚLTIMOS COMPRADORES</div>
+  <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column", gap:1 }}>
+    {cards.filter(c=>c.paid&&c.gameId===activeGame.id).sort((a,b)=>(b.soldAt||0)-(a.soldAt||0)).slice(0,12).map((c,i,arr)=>(
+      <div key={c.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"6px 0", borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none", animation:"slideIn 0.3s ease" }}>
+        <span style={{ fontWeight:700, color:"#fff", fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"70%" }}>{c.owner}</span>
+        <span style={{ background:gc, borderRadius:5, padding:"2px 8px", fontSize:11, fontWeight:700, color:["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff", flexShrink:0 }}>#{c.cardNum}</span>
       </div>
-    </div>
+    ))}
+    {cards.filter(c=>c.paid&&c.gameId===activeGame.id).length===0&&<div style={{ textAlign:"center", color:"#64748b", fontSize:12 }}>Sin compradores aún</div>}
+  </div>
+</div>
 
   </div>
 
@@ -800,7 +821,7 @@ export default function BingoAdmin() {
         <div style={{ fontSize:10, color:"#94a3b8", marginTop:3, fontWeight:600, letterSpacing:1 }}>JUGADORES</div>
       </div>
       <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:"1px solid #16a34a44", textAlign:"center" }}>
-        <div style={{ fontSize:20, fontWeight:900, color:"#16a34a", lineHeight:1.2 }}>${totalRecaudado.toLocaleString("es-CL")}</div>
+        <div style={{ fontSize:35, fontWeight:900, color:"#16a34a", lineHeight:1.2 }}>${Math.floor(totalRecaudado/1000)}K</div>
         <div style={{ fontSize:10, color:"#94a3b8", marginTop:3, fontWeight:600, letterSpacing:1 }}>RECAUDADO</div>
       </div>
     </div>
@@ -836,20 +857,39 @@ export default function BingoAdmin() {
         ))}
       </div>
     </div>
+    
 
-    {/* Ticker */}
-    {cards.filter(c=>c.paid&&c.gameId===activeGame.id).length>0&&(
-      <div style={{ background:"#1a1d2b", borderRadius:10, padding:"8px 0", border:`1px solid ${gc}44`, overflow:"hidden", flexShrink:0 }}>
-        <div style={{ display:"flex", animation:"ticker 20s linear infinite", whiteSpace:"nowrap", minWidth:0 }}>
-          {[...cards.filter(c=>c.paid&&c.gameId===activeGame.id),...cards.filter(c=>c.paid&&c.gameId===activeGame.id)].map((c,i)=>(
-            <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:6, marginRight:32, fontSize:12, fontWeight:700, color:"#fff" }}>
-              <span style={{ background:gc, borderRadius:5, padding:"2px 7px", fontSize:11, color:["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff", fontWeight:700 }}>#{c.cardNum}</span>
-              {c.owner}
-            </span>
-          ))}
-        </div>
-      </div>
-    )}
+    {/* Ticker compradores */}
+{cards.filter(c=>c.paid&&c.gameId===activeGame.id).length>0&&(
+  <div style={{ background:"#1a1d2b", borderRadius:10, padding:"8px 0", border:`1px solid ${gc}44`, overflow:"hidden", flexShrink:0 }}>
+    <div style={{ display:"flex", animation:"tickerCompradores 40s linear infinite", whiteSpace:"nowrap", width:"max-content" }}>
+      {[...cards.filter(c=>c.paid&&c.gameId===activeGame.id),...cards.filter(c=>c.paid&&c.gameId===activeGame.id)].map((c,i)=>(
+        <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:6, marginRight:32, fontSize:12, fontWeight:700, color:"#fff" }}>
+          <span style={{ background:gc, borderRadius:5, padding:"2px 7px", fontSize:11, color:["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff", fontWeight:700 }}>#{c.cardNum}</span>
+          {c.owner}
+        </span>
+      ))}
+    </div>
+  </div>
+)}
+
+{/* Ticker ganadores */}
+{winners.length>0&&(
+  <div style={{ background:"#1a1d2b", borderRadius:10, padding:"8px 0", border:"1px solid #f59e0b44", overflow:"hidden", flexShrink:0 }}>
+    <div style={{ display:"flex", animation:"ticker 10s linear infinite", whiteSpace:"nowrap" }}>
+      {winners.map((w,i)=>{
+        const wColor = GAMES.find(g=>g.id===w.gameId)?.color||"#f59e0b";
+        return (
+          <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:6, marginRight:32, fontSize:12, fontWeight:700, color:"#fff" }}>
+            <span style={{ fontSize:10, color:"#f59e0b" }}>🏆</span>
+            <span style={{ background:wColor, borderRadius:5, padding:"2px 7px", fontSize:11, color:["j2","j3","j5","j9","j12"].includes(w.gameId)?"#000":"#fff", fontWeight:700 }}>{w.game}</span>
+            {w.name} · #{w.card}
+          </span>
+        );
+      })}
+    </div>
+  </div>
+)}
 
   </div>
 
@@ -878,7 +918,7 @@ export default function BingoAdmin() {
                     <div style={{ fontSize:26 }}>🏆</div>
                     <div style={{ flex:1 }}>
                       <div style={{ fontWeight:700, fontSize:15, color:"#92400e" }}>{w.name}</div>
-                      <div style={{ fontSize:12, color:"#64748b" }}>Cartón #{w.card} · {w.game||""} · {w.time}</div>
+                      <div style={{ fontSize:12, color:"#64748b" }}>Cartón #{w.card} · <span style={{ color:GAMES.find(g=>g.id===w.gameId)?.color||"#64748b", fontWeight:700 }}>{w.game||""}</span> · {w.time}</div>
                     </div>
                     {isAdmin&&<button onClick={e=>{e.stopPropagation();deleteWinner(w.id||w.ts);setSelectedWinner(null);}} style={{ background:"none", border:"none", color:"#94a3b8", cursor:"pointer", fontSize:16 }}>✕</button>}
                     <span style={{ color:"#94a3b8", fontSize:12 }}>{isExpanded?"▲":"▼"}</span>
