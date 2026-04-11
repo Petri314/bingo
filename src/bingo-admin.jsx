@@ -286,11 +286,43 @@ export default function BingoAdmin() {
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
-  const handleLogin = () => {
-    if (pwInput===PIN) { setIsAdmin(true); setShowLogin(false); setPwInput(""); setPwError(false); }
-    else { setPwError(true); setTimeout(()=>setPwError(false),1500); }
-  };
-  const handleLogout = () => setIsAdmin(false);
+  const handleLogin = async () => {
+  try {
+    const res = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin: pwInput }),
+    });
+
+    if (!res.ok) {
+      // PIN incorrecto — mismo comportamiento visual que antes
+      setPwError(true);
+      setTimeout(() => setPwError(false), 1500);
+      return;
+    }
+
+    const { token } = await res.json();
+
+    // Guardar sesión — se borra automáticamente al cerrar el navegador
+    sessionStorage.setItem("admin_token", token);
+
+    // Mismo comportamiento que antes
+    setIsAdmin(true);
+    setShowLogin(false);
+    setPwInput("");
+    setPwError(false);
+
+  } catch (err) {
+    // Si falla la red o el servidor
+    console.error("Error de login:", err);
+    setPwError(true);
+    setTimeout(() => setPwError(false), 1500);
+  }
+};
+  const handleLogout = () => {
+  sessionStorage.removeItem("admin_token");
+  setIsAdmin(false);
+};
   const showToast = (msg,type="ok") => { setToast({msg,type}); setTimeout(()=>setToast(null),2500); };
 
   // FIX: speakNumber con limpieza correcta de onvoiceschanged
