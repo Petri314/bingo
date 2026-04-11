@@ -288,7 +288,10 @@ const prevSoldIds = React.useRef(new Set());
 if (soldNow.length > prevSoldCount.current && prevSoldCount.current > 0) {
   const newest = soldNow.find(c => !prevSoldIds.current.has(c.id));
   if (newest) {
-    setNewSaleAnim(newest);
+  const audio = new Audio("/cajaRegistradora.mp3");
+  audio.volume = 0.8;
+  audio.play();
+  setNewSaleAnim(newest);
     setTimeout(()=>setNewSaleAnim(null), 3000);
   }
 }
@@ -738,14 +741,41 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
   `}</style>
 
   {newSaleAnim&&(
-  <div style={{ position:"fixed", top:20, left:"50%", transform:"translateX(-50%)", zIndex:400, animation:"salePopIn 0.5s ease forwards", minWidth:300 }}>
-    <div style={{ background:"#0f1221", border:`3px solid ${GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e"}`, borderRadius:20, padding:"18px 28px", textAlign:"center", boxShadow:`0 0 40px ${GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e"}66, 0 10px 40px rgba(0,0,0,0.5)`, position:"relative", overflow:"hidden" }}>
+  <div style={{ position:"fixed", inset:0, zIndex:400, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.6)", backdropFilter:"blur(4px)" }}>
+    <style>{`
+      @keyframes saleCardIn { 0%{transform:scale(0.3) rotate(-8deg);opacity:0} 70%{transform:scale(1.08) rotate(2deg);opacity:1} 100%{transform:scale(1) rotate(0deg);opacity:1} }
+      @keyframes saleShimmer { 0%,100%{opacity:1} 50%{opacity:0.6} }
+      @keyframes saleSplitTop { 0%{transform:translateY(0);opacity:1} 100%{transform:translateY(-120px);opacity:0} }
+      @keyframes saleSplitBot { 0%{transform:translateY(0);opacity:1} 100%{transform:translateY(120px);opacity:0} }
+      @keyframes saleBalloon { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(-110vh) rotate(720deg);opacity:0} }
+      .sale-card { animation: saleCardIn 0.65s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+      .sale-shimmer { animation: saleShimmer 1.2s ease-in-out infinite; }
+      .sale-top { animation: saleCardIn 0.65s cubic-bezier(0.34,1.56,0.64,1) forwards, saleSplitTop 0.5s ease 2.5s forwards; }
+      .sale-bot { animation: saleCardIn 0.65s cubic-bezier(0.34,1.56,0.64,1) forwards, saleSplitBot 0.5s ease 2.5s forwards; }
+      .sale-balloon { position:fixed;bottom:-90px;font-size:36px;animation:saleBalloon linear infinite;pointer-events:none;z-index:401; }
+    `}</style>
+
+    {[{l:"10%",delay:"0s",dur:"2.8s"},{l:"25%",delay:"0.3s",dur:"3.2s"},{l:"50%",delay:"0.6s",dur:"2.6s"},{l:"70%",delay:"0.2s",dur:"3.0s"},{l:"88%",delay:"0.8s",dur:"2.9s"}].map((b,i)=>(
+      <div key={i} className="sale-balloon" style={{left:b.l,animationDelay:b.delay,animationDuration:b.dur}}>🎈</div>
+    ))}
+
+    {Array.from({length:16}).map((_,i)=>(
+      <div key={"cf"+i} style={{ position:"fixed", bottom:-20, left:`${(i*6.5)%100}%`, width:i%3===0?10:7, height:i%3===0?10:7, borderRadius:i%2===0?"50%":2, background:["#ef4444","#3b82f6","#f59e0b","#22c55e","#a855f7","#ec4899"][i%6], pointerEvents:"none", zIndex:401, animation:`saleBalloon ${2+(i%4)*0.3}s linear ${(i*0.1).toFixed(1)}s infinite` }}/>
+    ))}
+
+    <div className="sale-card" style={{ background:"#0f1221", border:`3px solid ${GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e"}`, borderRadius:26, overflow:"hidden", boxShadow:`0 0 80px ${GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e"}66, 0 0 160px ${GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e"}22`, maxWidth:380, width:"90vw", position:"relative", zIndex:402 }}>
       <div style={{ position:"absolute", top:0, left:0, right:0, height:4, background:GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e" }} />
-      <div style={{ fontSize:10, fontWeight:700, letterSpacing:4, color:GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e", marginBottom:8, textTransform:"uppercase" }}>🎟️ Nuevo cartón vendido</div>
-      <div style={{ fontSize:26, fontWeight:900, color:"#fff", marginBottom:6, letterSpacing:1 }}>{newSaleAnim.owner}</div>
-      <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:10 }}>
-        <span style={{ background:GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e", borderRadius:8, padding:"4px 14px", fontSize:14, fontWeight:800, color:["j2","j3","j5","j9","j12"].includes(newSaleAnim.gameId)?"#000":"#fff" }}>#{newSaleAnim.cardNum}</span>
-        <span style={{ fontSize:13, color:"#94a3b8", fontWeight:600 }}>{newSaleAnim.gameName}</span>
+      
+      <div className="sale-top" style={{ padding:"22px 28px 12px", textAlign:"center", borderBottom:`1px solid ${GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e"}33` }}>
+        <div className="sale-shimmer" style={{ fontSize:11, fontWeight:700, letterSpacing:4, color:GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e", marginBottom:10, textTransform:"uppercase" }}>🎟️ Nuevo cartón vendido</div>
+        <div style={{ fontSize:32, fontWeight:900, color:"#fff", letterSpacing:1, marginBottom:4 }}>{newSaleAnim.owner}</div>
+      </div>
+
+      <div className="sale-bot" style={{ padding:"12px 28px 22px", textAlign:"center" }}>
+        <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:12 }}>
+          <span style={{ background:GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e", borderRadius:10, padding:"6px 18px", fontSize:18, fontWeight:900, color:["j2","j3","j5","j9","j12"].includes(newSaleAnim.gameId)?"#000":"#fff" }}>#{newSaleAnim.cardNum}</span>
+          <span style={{ fontSize:14, color:"#94a3b8", fontWeight:600 }}>{newSaleAnim.gameName}</span>
+        </div>
       </div>
     </div>
   </div>
