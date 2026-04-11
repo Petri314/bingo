@@ -884,7 +884,7 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
     {/* Imagen del premio */}
 <div style={{ borderRadius:12, overflow:"hidden", border:`2px solid ${gc}33`, background:"#000", height:300, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
       <img key={activeGame.id} src={`/${activeGame.id}.png`} alt="Premio" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
-        onError={e=>{ e.target.style.display="none"; e.target.parentNode.innerHTML=`<div style="height:100%;display:flex;align-items:center;justify-content:center;background:#1a1d2b;color:${gc};font-size:14px;font-weight:700;text-align:center;padding:20px;font-family:sans-serif">🏅 Imagen del premio<br><span style='font-size:11px;color:#64748b'>Sube img.png a public/</span></div>`; }}
+        onError={e=>{ e.target.src="/placeholder.png"; e.target.onerror=null; }}
       />
     </div>
 
