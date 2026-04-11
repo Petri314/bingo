@@ -694,19 +694,18 @@ export default function BingoAdmin() {
             ) : (
               /* ══ PANTALLA VISUALIZACIÓN ══ */
               <div style={{
-                background:"linear-gradient(135deg,#0f1221 0%,#1a1d2b 100%)",
-                height:"calc(100vh - 112px)",
-                width:"100vw",
-                padding:"12px 16px 60px 16px",
-                display:"grid",
-                gridTemplateColumns:"264px 1fr",
-                gridTemplateRows:"auto auto 1fr",
-                minHeight:"100vh",
-                gap:10,
-                boxSizing:"border-box",
-                width:"100%",
-                overflow:"visible"
-              }}>
+  background:"linear-gradient(135deg,#0f1221 0%,#1a1d2b 100%)",
+  height:"auto",
+  padding:"12px 16px 60px 16px",
+  display:"grid",
+  gridTemplateColumns:window.innerWidth<768?"1fr":"264px 1fr",
+  gridTemplateRows:"auto",
+  minHeight:"100vh",
+  gap:10,
+  boxSizing:"border-box",
+  width:"100%",
+  overflow:"visible"
+}}>
                 <style>{`
                   @keyframes slideIn { from{transform:translateY(-10px);opacity:0} to{transform:translateY(0);opacity:1} }
                   @keyframes pulseViz { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
