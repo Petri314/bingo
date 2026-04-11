@@ -775,10 +775,10 @@ export default function BingoAdmin() {
     </div>
 
     {/* Últimos compradores */}
-    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"12px 14px", border:`1px solid ${gc}44`, height:375, overflow:"auto", display:"flex", flexDirection:"column" }}>
+    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"12px 14px", border:`1px solid ${gc}44`, height:375, overflow:"hidden", display:"flex", flexDirection:"column" }}>
       <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:10, letterSpacing:2 }}>ÚLTIMOS COMPRADORES</div>
-      <div style={{ flex:1, overflow:"auto", display:"flex", flexDirection:"column", gap:1 }}>
-        {cards.filter(c=>c.paid&&c.gameId===activeGame.id).slice(-20).reverse().map((c,i,arr)=>(
+      <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column", gap:1 }}>
+        {cards.filter(c=>c.paid&&c.gameId===activeGame.id).slice(-12).reverse().map((c,i,arr)=>(
           <div key={c.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"6px 0", borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none", animation:"slideIn 0.3s ease" }}>
             <span style={{ fontWeight:700, color:"#fff", fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"70%" }}>{c.owner}</span>
             <span style={{ background:gc, borderRadius:5, padding:"2px 8px", fontSize:11, fontWeight:700, color:["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff", flexShrink:0 }}>#{c.cardNum}</span>
@@ -791,7 +791,7 @@ export default function BingoAdmin() {
   </div>
 
   {/* COLUMNA DERECHA */}
-  <div className="viz-col-right" style={{ display:"flex", flexDirection:"column", gap:10, overflow:"visible", minHeight:"auto" }}>
+  <div className="viz-col-right" style={{ display:"flex", flexDirection:"column", gap:10, overflow:"hidden", minHeight:"auto" }}>
 
     {/* Stats */}
     <div className="viz-stats" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, flexShrink:0 }}>
@@ -808,8 +808,8 @@ export default function BingoAdmin() {
     {/* Barra de progreso */}
     <div style={{ background:"#1a1d2b", borderRadius:12, padding:"14px 18px", border:`1px solid ${gc}44`, flexShrink:0 }}>
       <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
-        <span style={{ fontSize:13, color:"#94a3b8", fontWeight:700, letterSpacing:1 }}>CARTONES VENDIDOS</span>
-        <span style={{ fontSize:15, color:gc, fontWeight:800 }}>{cards.filter(c=>c.paid&&c.gameId===activeGame.id).length} / {cards.filter(c=>c.gameId===activeGame.id).length}</span>
+        <span style={{ fontSize:16, color:"#94a3b8", fontWeight:700, letterSpacing:1 }}>CARTONES VENDIDOS</span>
+        <span style={{ fontSize:20, color:gc, fontWeight:800 }}>{cards.filter(c=>c.paid&&c.gameId===activeGame.id).length} / {cards.filter(c=>c.gameId===activeGame.id).length}</span>
       </div>
       <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:99, height:18, overflow:"hidden" }}>
         <div style={{ background:gc, height:"100%", borderRadius:99, width:`${cards.filter(c=>c.gameId===activeGame.id).length>0?(cards.filter(c=>c.paid&&c.gameId===activeGame.id).length/cards.filter(c=>c.gameId===activeGame.id).length)*100:0}%`, transition:"width 0.8s ease", animation:"barGlow 2s ease-in-out infinite", boxShadow:`0 0 12px ${gc}99` }} />
@@ -817,7 +817,7 @@ export default function BingoAdmin() {
     </div>
 
     {/* Imagen del premio */}
-    <div style={{ borderRadius:12, overflow:"hidden", border:`2px solid ${gc}33`, background:"#000", flex:1, minHeight:200, display:"flex", alignItems:"center", justifyContent:"center" }}>
+<div style={{ borderRadius:12, overflow:"hidden", border:`2px solid ${gc}33`, background:"#000", height:300, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
       <img src="/img.png" alt="Premio" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
         onError={e=>{ e.target.style.display="none"; e.target.parentNode.innerHTML=`<div style="height:100%;display:flex;align-items:center;justify-content:center;background:#1a1d2b;color:${gc};font-size:14px;font-weight:700;text-align:center;padding:20px;font-family:sans-serif">🏅 Imagen del premio<br><span style='font-size:11px;color:#64748b'>Sube img.png a public/</span></div>`; }}
       />
@@ -840,7 +840,7 @@ export default function BingoAdmin() {
     {/* Ticker */}
     {cards.filter(c=>c.paid&&c.gameId===activeGame.id).length>0&&(
       <div style={{ background:"#1a1d2b", borderRadius:10, padding:"8px 0", border:`1px solid ${gc}44`, overflow:"hidden", flexShrink:0 }}>
-        <div style={{ display:"flex", animation:"ticker 20s linear infinite", whiteSpace:"nowrap" }}>
+        <div style={{ display:"flex", animation:"ticker 20s linear infinite", whiteSpace:"nowrap", minWidth:0 }}>
           {[...cards.filter(c=>c.paid&&c.gameId===activeGame.id),...cards.filter(c=>c.paid&&c.gameId===activeGame.id)].map((c,i)=>(
             <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:6, marginRight:32, fontSize:12, fontWeight:700, color:"#fff" }}>
               <span style={{ background:gc, borderRadius:5, padding:"2px 7px", fontSize:11, color:["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff", fontWeight:700 }}>#{c.cardNum}</span>
