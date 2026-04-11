@@ -203,7 +203,7 @@ function WinnerPopup({ winner, onClose }) {
           <div style={{fontSize:15,color:"#e2e8f0",marginBottom:6}}>Ha ganado el <span style={{color:gc,fontWeight:700}}>{winner.game}</span></div>
           <div style={{fontSize:20,fontWeight:800,color:"#ffffff",letterSpacing:1}}>¡Felicitaciones! 🎉</div>
         </div>
-        <button onClick={onClose} style={{background:gc,border:"none",borderRadius:14,padding:"14px 0",color:"#fff",fontWeight:700,fontSize:16,cursor:"pointer",width:"100%",fontFamily:"sans-serif",letterSpacing:0.5,boxShadow:`0 4px 24px ${gc}66`}}>Cerrar</button>
+        <button onClick={onClose} style={{background:gc,border:"none",borderRadius:14,padding:"14px 0",color:getTextColor(gc),fontWeight:700,fontSize:16,cursor:"pointer",width:"100%",fontFamily:"sans-serif",letterSpacing:0.5,boxShadow:`0 4px 24px ${gc}66`}}>Cerrar</button>
       </div>
     </div>
   );
