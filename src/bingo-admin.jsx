@@ -521,16 +521,6 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
   </div>
   <div style={{ display:"flex", gap:8, alignItems:"center" }}>
     <button onClick={()=>setIsMuted(!isMuted)} style={{ background:"rgba(255,255,255,0.07)", border:"none", borderRadius:8, padding:"6px 10px", fontSize:18, cursor:"pointer" }}>{isMuted?"🔇":"🔊"}</button>
-    {isAdmin&&(<>
-      <div style={{ background:"rgba(255,255,255,0.07)", borderRadius:8, padding:"6px 12px", textAlign:"center", border:"1px solid rgba(255,255,255,0.1)" }}>
-        <div style={{ fontSize:16, fontWeight:800, color:"#3b82f6" }}>{cards.length}</div>
-        <div style={{ fontSize:10, color:"#64748b" }}>Creados</div>
-      </div>
-      <div style={{ background:"rgba(255,255,255,0.07)", borderRadius:8, padding:"6px 12px", textAlign:"center", border:"1px solid rgba(255,255,255,0.1)" }}>
-        <div style={{ fontSize:16, fontWeight:800, color:"#16a34a" }}>${totalRecaudado.toLocaleString("es-CL")}</div>
-        <div style={{ fontSize:10, color:"#64748b" }}>Recaudado</div>
-      </div>
-    </>)}
     {!isAdmin
       ?<button onClick={()=>setShowLogin(true)} style={{ background:gc, border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, cursor:"pointer", color:getTextColor(gc) }}>🔐 Admin</button>
       :<button onClick={handleLogout} style={{ background:"#ef4444", border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, cursor:"pointer", color:"#fff" }}>Salir</button>
