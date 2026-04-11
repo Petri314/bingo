@@ -1,5 +1,5 @@
 import React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { db, PIN } from "./firebase.js";
 import { ref, onValue, set, remove, update, runTransaction } from "firebase/database";
 
@@ -60,11 +60,18 @@ function generateCardGrid() {
   grid[2][2] = "FREE"; return grid;
 }
 
+// NOTA: La grilla se almacena como grid[col][row] (columna primero).
+// PATTERNS usan grid[row][col] (fila primero).
+// checkPattern transpone correctamente accediendo card.grid[col][row].
 function checkPattern(card, drawn, pattern) {
   for (let row = 0; row < 5; row++) {
     for (let col = 0; col < 5; col++) {
       if (!pattern.grid[row][col]) continue;
-      const val = card.grid[col][row];
+      // card.grid es [col][row], por eso accedemos [col][row]
+      const col_arr = card.grid[col];
+      // FIX: verificar que la columna existe y tiene 5 elementos antes de acceder
+      if (!col_arr || col_arr.length < 5) return false;
+      const val = col_arr[row];
       if (val === "FREE") continue;
       if (!drawn.includes(val)) return false;
     }
@@ -215,8 +222,8 @@ export default function BingoAdmin() {
   const [drawn, setDrawn]               = useState([]);
   const [lastDrawn, setLastDrawn]       = useState(null);
   const [winners, setWinners] = useState([]);
-  const winnersRef = React.useRef([]);
-  const savingWinnerRef = React.useRef(false);
+  const winnersRef = useRef([]);
+  const savingWinnerRef = useRef(false);
   const [activePattern, setActivePattern] = useState(PATTERNS[0]);
   const [activeGame, setActiveGame]     = useState(GAMES[0]);
   const [alreadyWon, setAlreadyWon]     = useState(false);
@@ -241,32 +248,43 @@ export default function BingoAdmin() {
   const [selectedWinner, setSelectedWinner] = useState(null);
   const [confirmAssign, setConfirmAssign] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
-  const [countdown, setCountdown] = useState(null);
+
+  // FIX: countdown sincronizado con Firebase.
+  // En lugar de correr un setInterval local (que desincroniza clientes),
+  // guardamos countdownEndsAt (timestamp absoluto) en Firebase y calculamos
+  // el tiempo restante localmente cada segundo.
+  const [countdownEndsAt, setCountdownEndsAt] = useState(null);
+  const [countdownDisplay, setCountdownDisplay] = useState(0);
   const [countdownInput, setCountdownInput] = useState("5");
+
   const [newSaleAnim, setNewSaleAnim] = useState(null);
-  const prevSoldCount = React.useRef(0);
-const prevSoldIds = React.useRef(new Set());
+  const prevSoldCount = useRef(0);
+  const prevSoldIds = useRef(new Set());
 
-  useEffect(()=>{
-  if (countdown===null||countdown<=0) return;
-  const interval = setInterval(()=>{
-    setCountdown(prev=>{
-      if (prev<=1) {
-        clearInterval(interval);
-        update(ref(db,DB_STATE),{ countdown:0 });
-        return 0;
-      }
-      return prev-1;
-    });
-  },1000);
-  return ()=>clearInterval(interval);
-},[countdown>0]);
+  // FIX: countdown basado en timestamp absoluto — todos los clientes
+  // calculan el tiempo restante desde el mismo punto de referencia.
+  useEffect(() => {
+    if (!countdownEndsAt) {
+      setCountdownDisplay(0);
+      return;
+    }
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((countdownEndsAt - Date.now()) / 1000));
+      setCountdownDisplay(remaining);
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [countdownEndsAt]);
 
-  useEffect(()=>{
-    const handleResize = () => setIsFullscreen(window.innerHeight === window.screen.height);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  },[]);
+  // FIX: detección de fullscreen con API nativa en lugar de comparar dimensiones
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
 
   const handleLogin = () => {
     if (pwInput===PIN) { setIsAdmin(true); setShowLogin(false); setPwInput(""); setPwError(false); }
@@ -275,54 +293,81 @@ const prevSoldIds = React.useRef(new Set());
   const handleLogout = () => setIsAdmin(false);
   const showToast = (msg,type="ok") => { setToast({msg,type}); setTimeout(()=>setToast(null),2500); };
 
+  // FIX: speakNumber con limpieza correcta de onvoiceschanged
   const speakNumber = (num) => {
-  if (isMuted||!num) return;
-  window.speechSynthesis.cancel();
-  const speak = () => {
-    const u = new SpeechSynthesisUtterance(`${getLetterForNum(num)}, ${num}`);
-    u.lang="es-ES";
-    u.rate=0.75;
-    u.pitch=1.1;
-    u.volume=1;
-    const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(v=>v.name==="Google español") || 
-                  voices.find(v=>v.name==="Microsoft Laura - Spanish (Spain)") ||
-                  voices.find(v=>v.lang==="es-ES");
-    if (preferred) u.voice = preferred;
-    window.speechSynthesis.speak(u);
+    if (isMuted || !num) return;
+    window.speechSynthesis.cancel();
+
+    const doSpeak = () => {
+      const u = new SpeechSynthesisUtterance(`${getLetterForNum(num)}, ${num}`);
+      u.lang = "es-ES";
+      u.rate = 0.75;
+      u.pitch = 1.1;
+      u.volume = 1;
+      const voices = window.speechSynthesis.getVoices();
+      const preferred =
+        voices.find(v => v.name === "Google español") ||
+        voices.find(v => v.name === "Microsoft Laura - Spanish (Spain)") ||
+        voices.find(v => v.lang === "es-ES");
+      if (preferred) u.voice = preferred;
+      window.speechSynthesis.speak(u);
+    };
+
+    if (window.speechSynthesis.getVoices().length === 0) {
+      // FIX: guardar referencia y limpiarla después de ejecutar
+      const handleVoicesChanged = () => {
+        window.speechSynthesis.onvoiceschanged = null;
+        doSpeak();
+      };
+      window.speechSynthesis.onvoiceschanged = handleVoicesChanged;
+    } else {
+      doSpeak();
+    }
   };
-  if (window.speechSynthesis.getVoices().length === 0) {
-    window.speechSynthesis.onvoiceschanged = speak;
-  } else {
-    speak();
-  }
-};
 
   useEffect(()=>{
     const uC = onValue(ref(db,DB_CARDS), s=>{
       const v=s.val();
       const parsed = v ? Object.values(v).map(c => ({
         ...c,
-        grid: c.grid ? [0,1,2,3,4].map(ci =>
-          c.grid[ci] ? [0,1,2,3,4].map(ri => c.grid[ci][ri] ?? c.grid[ci][String(ri)]) : []
-        ) : null
+        // FIX: normalización de grilla robusta — garantiza 5 columnas de 5 elementos cada una
+        grid: c.grid
+          ? [0,1,2,3,4].map(ci => {
+              const col = c.grid[ci] ?? c.grid[String(ci)];
+              if (!col) return Array(5).fill(null);
+              return [0,1,2,3,4].map(ri => col[ri] ?? col[String(ri)] ?? null);
+            })
+          : null
       })).sort((a,b)=>a.id-b.id) : [];
+
       const soldNow = parsed.filter(c=>c.paid);
-if (soldNow.length > prevSoldCount.current && prevSoldCount.current > 0) {
-  const newest = soldNow.find(c => !prevSoldIds.current.has(c.id));
-  if (newest) {
-  const audio = new Audio("/cajaRegistradora.mp3");
-  audio.volume = 0.8;
-  audio.play();
-  setNewSaleAnim(newest);
-    setTimeout(()=>setNewSaleAnim(null), 3000);
-  }
-}
-prevSoldCount.current = soldNow.length;
-prevSoldIds.current = new Set(soldNow.map(c=>c.id));
+      if (soldNow.length > prevSoldCount.current && prevSoldCount.current > 0) {
+        const newest = soldNow.find(c => !prevSoldIds.current.has(c.id));
+        if (newest) {
+          const audio = new Audio("/cajaRegistradora.mp3");
+          audio.volume = 0.8;
+          audio.play().catch(()=>{}); // FIX: capturar error de autoplay policy
+          setNewSaleAnim(newest);
+          setTimeout(()=>setNewSaleAnim(null), 3000);
+        }
+      }
+      prevSoldCount.current = soldNow.length;
+      prevSoldIds.current = new Set(soldNow.map(c=>c.id));
       setCards(parsed);
     });
-    const uD = onValue(ref(db,DB_DRAWN),   s=>{ const v=s.val(); if(v){const n=Object.values(v); setDrawn(n); setLastDrawn(n.at(-1)??null);} else{setDrawn([]); setLastDrawn(null);} });
+
+    const uD = onValue(ref(db,DB_DRAWN), s=>{
+      const v=s.val();
+      if (v) {
+        const n=Object.values(v);
+        setDrawn(n);
+        setLastDrawn(n.at(-1)??null);
+      } else {
+        setDrawn([]);
+        setLastDrawn(null);
+      }
+    });
+
     const uW = onValue(ref(db,DB_WINNERS), s=>{
       const v=s.val();
       const all = v ? Object.values(v) : [];
@@ -336,25 +381,33 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
       winnersRef.current = unique;
       setWinners(unique);
     });
+
     const uS = onValue(ref(db,DB_STATE), s=>{
       const v = s.val(); if (!v) return;
-      if (v.gameId)   { const g=GAMES.find(g=>g.id===v.gameId);     if(g) setActiveGame(g); }
-      if (v.patternId){ const p=PATTERNS.find(p=>p.id===v.patternId); if(p) setActivePattern(p); }
+      if (v.gameId)    { const g=GAMES.find(g=>g.id===v.gameId);      if(g) setActiveGame(g); }
+      if (v.patternId) { const p=PATTERNS.find(p=>p.id===v.patternId); if(p) setActivePattern(p); }
       if (typeof v.alreadyWon==="boolean") setAlreadyWon(v.alreadyWon);
-      if (v.countdown !== undefined) setCountdown(v.countdown);
+
+      // FIX: leer countdownEndsAt (timestamp absoluto) en lugar de segundos restantes
+      if (v.countdownEndsAt !== undefined) {
+        setCountdownEndsAt(v.countdownEndsAt > Date.now() ? v.countdownEndsAt : null);
+      }
+
       if (v.currentWinner && v.currentWinner.ts && Date.now()-v.currentWinner.ts < 8000) {
         setWinnerPopup(v.currentWinner);
       } else {
         setWinnerPopup(null);
       }
     });
+
     return ()=>{ uC(); uD(); uW(); uS(); };
   },[]);
 
- const handleSelectGame = async (game) => {
-  await update(ref(db,DB_STATE),{ gameId:game.id, alreadyWon:false, currentWinner:null });
-  setWinnerPopup(null);
-};
+  const handleSelectGame = async (game) => {
+    await update(ref(db,DB_STATE),{ gameId:game.id, alreadyWon:false, currentWinner:null });
+    setWinnerPopup(null);
+  };
+
   const handleSelectPattern = async (pattern) => {
     await update(ref(db,DB_STATE),{ patternId:pattern.id, alreadyWon:false, currentWinner:null });
   };
@@ -394,30 +447,57 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
     setConfirmAssign({ owner:newOwner.trim(), qty, nums, available, selected:available.slice(0,qty).map(c=>c.id) });
   };
 
+  // FIX: re-validar disponibilidad de cartones justo antes de confirmar
+  // para evitar sobreescribir una venta que ocurrió mientras el modal estaba abierto
   const confirmAssignCard = async () => {
     if (!confirmAssign) return;
+
+    // Re-leer el estado actual de los cartones seleccionados desde Firebase
+    const freshSnap = await new Promise(res =>
+      onValue(ref(db, DB_CARDS), res, { onlyOnce: true })
+    );
+    const freshData = freshSnap.val() || {};
+
+    const alreadySold = confirmAssign.selected.filter(id => {
+      const fresh = freshData[id];
+      return fresh && fresh.paid;
+    });
+
+    if (alreadySold.length > 0) {
+      const soldNums = confirmAssign.available
+        .filter(c => alreadySold.includes(c.id))
+        .map(c => c.cardNum)
+        .join(", ");
+      showToast(`Cartón(es) ${soldNums} ya fueron vendidos`, "err");
+      setConfirmAssign(null);
+      return;
+    }
+
     const updates={};
     const toAssign=confirmAssign.available.filter(c=>confirmAssign.selected.includes(c.id));
-    toAssign.forEach(c=>{ 
-  console.log("soldAt:", Date.now());
-  console.log("updates key:", `${DB_CARDS}/${c.id}`);
-  updates[`${DB_CARDS}/${c.id}`]={
-    id:c.id,
-    cardNum:c.cardNum,
-    gameId:c.gameId,
-    gameName:c.gameName,
-    grid:c.grid,
-    owner:confirmAssign.owner,
-    paid:true,
-    soldAt:Date.now()
-  }; 
-});
+    toAssign.forEach(c=>{
+      updates[`${DB_CARDS}/${c.id}`]={
+        id:c.id,
+        cardNum:c.cardNum,
+        gameId:c.gameId,
+        gameName:c.gameName,
+        grid:c.grid,
+        owner:confirmAssign.owner,
+        paid:true,
+        soldAt:Date.now()
+      };
+    });
     await update(ref(db),updates);
     showToast(`✓ ${activeGame.name}: ${confirmAssign.nums.join(', ')}`);
     setNewOwner(""); setNewQty("1"); setConfirmAssign(null);
   };
 
-  const deleteCard = async (id) => { if (!isAdmin) return; await remove(ref(db,`${DB_CARDS}/${id}`)); if(selectedCard?.id===id) setSelectedCard(null); showToast("Eliminado"); };
+  const deleteCard = async (id) => {
+    if (!isAdmin) return;
+    await remove(ref(db,`${DB_CARDS}/${id}`));
+    if(selectedCard?.id===id) setSelectedCard(null);
+    showToast("Eliminado");
+  };
 
   const toggleNumber = async (n) => {
     if (!isAdmin) return;
@@ -434,7 +514,7 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
           const winnerKey = `${activeGame.id}_${card.cardNum}`;
           const winnerRef = ref(db, `${DB_WINNERS}/${winnerKey}`);
           await runTransaction(winnerRef, (existing) => {
-            if (existing !== null) return;
+            if (existing !== null) return; // ya registrado, no sobreescribir
             return { id:winnerKey, name:card.owner, card:card.cardNum, game:activeGame.name, gameId:activeGame.id, patternId:activePattern.id, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now(), drawn:[...next] };
           });
           const snap = await new Promise(res => onValue(winnerRef, res, { onlyOnce: true }));
@@ -472,8 +552,8 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
     <link href="https://fonts.googleapis.com/css2?family=Poller+One&display=swap" rel="stylesheet">
     <style>
       *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
-      body{font-family:sans-serif;margin:0;padding:0 0 0 0;box-sizing:border-box;}
-      .grid-container{display:grid;grid-template-columns:repeat(2,110mm);gap:0;margin-left:4mm;transform:scale(0.9);transform-origin:top left;}
+      body{font-family:sans-serif;margin:0;padding:3mm 3mm 3mm 8mm;box-sizing:border-box;}
+      .grid-container{display:grid;grid-template-columns:1fr 1fr;gap:0;}
       .card-box{width:110mm;height:130mm;border:2px solid #000;padding:3mm;border-radius:8px;text-align:center;page-break-inside:avoid;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;background:#fff;}
       .color-strip{height:5mm;width:100%;position:absolute;top:0;left:0;}
       .game-info{font-family:'Poller One',cursive;font-size:13px;font-weight:900;margin-top:2mm;margin-bottom:2mm;color:#000;border-top:1px dashed #aaa;border-bottom:1px dashed #aaa;padding:2mm 0;}
@@ -508,51 +588,51 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
   const gc = activeGame.color;
   const gameNum = activeGame.id.replace("j","");
 
+  // FIX: ruta de imagen de premios corregida (eliminados los /premios/ duplicados)
+  const premioSrc = (gameId) => `/premios/${gameId}.png`;
+  const premioSrcMobile = (gameId) => `/premios/${gameId}-mobile.png`;
+
   return (
     <div style={{ minHeight:"100vh", background:"linear-gradient(135deg,#172441 0%,#285289 50%,#0a101f 100%)", fontFamily:"sans-serif", color:"#1e293b", paddingBottom:60 }}>
 
       {/* ── HEADER ── */}
-<div style={{ background:"#0f1221", borderBottom:"1px solid rgba(255,255,255,0.08)", padding:"10px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", gap:10 }}>
-  <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-    <div>
-      <div style={{ fontSize:16, fontWeight:800, color:"#fff", lineHeight:1.1 }}>Bingo Solidario</div>
-      <div style={{ fontSize:11, color:gc, fontWeight:600 }}>{isAdmin?"👤 Admin":"👁 Visualización"}</div>
-    </div>
-  </div>
-  <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-    <button onClick={()=>setIsMuted(!isMuted)} style={{ background:"rgba(255,255,255,0.07)", border:"none", borderRadius:8, padding:"6px 10px", fontSize:18, cursor:"pointer" }}>{isMuted?"🔇":"🔊"}</button>
-    {!isAdmin
-      ?<button onClick={()=>setShowLogin(true)} style={{ background:gc, border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, cursor:"pointer", color:getTextColor(gc) }}>🔐 Admin</button>
-      :<button onClick={handleLogout} style={{ background:"#ef4444", border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, cursor:"pointer", color:"#fff" }}>Salir</button>
-    }
-  </div>
-</div>
+      <div style={{ background:"#0f1221", borderBottom:"1px solid rgba(255,255,255,0.08)", padding:"10px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", gap:10 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <div>
+            <div style={{ fontSize:16, fontWeight:800, color:"#fff", lineHeight:1.1 }}>Bingo Solidario</div>
+            <div style={{ fontSize:11, color:gc, fontWeight:600 }}>{isAdmin?"👤 Admin":"👁 Visualización"}</div>
+          </div>
+        </div>
+        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+          <button onClick={()=>setIsMuted(!isMuted)} style={{ background:"rgba(255,255,255,0.07)", border:"none", borderRadius:8, padding:"6px 10px", fontSize:18, cursor:"pointer" }}>{isMuted?"🔇":"🔊"}</button>
+          {!isAdmin
+            ?<button onClick={()=>setShowLogin(true)} style={{ background:gc, border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, cursor:"pointer", color:getTextColor(gc) }}>🔐 Admin</button>
+            :<button onClick={handleLogout} style={{ background:"#ef4444", border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, cursor:"pointer", color:"#fff" }}>Salir</button>
+          }
+        </div>
+      </div>
 
       {/* ── TABS ── */}
-<div style={{ display:"flex", background:"#0f1221", padding:"8px 12px", gap:6, borderBottom:"1px solid rgba(255,255,255,0.08)" }}>
-  {TABS.map((t,i)=>{
-    const isActive = tab===i;
-    const labels = ["Cartones","Información","Sorteo","Ganadores"];
-return (
-  <button key={t} onClick={()=>setTab(i)} style={{
-    flex:1,
-    padding:"10px 6px",
-    background:isActive?gc:"rgba(255,255,255,0.05)",
-    border:"none",
-    borderRadius:10,
-    color:isActive?getTextColor(gc):"#64748b",
-    fontWeight:isActive?700:500,
-    fontSize:15,
-    cursor:"pointer",
-    fontFamily:"'Nunito', sans-serif",
-    transition:"all 0.2s ease",
-    boxShadow:isActive?`0 0 12px ${gc}66`:"none"
-  }}>
-    {labels[i]}
-  </button>
-    );
-  })}
-</div>
+      <div style={{ display:"flex", background:"#0f1221", padding:"8px 12px", gap:6, borderBottom:"1px solid rgba(255,255,255,0.08)" }}>
+        {TABS.map((t,i)=>{
+          const isActive = tab===i;
+          const labels = ["Cartones","Información","Sorteo","Ganadores"];
+          return (
+            <button key={t} onClick={()=>setTab(i)} style={{
+              flex:1, padding:"10px 6px",
+              background:isActive?gc:"rgba(255,255,255,0.05)",
+              border:"none", borderRadius:10,
+              color:isActive?getTextColor(gc):"#64748b",
+              fontWeight:isActive?700:500, fontSize:15,
+              cursor:"pointer", fontFamily:"'Nunito', sans-serif",
+              transition:"all 0.2s ease",
+              boxShadow:isActive?`0 0 12px ${gc}66`:"none"
+            }}>
+              {labels[i]}
+            </button>
+          );
+        })}
+      </div>
 
       {/* ══ TAB SORTEO ══ */}
       {tab===2&&(
@@ -560,7 +640,7 @@ return (
           <style>{`
             @import url('https://fonts.googleapis.com/css2?family=Poller+One&family=Nunito:wght@700&family=Bebas+Neue&family=Righteous&display=swap');
             @keyframes numPop { 0%{transform:scale(0.3) rotate(-8deg);opacity:0} 60%{transform:scale(1.4) rotate(3deg);opacity:1} 100%{transform:scale(1) rotate(0deg);opacity:1} }
-.num-pop { animation: numPop 0.9s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+            .num-pop { animation: numPop 0.9s cubic-bezier(0.34,1.56,0.64,1) forwards; }
             @media (min-width: 769px) {
               .panel-inferior-pc {
                 display: grid;
@@ -587,9 +667,10 @@ return (
               .btn-flotantes-mobile { bottom: 80px !important; gap: 8px !important; }
               .btn-flotantes-mobile button { padding: 8px 12px !important; font-size: 12px !important; }
               .mobile-bingo-letters { display: flex !important; }
-              @media (max-width: 768px) {
-  .btn-flotantes-mobile { position: relative !important; bottom: auto !important; top: auto !important; margin-bottom: 10px !important; border-top: none !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important; }
-}
+            }
+            @media (max-width: 768px) {
+              .btn-flotantes-mobile { position: relative !important; bottom: auto !important; top: auto !important; margin-bottom: 10px !important; border-top: none !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important; }
+            }
           `}</style>
 
           {/* ── BOTONES FLOTANTES ADMIN ── */}
@@ -639,26 +720,31 @@ return (
 
             {/* ZONA 2 — Último número */}
             <div className="zona-ultimo" style={{ background:gc, borderRadius:14, padding:12, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", border:`4px solid #fff`, boxShadow:`0 0 30px ${gc}, 0 0 60px ${gc}88, inset 0 0 20px rgba(255,255,255,0.15)`, transform:lastDrawn?"scale(1.04)":"scale(1)", transition:"all 0.3s ease" }}>
-  {lastDrawn ? (
-    <>
-      <div style={{ fontSize:50, fontWeight:800, color:getTextColor(gc), marginBottom:2, fontFamily:"'Poller One',cursive" }}>{getLetterForNum(lastDrawn)}</div>
-      <div style={{ fontSize:80, fontWeight:900, color:getTextColor(gc), lineHeight:1, fontFamily:"'Poller One',cursive" }} key={lastDrawn} className="num-pop">{lastDrawn}</div>
-    </>
-  ):(
-    <div style={{ fontSize:12, color:getTextColor(gc), textAlign:"center", fontWeight:600, lineHeight:1.7 }}>{isAdmin?"Toca un\nnúmero":"Esperando\nsorteo..."}</div>
-  )}
-</div>
+              {lastDrawn ? (
+                <>
+                  <div style={{ fontSize:50, fontWeight:800, color:getTextColor(gc), marginBottom:2, fontFamily:"'Poller One',cursive" }}>{getLetterForNum(lastDrawn)}</div>
+                  <div style={{ fontSize:80, fontWeight:900, color:getTextColor(gc), lineHeight:1, fontFamily:"'Poller One',cursive" }} key={lastDrawn} className="num-pop">{lastDrawn}</div>
+                </>
+              ):(
+                <div style={{ fontSize:12, color:getTextColor(gc), textAlign:"center", fontWeight:600, lineHeight:1.7 }}>{isAdmin?"Toca un\nnúmero":"Esperando\nsorteo..."}</div>
+              )}
+            </div>
 
-{/* ZONA 3 — Premio */}
-<div className="zona-premio" style={{ borderRadius:14, overflow:"hidden", border:`1px solid ${gc}33`, background:`linear-gradient(135deg,${gc}11,${gc}22)`, display:"flex", alignItems:"center", justifyContent:"center", maxHeight:300 }}>
-  <img key={activeGame.id} src={window.innerWidth < 768 ? `/premios/${activeGame.id}-mobile.png` : `/premios/premios/premios/premios/premios/premios/${activeGame.id}.png`} alt="Premio" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
-  onError={e=>{ 
-  e.target.onerror=null; 
-  const isMobile = e.target.src.includes("-mobile");
-  e.target.src = isMobile ? "/premios/placeholder-mobile.png" : "/premios/placeholder.png";
-}}
-/>
-</div>
+            {/* ZONA 3 — Premio */}
+            <div className="zona-premio" style={{ borderRadius:14, overflow:"hidden", border:`1px solid ${gc}33`, background:`linear-gradient(135deg,${gc}11,${gc}22)`, display:"flex", alignItems:"center", justifyContent:"center", maxHeight:300 }}>
+              {/* FIX: ruta de imagen corregida — sin duplicación de /premios/ */}
+              <img
+                key={activeGame.id}
+                src={window.innerWidth < 768 ? premioSrcMobile(activeGame.id) : premioSrc(activeGame.id)}
+                alt="Premio"
+                style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
+                onError={e=>{
+                  e.target.onerror=null;
+                  const isMobile = e.target.src.includes("-mobile");
+                  e.target.src = isMobile ? "/premios/placeholder-mobile.png" : "/premios/placeholder.png";
+                }}
+              />
+            </div>
 
             {/* ZONA 4 — Nº Jugadores */}
             <div className="zona-jugadores" style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:"12px 10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, border:`1px solid ${gc}44` }}>
@@ -671,8 +757,6 @@ return (
             </div>
 
           </div>
-
-          
         </div>
       )}
 
@@ -739,247 +823,234 @@ return (
             </div>
           </div>)}
 
-          {/* ══ TAB ASISTENTES ══ */}
+          {/* ══ TAB INFORMACIÓN ══ */}
           {tab===1&&(<div style={{ minHeight:"calc(100vh - 160px)" }}>
             {isAdmin ? (
               <div>
-                {/* PANEL ADMIN */}
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
                   {[{label:"Vendidos",val:cards.filter(c=>c.paid).length,color:"#3b82f6"},{label:"Recaudado",val:`$${totalRecaudado.toLocaleString("es-CL")}`,color:"#16a34a"}].map(s=>(<div key={s.label} style={{ background:"#ffffff", borderRadius:12, padding:"14px 18px", border:"1px solid #e2e8f0" }}><div style={{ fontSize:26, fontWeight:800, color:s.color }}>{s.val}</div><div style={{ fontSize:13, color:"#64748b" }}>{s.label}</div></div>))}
                 </div>
-                {/* COUNTDOWN ADMIN */}
+                {/* FIX: Countdown ahora guarda countdownEndsAt (timestamp) en Firebase
+                    en lugar de segundos restantes, para sincronizar todos los clientes */}
                 <div style={{ background:"#ffffff", borderRadius:13, padding:16, marginBottom:16, border:"1px solid #e2e8f0" }}>
                   <h3 style={{ margin:"0 0 12px", fontSize:14, color:"#334155" }}>⏱️ Countdown</h3>
                   <div style={{ display:"flex", gap:10, alignItems:"center" }}>
                     <input type="number" placeholder="Minutos" value={countdownInput} onChange={e=>setCountdownInput(e.target.value)} style={{...inpS, maxWidth:120}} />
-                    <button onClick={()=>{ const mins=parseInt(countdownInput)||5; update(ref(db,DB_STATE),{ countdown:mins*60 }); }} style={{...btnS("#3b82f6"), flex:1}}>▶ Iniciar</button>
-                    <button onClick={()=>update(ref(db,DB_STATE),{ countdown:0 })} style={{...btnS("#ef4444")}}>■ Detener</button>
+                    <button onClick={()=>{
+                      const mins=parseInt(countdownInput)||5;
+                      const endsAt = Date.now() + mins * 60 * 1000;
+                      update(ref(db,DB_STATE),{ countdownEndsAt: endsAt });
+                    }} style={{...btnS("#3b82f6"), flex:1}}>▶ Iniciar</button>
+                    <button onClick={()=>update(ref(db,DB_STATE),{ countdownEndsAt: 0 })} style={{...btnS("#ef4444")}}>■ Detener</button>
                   </div>
                 </div>
-                {/* LISTA */}
-                {null}
               </div>
             ) : (
-  <div className="viz-grid" style={{
-  background:"linear-gradient(135deg,#0f1221 0%,#1a1d2b 100%)",
-  height:"auto",
-  padding:"12px 16px 60px 16px",
-  display:"grid",
-  gridTemplateColumns:"264px 1fr",
-  gridTemplateRows:"auto",
-  minHeight:"100vh",
-  gap:10,
-  boxSizing:"border-box",
-  width:"100%",
-  overflow:"visible"
-}}>
-  {/* ══ PANTALLA VISUALIZACIÓN ══ */}
-  <style>{`
-    @keyframes slideIn { from{transform:translateY(-10px);opacity:0} to{transform:translateY(0);opacity:1} }
-    @keyframes pulseViz { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
-    @keyframes ticker { from{transform:translateX(100%)} to{transform:translateX(-100%)} }
-    @keyframes tickerCompradores { from{transform:translateX(0)} to{transform:translateX(-50%)} }
-    @keyframes salePopIn { 0%{transform:scale(0.5) translateY(20px);opacity:0} 60%{transform:scale(1.1) translateY(-5px);opacity:1} 100%{transform:scale(1) translateY(0);opacity:1} }
-    @keyframes barGlow { 0%,100%{opacity:1} 50%{opacity:0.7} }
-    @media (max-width: 768px) {
-      .viz-grid { grid-template-columns: 1fr !important; }
-      .viz-grid > * { grid-column: 1 / -1 !important; }
-      .viz-col-left { width: 100% !important; min-width: 0 !important; }
-      .viz-col-right { width: 100% !important; min-width: 0 !important; }
-      .viz-col-left *, .viz-col-right * { max-width: 100% !important; box-sizing: border-box !important; }
-      .viz-stats { grid-template-columns: 1fr 1fr !important; }
-      .viz-patron-grid { width: 120px !important; }
-    }
-  `}</style>
+              <div className="viz-grid" style={{
+                background:"linear-gradient(135deg,#0f1221 0%,#1a1d2b 100%)",
+                height:"auto",
+                padding:"12px 16px 60px 16px",
+                display:"grid",
+                gridTemplateColumns:"264px 1fr",
+                gridTemplateRows:"auto",
+                minHeight:"100vh",
+                gap:10,
+                boxSizing:"border-box",
+                width:"100%",
+                overflow:"visible"
+              }}>
+                <style>{`
+                  @keyframes slideIn { from{transform:translateY(-10px);opacity:0} to{transform:translateY(0);opacity:1} }
+                  @keyframes pulseViz { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
+                  @keyframes ticker { from{transform:translateX(100%)} to{transform:translateX(-100%)} }
+                  @keyframes tickerCompradores { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+                  @keyframes salePopIn { 0%{transform:scale(0.5) translateY(20px);opacity:0} 60%{transform:scale(1.1) translateY(-5px);opacity:1} 100%{transform:scale(1) translateY(0);opacity:1} }
+                  @keyframes barGlow { 0%,100%{opacity:1} 50%{opacity:0.7} }
+                  @media (max-width: 768px) {
+                    .viz-grid { grid-template-columns: 1fr !important; }
+                    .viz-grid > * { grid-column: 1 / -1 !important; }
+                    .viz-col-left { width: 100% !important; min-width: 0 !important; }
+                    .viz-col-right { width: 100% !important; min-width: 0 !important; }
+                    .viz-col-left *, .viz-col-right * { max-width: 100% !important; box-sizing: border-box !important; }
+                    .viz-stats { grid-template-columns: 1fr 1fr !important; }
+                    .viz-patron-grid { width: 120px !important; }
+                  }
+                `}</style>
 
-  {newSaleAnim&&(
-  <div style={{ position:"fixed", inset:0, zIndex:400, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.6)", backdropFilter:"blur(4px)" }}>
-    <style>{`
-      @keyframes saleCardIn { 0%{transform:scale(0.3) rotate(-8deg);opacity:0} 70%{transform:scale(1.08) rotate(2deg);opacity:1} 100%{transform:scale(1) rotate(0deg);opacity:1} }
-      @keyframes saleShimmer { 0%,100%{opacity:1} 50%{opacity:0.6} }
-      @keyframes saleSplitTop { 0%{transform:translateY(0);opacity:1} 100%{transform:translateY(-120px);opacity:0} }
-      @keyframes saleSplitBot { 0%{transform:translateY(0);opacity:1} 100%{transform:translateY(120px);opacity:0} }
-      @keyframes saleBalloon { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(-110vh) rotate(720deg);opacity:0} }
-      .sale-card { animation: saleCardIn 0.65s cubic-bezier(0.34,1.56,0.64,1) forwards; }
-      .sale-shimmer { animation: saleShimmer 1.2s ease-in-out infinite; }
-      .sale-top { animation: saleCardIn 0.65s cubic-bezier(0.34,1.56,0.64,1) forwards, saleSplitTop 0.5s ease 2.5s forwards; }
-      .sale-bot { animation: saleCardIn 0.65s cubic-bezier(0.34,1.56,0.64,1) forwards, saleSplitBot 0.5s ease 2.5s forwards; }
-      .sale-balloon { position:fixed;bottom:-90px;font-size:36px;animation:saleBalloon linear infinite;pointer-events:none;z-index:401; }
-    `}</style>
+                {newSaleAnim&&(
+                  <div style={{ position:"fixed", inset:0, zIndex:400, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.6)", backdropFilter:"blur(4px)" }}>
+                    <style>{`
+                      @keyframes saleCardIn { 0%{transform:scale(0.3) rotate(-8deg);opacity:0} 70%{transform:scale(1.08) rotate(2deg);opacity:1} 100%{transform:scale(1) rotate(0deg);opacity:1} }
+                      @keyframes saleShimmer { 0%,100%{opacity:1} 50%{opacity:0.6} }
+                      @keyframes saleSplitTop { 0%{transform:translateY(0);opacity:1} 100%{transform:translateY(-120px);opacity:0} }
+                      @keyframes saleSplitBot { 0%{transform:translateY(0);opacity:1} 100%{transform:translateY(120px);opacity:0} }
+                      @keyframes saleBalloon { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(-110vh) rotate(720deg);opacity:0} }
+                      .sale-card { animation: saleCardIn 0.65s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+                      .sale-shimmer { animation: saleShimmer 1.2s ease-in-out infinite; }
+                      .sale-top { animation: saleCardIn 0.65s cubic-bezier(0.34,1.56,0.64,1) forwards, saleSplitTop 0.5s ease 2.5s forwards; }
+                      .sale-bot { animation: saleCardIn 0.65s cubic-bezier(0.34,1.56,0.64,1) forwards, saleSplitBot 0.5s ease 2.5s forwards; }
+                      .sale-balloon { position:fixed;bottom:-90px;font-size:36px;animation:saleBalloon linear infinite;pointer-events:none;z-index:401; }
+                    `}</style>
+                    {[{l:"10%",delay:"0s",dur:"2.8s"},{l:"25%",delay:"0.3s",dur:"3.2s"},{l:"50%",delay:"0.6s",dur:"2.6s"},{l:"70%",delay:"0.2s",dur:"3.0s"},{l:"88%",delay:"0.8s",dur:"2.9s"}].map((b,i)=>(
+                      <div key={i} className="sale-balloon" style={{left:b.l,animationDelay:b.delay,animationDuration:b.dur}}>🎈</div>
+                    ))}
+                    {Array.from({length:16}).map((_,i)=>(
+                      <div key={"cf"+i} style={{ position:"fixed", bottom:-20, left:`${(i*6.5)%100}%`, width:i%3===0?10:7, height:i%3===0?10:7, borderRadius:i%2===0?"50%":2, background:["#ef4444","#3b82f6","#f59e0b","#22c55e","#a855f7","#ec4899"][i%6], pointerEvents:"none", zIndex:401, animation:`saleBalloon ${2+(i%4)*0.3}s linear ${(i*0.1).toFixed(1)}s infinite` }}/>
+                    ))}
+                    <div className="sale-card" style={{ background:"#0f1221", border:`3px solid ${GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e"}`, borderRadius:26, overflow:"hidden", boxShadow:`0 0 80px ${GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e"}66, 0 0 160px ${GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e"}22`, maxWidth:380, width:"90vw", position:"relative", zIndex:402 }}>
+                      <div style={{ position:"absolute", top:0, left:0, right:0, height:4, background:GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e" }} />
+                      <div className="sale-top" style={{ padding:"22px 28px 12px", textAlign:"center", borderBottom:`1px solid ${GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e"}33` }}>
+                        <div className="sale-shimmer" style={{ fontSize:11, fontWeight:700, letterSpacing:4, color:GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e", marginBottom:10, textTransform:"uppercase" }}>🎟️ Nuevo cartón vendido</div>
+                        <div style={{ fontSize:32, fontWeight:900, color:"#fff", letterSpacing:1, marginBottom:4 }}>{newSaleAnim.owner}</div>
+                      </div>
+                      <div className="sale-bot" style={{ padding:"12px 28px 22px", textAlign:"center" }}>
+                        <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:12 }}>
+                          <span style={{ background:GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e", borderRadius:10, padding:"6px 18px", fontSize:18, fontWeight:900, color:getTextColor(GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#fff") }}>#{newSaleAnim.cardNum}</span>
+                          <span style={{ fontSize:14, color:"#94a3b8", fontWeight:600 }}>{newSaleAnim.gameName}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-    {[{l:"10%",delay:"0s",dur:"2.8s"},{l:"25%",delay:"0.3s",dur:"3.2s"},{l:"50%",delay:"0.6s",dur:"2.6s"},{l:"70%",delay:"0.2s",dur:"3.0s"},{l:"88%",delay:"0.8s",dur:"2.9s"}].map((b,i)=>(
-      <div key={i} className="sale-balloon" style={{left:b.l,animationDelay:b.delay,animationDuration:b.dur}}>🎈</div>
-    ))}
+                {/* Fila 1: Juego activo */}
+                <div style={{ gridColumn:"1/-1", background:`linear-gradient(135deg,${gc}22,${gc}44)`, borderRadius:12, padding:"10px 18px", border:`2px solid ${gc}`, textAlign:"center" }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:gc, letterSpacing:3, textTransform:"uppercase" }}>Juego Activo</div>
+                  <div style={{ fontSize:26, fontWeight:900, color:"#fff", lineHeight:1.1, textTransform:"uppercase", letterSpacing:2 }}>{activeGame.name}</div>
+                </div>
 
-    {Array.from({length:16}).map((_,i)=>(
-      <div key={"cf"+i} style={{ position:"fixed", bottom:-20, left:`${(i*6.5)%100}%`, width:i%3===0?10:7, height:i%3===0?10:7, borderRadius:i%2===0?"50%":2, background:["#ef4444","#3b82f6","#f59e0b","#22c55e","#a855f7","#ec4899"][i%6], pointerEvents:"none", zIndex:401, animation:`saleBalloon ${2+(i%4)*0.3}s linear ${(i*0.1).toFixed(1)}s infinite` }}/>
-    ))}
+                {/* Fila 2: Countdown */}
+                {countdownDisplay > 0 ? (
+                  <div style={{ gridColumn:"1/-1", background:"#1a1d2b", borderRadius:12, padding:"10px 20px", border:"2px solid #f59e0b", textAlign:"center", animation:"pulseViz 1s ease infinite", display:"flex", alignItems:"center", justifyContent:"center", gap:16, flexWrap:"wrap" }}>
+                    <div style={{ fontSize:20, fontWeight:700, color:"#f59e0b", letterSpacing:3 }}>EL BINGO COMIENZA EN</div>
+                    <div style={{ fontSize:42, fontWeight:900, color:"#f59e0b", lineHeight:1, fontFamily:"'Poller One',cursive" }}>
+                      {String(Math.floor(countdownDisplay/60)).padStart(2,"0")}:{String(countdownDisplay%60).padStart(2,"0")}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ gridColumn:"1/-1", background:"#1a1d2b", borderRadius:12, padding:"10px 20px", border:`2px solid ${gc}`, textAlign:"center", display:"flex", alignItems:"center", justifyContent:"center", gap:16 }}>
+                    <div style={{ fontSize:11, fontWeight:700, color:gc, letterSpacing:3 }}>EL BINGO COMIENZA EN</div>
+                    <div style={{ fontSize:42, fontWeight:900, color:gc, lineHeight:1, fontFamily:"'Poller One',cursive" }}>¡YA!</div>
+                  </div>
+                )}
 
-    <div className="sale-card" style={{ background:"#0f1221", border:`3px solid ${GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e"}`, borderRadius:26, overflow:"hidden", boxShadow:`0 0 80px ${GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e"}66, 0 0 160px ${GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e"}22`, maxWidth:380, width:"90vw", position:"relative", zIndex:402 }}>
-      <div style={{ position:"absolute", top:0, left:0, right:0, height:4, background:GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e" }} />
-      
-      <div className="sale-top" style={{ padding:"22px 28px 12px", textAlign:"center", borderBottom:`1px solid ${GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e"}33` }}>
-        <div className="sale-shimmer" style={{ fontSize:11, fontWeight:700, letterSpacing:4, color:GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e", marginBottom:10, textTransform:"uppercase" }}>🎟️ Nuevo cartón vendido</div>
-        <div style={{ fontSize:32, fontWeight:900, color:"#fff", letterSpacing:1, marginBottom:4 }}>{newSaleAnim.owner}</div>
-      </div>
+                {/* Columna izquierda */}
+                <div className="viz-col-left" style={{ display:"flex", flexDirection:"column", gap:10, overflow:"visible", minHeight:"auto", paddingBottom:12 }}>
+                  <div style={{ background:"#1a1d2b", borderRadius:12, height:180, padding:"12px 14px", border:`1px solid ${gc}44`, flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8 }}>
+                    <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:8, letterSpacing:2, textAlign:"center" }}>PATRÓN ACTIVO</div>
+                    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
+                      <div className="viz-patron-grid" style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:2, width:150, flexShrink:0 }}>
+                        {activePattern.grid.flat().map((cell,i)=>(<div key={i} style={{ height:18, borderRadius:3, background:cell?gc:"rgba(255,255,255,0.07)" }} />))}
+                      </div>
+                      <div>
+                        <div style={{ fontSize:14, fontWeight:800, color:"#fff", lineHeight:1.2, textAlign:"center" }}>{activePattern.name}</div>
+                        <div style={{ fontSize:11, color:gc, fontWeight:600, marginTop:3, textAlign:"center" }}>{activeGame.name}</div>
+                      </div>
+                    </div>
+                  </div>
 
-      <div className="sale-bot" style={{ padding:"12px 28px 22px", textAlign:"center" }}>
-        <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:12 }}>
-          <span style={{ background:GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e", borderRadius:10, padding:"6px 18px", fontSize:18, fontWeight:900, color:getTextColor(GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#fff") }}>#{newSaleAnim.cardNum}</span>
-          <span style={{ fontSize:14, color:"#94a3b8", fontWeight:600 }}>{newSaleAnim.gameName}</span>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, flexShrink:0, textAlign:"center" }}>
+                    <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, letterSpacing:2, marginBottom:4 }}>PRECIO CARTÓN</div>
+                    <div style={{ fontSize:28, fontWeight:900, color:gc, fontFamily:"'Poller One',cursive" }}>${PRICE.toLocaleString("es-CL")}</div>
+                  </div>
 
-  {/* FILA 1: Juego activo */}
-  <div style={{ gridColumn:"1/-1", background:`linear-gradient(135deg,${gc}22,${gc}44)`, borderRadius:12, padding:"10px 18px", border:`2px solid ${gc}`, textAlign:"center" }}>
-    <div style={{ fontSize:10, fontWeight:700, color:gc, letterSpacing:3, textTransform:"uppercase" }}>Juego Activo</div>
-    <div style={{ fontSize:26, fontWeight:900, color:"#fff", lineHeight:1.1, textTransform:"uppercase", letterSpacing:2 }}>{activeGame.name}</div>
-  </div>
+                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"12px 14px", border:`1px solid ${gc}44`, height:375, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+                    <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:10, letterSpacing:2 }}>ÚLTIMOS COMPRADORES</div>
+                    <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column", gap:1 }}>
+                      {cards.filter(c=>c.paid&&c.gameId===activeGame.id).sort((a,b)=>(b.soldAt||0)-(a.soldAt||0)).slice(0,12).map((c,i,arr)=>(
+                        <div key={c.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"6px 0", borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none", animation:"slideIn 0.3s ease" }}>
+                          <span style={{ fontWeight:700, color:"#fff", fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"70%" }}>{c.owner}</span>
+                          <span style={{ background:gc, borderRadius:5, padding:"2px 8px", fontSize:11, fontWeight:700, color:getTextColor(GAMES.find(g=>g.id===c.gameId)?.color||"#fff"), flexShrink:0 }}>#{c.cardNum}</span>
+                        </div>
+                      ))}
+                      {cards.filter(c=>c.paid&&c.gameId===activeGame.id).length===0&&<div style={{ textAlign:"center", color:"#64748b", fontSize:12 }}>Sin compradores aún</div>}
+                    </div>
+                  </div>
+                </div>
 
-  {/* FILA 2: Countdown */}
-  {countdown>0 ? (
-    <div style={{ gridColumn:"1/-1", background:"#1a1d2b", borderRadius:12, padding:"10px 20px", border:"2px solid #f59e0b", textAlign:"center", animation:"pulseViz 1s ease infinite", display:"flex", alignItems:"center", justifyContent:"center", gap:16, flexWrap:"wrap" }}>
-      <div style={{ fontSize:20, fontWeight:700, color:"#f59e0b", letterSpacing:3 }}>EL BINGO COMIENZA EN</div>
-      <div style={{ fontSize:42, fontWeight:900, color:"#f59e0b", lineHeight:1, fontFamily:"'Poller One',cursive" }}>
-        {String(Math.floor(countdown/60)).padStart(2,"0")}:{String(countdown%60).padStart(2,"0")}
-      </div>
-    </div>
-  ) : (
-    <div style={{ gridColumn:"1/-1", background:"#1a1d2b", borderRadius:12, padding:"10px 20px", border:`2px solid ${gc}`, textAlign:"center", display:"flex", alignItems:"center", justifyContent:"center", gap:16 }}>
-  <div style={{ fontSize:11, fontWeight:700, color:gc, letterSpacing:3 }}>EL BINGO COMIENZA EN</div>
-  <div style={{ fontSize:42, fontWeight:900, color:gc, lineHeight:1, fontFamily:"'Poller One',cursive" }}>¡YA!</div>
-</div>
-  )}
+                {/* Columna derecha */}
+                <div className="viz-col-right" style={{ display:"flex", flexDirection:"column", gap:10, overflow:"hidden", minHeight:"auto" }}>
+                  <div className="viz-stats" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, flexShrink:0 }}>
+                    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, textAlign:"center" }}>
+                      <div style={{ fontSize:40, fontWeight:900, color:gc, lineHeight:1, fontFamily:"'Poller One',cursive" }}>{cards.filter(c=>c.paid&&c.gameId===activeGame.id).length}</div>
+                      <div style={{ fontSize:10, color:"#94a3b8", marginTop:3, fontWeight:600, letterSpacing:1 }}>JUGADORES</div>
+                    </div>
+                    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:"1px solid #16a34a44", textAlign:"center" }}>
+                      <div style={{ fontSize:35, fontWeight:900, color:"#16a34a", lineHeight:1.2 }}>${Math.floor(totalRecaudado/1000)}K</div>
+                      <div style={{ fontSize:10, color:"#94a3b8", marginTop:3, fontWeight:600, letterSpacing:1 }}>RECAUDADO</div>
+                    </div>
+                  </div>
 
-  {/* COLUMNA IZQUIERDA */}
-  <div className="viz-col-left" style={{ display:"flex", flexDirection:"column", gap:10, overflow:"visible", minHeight:"auto", paddingBottom:12 }}>
+                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"14px 18px", border:`1px solid ${gc}44`, flexShrink:0 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
+                      <span style={{ fontSize:16, color:"#94a3b8", fontWeight:700, letterSpacing:1 }}>CARTONES VENDIDOS</span>
+                      <span style={{ fontSize:20, color:gc, fontWeight:800 }}>{cards.filter(c=>c.paid&&c.gameId===activeGame.id).length} / {cards.filter(c=>c.gameId===activeGame.id).length}</span>
+                    </div>
+                    <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:99, height:18, overflow:"hidden" }}>
+                      <div style={{ background:gc, height:"100%", borderRadius:99, width:`${cards.filter(c=>c.gameId===activeGame.id).length>0?(cards.filter(c=>c.paid&&c.gameId===activeGame.id).length/cards.filter(c=>c.gameId===activeGame.id).length)*100:0}%`, transition:"width 0.8s ease", animation:"barGlow 2s ease-in-out infinite", boxShadow:`0 0 12px ${gc}99` }} />
+                    </div>
+                  </div>
 
-    {/* Patrón activo */}
-    <div style={{ background:"#1a1d2b", borderRadius:12, height:180, padding:"12px 14px", border:`1px solid ${gc}44`, flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8 }}>
-      <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:8, letterSpacing:2, textAlign:"center" }}>PATRÓN ACTIVO</div>
-      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
-        <div className="viz-patron-grid" style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:2, width:150, flexShrink:0 }}>
-          {activePattern.grid.flat().map((cell,i)=>(<div key={i} style={{ height:18, borderRadius:3, background:cell?gc:"rgba(255,255,255,0.07)" }} />))}
-        </div>
-        <div>
-          <div style={{ fontSize:14, fontWeight:800, color:"#fff", lineHeight:1.2, textAlign:"center" }}>{activePattern.name}</div>
-          <div style={{ fontSize:11, color:gc, fontWeight:600, marginTop:3, textAlign:"center" }}>{activeGame.name}</div>
-        </div>
-      </div>
-    </div>
+                  {/* FIX: ruta de imagen corregida */}
+                  <div style={{ borderRadius:12, overflow:"hidden", border:`2px solid ${gc}33`, background:"#000", height:300, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    <img
+                      key={activeGame.id}
+                      src={window.innerWidth < 768 ? premioSrcMobile(activeGame.id) : premioSrc(activeGame.id)}
+                      alt="Premio"
+                      style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
+                      onError={e=>{
+                        e.target.onerror=null;
+                        const isMobile = e.target.src.includes("-mobile");
+                        e.target.src = isMobile ? "/premios/placeholder-mobile.png" : "/premios/placeholder.png";
+                      }}
+                    />
+                  </div>
 
-    {/* Precio cartón */}
-    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, flexShrink:0, textAlign:"center" }}>
-      <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, letterSpacing:2, marginBottom:4 }}>PRECIO CARTÓN</div>
-      <div style={{ fontSize:28, fontWeight:900, color:gc, fontFamily:"'Poller One',cursive" }}>${PRICE.toLocaleString("es-CL")}</div>
-    </div>
+                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, flexShrink:0 }}>
+                    <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:8, letterSpacing:2 }}>JUEGOS</div>
+                    <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                      {GAMES.map(g=>(
+                        <div key={g.id} style={{ background:g.id===activeGame.id?g.color:"rgba(255,255,255,0.05)", borderRadius:8, padding:"4px 10px", border:`1px solid ${g.color}44`, display:"flex", alignItems:"center", gap:5 }}>
+                          <div style={{ width:7, height:7, borderRadius:"50%", background:g.color, flexShrink:0 }} />
+                          <span style={{ fontSize:11, fontWeight:700, color:g.id===activeGame.id?(getTextColor(g.color)):"#94a3b8" }}>{g.name}</span>
+                          <span style={{ fontSize:10, color:g.id===activeGame.id?(getTextColor(g.color)==="#000"?"#00000088":"rgba(255,255,255,0.6)"):"#64748b" }}>({cards.filter(c=>c.paid&&c.gameId===g.id).length})</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
 
-   {/* Últimos compradores */}
-<div style={{ background:"#1a1d2b", borderRadius:12, padding:"12px 14px", border:`1px solid ${gc}44`, height:375, overflow:"hidden", display:"flex", flexDirection:"column" }}>
-  <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:10, letterSpacing:2 }}>ÚLTIMOS COMPRADORES</div>
-  <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column", gap:1 }}>
-    {cards.filter(c=>c.paid&&c.gameId===activeGame.id).sort((a,b)=>(b.soldAt||0)-(a.soldAt||0)).slice(0,12).map((c,i,arr)=>(
-      <div key={c.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"6px 0", borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none", animation:"slideIn 0.3s ease" }}>
-        <span style={{ fontWeight:700, color:"#fff", fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"70%" }}>{c.owner}</span>
-        <span style={{ background:gc, borderRadius:5, padding:"2px 8px", fontSize:11, fontWeight:700, color:getTextColor(GAMES.find(g=>g.id===c.gameId)?.color||"#fff"), flexShrink:0 }}>#{c.cardNum}</span>
-      </div>
-    ))}
-    {cards.filter(c=>c.paid&&c.gameId===activeGame.id).length===0&&<div style={{ textAlign:"center", color:"#64748b", fontSize:12 }}>Sin compradores aún</div>}
-  </div>
-</div>
+                  {cards.filter(c=>c.paid&&c.gameId===activeGame.id).length>0&&(
+                    <div style={{ background:"#1a1d2b", borderRadius:10, padding:"8px 0", border:`1px solid ${gc}44`, overflow:"hidden", flexShrink:0 }}>
+                      <div style={{ display:"flex", animation:"tickerCompradores 40s linear infinite", whiteSpace:"nowrap", width:"max-content" }}>
+                        {[...cards.filter(c=>c.paid&&c.gameId===activeGame.id),...cards.filter(c=>c.paid&&c.gameId===activeGame.id)].map((c,i)=>(
+                          <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:6, marginRight:32, fontSize:12, fontWeight:700, color:"#fff" }}>
+                            <span style={{ background:gc, borderRadius:5, padding:"2px 7px", fontSize:11, color:getTextColor(GAMES.find(g=>g.id===c.gameId)?.color||"#fff"), fontWeight:700 }}>#{c.cardNum}</span>
+                            {c.owner}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-  </div>
+                  {winners.length>0&&(
+                    <div style={{ background:"#1a1d2b", borderRadius:10, padding:"8px 0", border:"1px solid #f59e0b44", overflow:"hidden", flexShrink:0 }}>
+                      <div style={{ display:"flex", animation:"ticker 10s linear infinite", whiteSpace:"nowrap" }}>
+                        {winners.map((w,i)=>{
+                          const wColor = GAMES.find(g=>g.id===w.gameId)?.color||"#f59e0b";
+                          return (
+                            <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:6, marginRight:32, fontSize:12, fontWeight:700, color:"#fff" }}>
+                              <span style={{ fontSize:10, color:"#f59e0b" }}>🏆</span>
+                              <span style={{ background:wColor, borderRadius:5, padding:"2px 7px", fontSize:11, color:getTextColor(GAMES.find(g=>g.id===w.gameId)?.color||"#fff"), fontWeight:700 }}>{w.game}</span>
+                              {w.name} · #{w.card}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
 
-  {/* COLUMNA DERECHA */}
-  <div className="viz-col-right" style={{ display:"flex", flexDirection:"column", gap:10, overflow:"hidden", minHeight:"auto" }}>
-
-    {/* Stats */}
-    <div className="viz-stats" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, flexShrink:0 }}>
-      <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, textAlign:"center" }}>
-        <div style={{ fontSize:40, fontWeight:900, color:gc, lineHeight:1, fontFamily:"'Poller One',cursive" }}>{cards.filter(c=>c.paid&&c.gameId===activeGame.id).length}</div>
-        <div style={{ fontSize:10, color:"#94a3b8", marginTop:3, fontWeight:600, letterSpacing:1 }}>JUGADORES</div>
-      </div>
-      <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:"1px solid #16a34a44", textAlign:"center" }}>
-        <div style={{ fontSize:35, fontWeight:900, color:"#16a34a", lineHeight:1.2 }}>${Math.floor(totalRecaudado/1000)}K</div>
-        <div style={{ fontSize:10, color:"#94a3b8", marginTop:3, fontWeight:600, letterSpacing:1 }}>RECAUDADO</div>
-      </div>
-    </div>
-
-    {/* Barra de progreso */}
-    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"14px 18px", border:`1px solid ${gc}44`, flexShrink:0 }}>
-      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
-        <span style={{ fontSize:16, color:"#94a3b8", fontWeight:700, letterSpacing:1 }}>CARTONES VENDIDOS</span>
-        <span style={{ fontSize:20, color:gc, fontWeight:800 }}>{cards.filter(c=>c.paid&&c.gameId===activeGame.id).length} / {cards.filter(c=>c.gameId===activeGame.id).length}</span>
-      </div>
-      <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:99, height:18, overflow:"hidden" }}>
-        <div style={{ background:gc, height:"100%", borderRadius:99, width:`${cards.filter(c=>c.gameId===activeGame.id).length>0?(cards.filter(c=>c.paid&&c.gameId===activeGame.id).length/cards.filter(c=>c.gameId===activeGame.id).length)*100:0}%`, transition:"width 0.8s ease", animation:"barGlow 2s ease-in-out infinite", boxShadow:`0 0 12px ${gc}99` }} />
-      </div>
-    </div>
-
-    {/* Imagen del premio */}
-<div style={{ borderRadius:12, overflow:"hidden", border:`2px solid ${gc}33`, background:"#000", height:300, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <img key={activeGame.id} src={window.innerWidth < 768 ? `/premios/${activeGame.id}-mobile.png` : `/premios/premios/premios/premios/premios/premios/${activeGame.id}.png`} alt="Premio" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
-  onError={e=>{ 
-  e.target.onerror=null; 
-  const isMobile = e.target.src.includes("-mobile");
-  e.target.src = isMobile ? "/premios/placeholder-mobile.png" : "/premios/placeholder.png";
-}}
-/>
-    </div>
-
-    {/* Juegos */}
-    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, flexShrink:0 }}>
-      <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:8, letterSpacing:2 }}>JUEGOS</div>
-      <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-        {GAMES.map(g=>(
-          <div key={g.id} style={{ background:g.id===activeGame.id?g.color:"rgba(255,255,255,0.05)", borderRadius:8, padding:"4px 10px", border:`1px solid ${g.color}44`, display:"flex", alignItems:"center", gap:5 }}>
-            <div style={{ width:7, height:7, borderRadius:"50%", background:g.color, flexShrink:0 }} />
-            <span style={{ fontSize:11, fontWeight:700, color:g.id===activeGame.id?(getTextColor(g.color)):"#94a3b8" }}>{g.name}</span>
-            <span style={{ fontSize:10, color:g.id===activeGame.id?(getTextColor(g.color)==="#000"?"#00000088":"rgba(255,255,255,0.6)"):"#64748b" }}>({cards.filter(c=>c.paid&&c.gameId===g.id).length})</span>
-          </div>
-        ))}
-      </div>
-    </div>
-    
-
-    {/* Ticker compradores */}
-{cards.filter(c=>c.paid&&c.gameId===activeGame.id).length>0&&(
-  <div style={{ background:"#1a1d2b", borderRadius:10, padding:"8px 0", border:`1px solid ${gc}44`, overflow:"hidden", flexShrink:0 }}>
-    <div style={{ display:"flex", animation:"tickerCompradores 40s linear infinite", whiteSpace:"nowrap", width:"max-content" }}>
-      {[...cards.filter(c=>c.paid&&c.gameId===activeGame.id),...cards.filter(c=>c.paid&&c.gameId===activeGame.id)].map((c,i)=>(
-        <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:6, marginRight:32, fontSize:12, fontWeight:700, color:"#fff" }}>
-          <span style={{ background:gc, borderRadius:5, padding:"2px 7px", fontSize:11, color:getTextColor(GAMES.find(g=>g.id===c.gameId)?.color||"#fff"), fontWeight:700 }}>#{c.cardNum}</span>
-          {c.owner}
-        </span>
-      ))}
-    </div>
-  </div>
-)}
-
-{/* Ticker ganadores */}
-{winners.length>0&&(
-  <div style={{ background:"#1a1d2b", borderRadius:10, padding:"8px 0", border:"1px solid #f59e0b44", overflow:"hidden", flexShrink:0 }}>
-    <div style={{ display:"flex", animation:"ticker 10s linear infinite", whiteSpace:"nowrap" }}>
-      {winners.map((w,i)=>{
-        const wColor = GAMES.find(g=>g.id===w.gameId)?.color||"#f59e0b";
-        return (
-          <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:6, marginRight:32, fontSize:12, fontWeight:700, color:"#fff" }}>
-            <span style={{ fontSize:10, color:"#f59e0b" }}>🏆</span>
-            <span style={{ background:wColor, borderRadius:5, padding:"2px 7px", fontSize:11, color:getTextColor(GAMES.find(g=>g.id===w.gameId)?.color||"#fff"), fontWeight:700 }}>{w.game}</span>
-            {w.name} · #{w.card}
-          </span>
-        );
-      })}
-    </div>
-  </div>
-)}
-
-  </div>
-
-</div>
+              </div>
             )}
           </div>)}
 
