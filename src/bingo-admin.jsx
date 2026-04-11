@@ -277,6 +277,27 @@ export default function BingoAdmin() {
     return () => clearInterval(interval);
   }, [countdownEndsAt]);
 
+useEffect(() => {
+  const token = sessionStorage.getItem("admin_token");
+  if (!token) return;
+
+  try {
+    // Decodificamos el token sin librerías externas
+    const payload = JSON.parse(atob(token.split(".")[1]));
+
+    if (payload.exp * 1000 > Date.now()) {
+      // Token válido — restaurar sesión admin
+      setIsAdmin(true);
+    } else {
+      // Token vencido — limpiar sesión
+      sessionStorage.removeItem("admin_token");
+    }
+  } catch {
+    // Token corrupto — limpiar sesión
+    sessionStorage.removeItem("admin_token");
+  }
+}, []); //← el [] significa que solo corre una vez al cargar la página
+
   // FIX: detección de fullscreen con API nativa en lugar de comparar dimensiones
   useEffect(() => {
     const handleFullscreenChange = () => {
