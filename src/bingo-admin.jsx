@@ -41,6 +41,14 @@ const PATTERNS = [
 const BINGO_LETTER_COLORS = ['#ef4444','#3b82f6','#f59e0b','#22c55e','#a855f7'];
 
 function pad(n) { return String(n).padStart(3, "0"); }
+function getTextColor(hexColor) {
+  const hex = hexColor.replace("#","");
+  const r = parseInt(hex.substring(0,2),16);
+  const g = parseInt(hex.substring(2,4),16);
+  const b = parseInt(hex.substring(4,6),16);
+  const brightness = (r*299 + g*587 + b*114) / 1000;
+  return brightness > 128 ? "#000" : "#fff";
+}
 function getLetterForNum(n) { for (const [l,[min,max]] of Object.entries(COLS)) if (n>=min&&n<=max) return l; return ""; }
 function generateCardGrid() {
   const grid = Object.entries(COLS).map(([,[min,max]]) => {
@@ -132,7 +140,7 @@ function GameModal({ activeGame, onSelect, onClose }) {
             return (
               <button key={g.id} onClick={()=>{ onSelect(g); onClose(); }} style={{ background:sel?g.color:"#252838", border:`2px solid ${sel?g.color:"#2e3244"}`, borderRadius:14, padding:"16px 12px", cursor:"pointer", display:"flex", alignItems:"center", gap:12 }}>
                 <div style={{ width:18, height:18, borderRadius:"50%", background:g.color, flexShrink:0, border:sel?(["j2","j3","j5","j9","j12"].includes(g.id)?"2px solid #000":"2px solid #fff"):"none" }} />
-                <span style={{ fontSize:14, fontWeight:700, color:sel?(["j2","j3","j5","j9","j12"].includes(g.id)?"#000":"#fff"):"#e2e8f0" }}>{g.name}</span>
+                <span style={{ fontSize:14, fontWeight:700, color:sel?(getTextColor(g.color)):"#e2e8f0" }}>{g.name}</span>
               </button>
             );
           })}
@@ -517,6 +525,8 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
         <div style={{ padding:"16px 20px", width:"100%", boxSizing:"border-box", minHeight:"calc(100vh - 112px)", display:"flex", flexDirection:"column", gap:14, paddingBottom: isAdmin ? 90 : 60 }}>
           <style>{`
             @import url('https://fonts.googleapis.com/css2?family=Poller+One&display=swap');
+            @keyframes numPop { 0%{transform:scale(0.3) rotate(-8deg);opacity:0} 60%{transform:scale(1.4) rotate(3deg);opacity:1} 100%{transform:scale(1) rotate(0deg);opacity:1} }
+.num-pop { animation: numPop 0.9s cubic-bezier(0.34,1.56,0.64,1) forwards; }
             @media (min-width: 769px) {
               .panel-inferior-pc {
                 display: grid;
@@ -543,8 +553,19 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
               .btn-flotantes-mobile { bottom: 80px !important; gap: 8px !important; }
               .btn-flotantes-mobile button { padding: 8px 12px !important; font-size: 12px !important; }
               .mobile-bingo-letters { display: flex !important; }
-            }
+              @media (max-width: 768px) {
+  .btn-flotantes-mobile { position: relative !important; bottom: auto !important; top: auto !important; margin-bottom: 10px !important; border-top: none !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important; }
+}
           `}</style>
+
+          {/* ── BOTONES FLOTANTES ADMIN ── */}
+          {isAdmin&&!isFullscreen&&(
+            <div className="btn-flotantes-mobile" style={{ position:"fixed", bottom:0, left:0, right:0, display:"flex", flexDirection:"row", justifyContent:"center", gap:12, padding:"12px 16px", background:"rgba(10,16,31,0.95)", backdropFilter:"blur(10px)", borderTop:"1px solid rgba(255,255,255,0.1)", zIndex:100 }}>
+              <button onClick={()=>setShowPatternModal(true)} style={{ background:"rgba(255,255,255,0.08)", border:`2px solid ${gc}`, borderRadius:14, padding:"11px 24px", color:gc, fontWeight:700, fontSize:13, cursor:"pointer", backdropFilter:"blur(10px)", display:"flex", alignItems:"center", gap:8 }}>🎯 Patrón</button>
+              <button onClick={()=>setShowGameModal(true)} style={{ background:gc, border:"none", borderRadius:14, padding:"11px 24px", color:getTextColor(gc), fontWeight:700, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:8, boxShadow:`0 4px 20px ${gc}66` }}>🎮 Juego</button>
+              <button onClick={()=>setShowResetModal(true)} style={{ background:"rgba(255,255,255,0.08)", border:"2px solid #ef4444", borderRadius:14, padding:"11px 24px", color:"#ef4444", fontWeight:700, fontSize:13, cursor:"pointer", backdropFilter:"blur(10px)", display:"flex", alignItems:"center", gap:8 }}>🔄 Reiniciar</button>
+            </div>
+          )}
 
           <div className="mobile-bingo-letters" style={{ display: 'none', justifyContent: 'space-around', marginBottom: 10 }}>
             {Object.keys(COLS).map((letter, idx) => (
@@ -572,7 +593,7 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
 
             {/* ZONA 1 — Patrón activo */}
             <div className="zona-patron" style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:"12px 10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, border:`1px solid ${gc}44` }}>
-              <div style={{ background:gc, borderRadius:8, padding:"3px 14px", fontSize:13, fontWeight:800, color:"#fff", letterSpacing:1 }}>JUEGO {gameNum}</div>
+              <div style={{ background:gc, borderRadius:8, padding:"3px 14px", fontSize:13, fontWeight:800, color:getTextColor(gc), letterSpacing:1 }}>JUEGO {gameNum}</div>
               <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:2, width:100 }}>
                 {Object.keys(COLS).map((l,i)=>(<div key={l} style={{ height:15, borderRadius:3, background:BINGO_LETTER_COLORS[i], display:"flex", alignItems:"center", justifyContent:"center", fontSize:8, fontWeight:800, color:"#fff" }}>{l}</div>))}
               </div>
@@ -583,16 +604,16 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
             </div>
 
             {/* ZONA 2 — Último número */}
-            <div className="zona-ultimo" style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:12, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", border:`2px solid ${gc}`, boxShadow:`0 0 24px ${gc}44` }}>
-              {lastDrawn ? (
-                <>
-                  <div style={{ fontSize:15, fontWeight:800, color:gc, marginBottom:2, fontFamily:"'Poller One',cursive" }}>{getLetterForNum(lastDrawn)} – {lastDrawn}</div>
-                  <div style={{ fontSize:72, fontWeight:900, color:gc, lineHeight:1, fontFamily:"'Poller One',cursive", textShadow:`0 0 30px ${gc}` }}>{lastDrawn}</div>
-                </>
-              ):(
-                <div style={{ fontSize:12, color:"#64748b", textAlign:"center", fontWeight:600, lineHeight:1.7 }}>{isAdmin?"Toca un\nnúmero":"Esperando\nsorteo..."}</div>
-              )}
-            </div>
+            <div className="zona-ultimo" style={{ background:gc, borderRadius:14, padding:12, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", border:`4px solid #fff`, boxShadow:`0 0 30px ${gc}, 0 0 60px ${gc}88, inset 0 0 20px rgba(255,255,255,0.15)`, transform:lastDrawn?"scale(1.04)":"scale(1)", transition:"all 0.3s ease" }}>
+  {lastDrawn ? (
+    <>
+      <div style={{ fontSize:50, fontWeight:800, color:getTextColor(gc), marginBottom:2, fontFamily:"'Poller One',cursive" }}>{getLetterForNum(lastDrawn)}</div>
+      <div style={{ fontSize:80, fontWeight:900, color:getTextColor(gc), lineHeight:1, fontFamily:"'Poller One',cursive" }} key={lastDrawn} className="num-pop">{lastDrawn}</div>
+    </>
+  ):(
+    <div style={{ fontSize:12, color:getTextColor(gc), textAlign:"center", fontWeight:600, lineHeight:1.7 }}>{isAdmin?"Toca un\nnúmero":"Esperando\nsorteo..."}</div>
+  )}
+</div>
 
             {/* ZONA 3 — Premio */}
             <div className="zona-premio" style={{ borderRadius:14, overflow:"visible", border:`1px solid ${gc}33`, background:`linear-gradient(135deg,${gc}11,${gc}22)`, display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -606,21 +627,14 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
               <div style={{ fontSize:10, fontWeight:700, color:"#94a3b8", letterSpacing:2, textTransform:"uppercase" }}>Jugadores</div>
               <div style={{ fontSize:54, fontWeight:900, color:"#ffffff", lineHeight:1, fontFamily:"'Poller One',cursive", textShadow:`0 0 20px ${gc}88` }}>{jugadoresActuales}</div>
               <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
-                <div style={{ background:gc, borderRadius:6, padding:"2px 12px", fontSize:11, fontWeight:800, color:"#fff" }}>{activeGame.name}</div>
+                <div style={{ background:gc, borderRadius:6, padding:"2px 12px", fontSize:11, fontWeight:800, color:getTextColor(gc) }}>{activeGame.name}</div>
                 <div style={{ fontSize:10, color:"#64748b" }}>cartones vendidos</div>
               </div>
             </div>
 
           </div>
 
-          {/* ── BOTONES FLOTANTES ADMIN ── */}
-          {isAdmin&&!isFullscreen&&(
-            <div className="btn-flotantes-mobile" style={{ position:"fixed", bottom:0, left:0, right:0, display:"flex", flexDirection:"row", justifyContent:"center", gap:12, padding:"12px 16px", background:"rgba(10,16,31,0.95)", backdropFilter:"blur(10px)", borderTop:"1px solid rgba(255,255,255,0.1)", zIndex:100 }}>
-              <button onClick={()=>setShowPatternModal(true)} style={{ background:"rgba(255,255,255,0.08)", border:`2px solid ${gc}`, borderRadius:14, padding:"11px 24px", color:gc, fontWeight:700, fontSize:13, cursor:"pointer", backdropFilter:"blur(10px)", display:"flex", alignItems:"center", gap:8 }}>🎯 Patrón</button>
-              <button onClick={()=>setShowGameModal(true)} style={{ background:gc, border:"none", borderRadius:14, padding:"11px 24px", color:"#fff", fontWeight:700, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:8, boxShadow:`0 4px 20px ${gc}66` }}>🎮 Juego</button>
-              <button onClick={()=>setShowResetModal(true)} style={{ background:"rgba(255,255,255,0.08)", border:"2px solid #ef4444", borderRadius:14, padding:"11px 24px", color:"#ef4444", fontWeight:700, fontSize:13, cursor:"pointer", backdropFilter:"blur(10px)", display:"flex", alignItems:"center", gap:8 }}>🔄 Reiniciar</button>
-            </div>
-          )}
+          
         </div>
       )}
 
@@ -632,13 +646,13 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
           {tab===0&&(<div style={{ marginTop:10 }}>
             {isAdmin&&(<>
               <div style={{ marginBottom:15 }}>
-                <button onClick={()=>setShowGameModal(true)} style={{ background:activeGame.color, border:"none", borderRadius:10, padding:"10px 20px", fontSize:14, fontWeight:700, cursor:"pointer", color:["j2","j3","j5","j9","j12"].includes(activeGame.id)?"#000":"#fff", display:"flex", alignItems:"center", gap:8 }}>🎮 {activeGame.name} ▼</button>
+                <button onClick={()=>setShowGameModal(true)} style={{ background:activeGame.color, border:"none", borderRadius:10, padding:"10px 20px", fontSize:14, fontWeight:700, cursor:"pointer", color:getTextColor(activeGame.color), display:"flex", alignItems:"center", gap:8 }}>🎮 {activeGame.name} ▼</button>
               </div>
               <div style={{ background:activeGame.color+"15", borderRadius:13, padding:16, marginBottom:12, border:`1px solid ${activeGame.color}40` }}>
                 <h3 style={{ margin:"0 0 12px", fontSize:14, color:activeGame.color }}>1. Generar cartones — {activeGame.name}</h3>
                 <div style={{ display:"flex", gap:10 }}>
                   <input type="number" placeholder="Cantidad (ej: 50)" value={genQty} onChange={e=>setGenQty(e.target.value)} style={{...inpS,maxWidth:"60%"}} />
-                  <button onClick={generatePool} style={{...btnS(activeGame.color),flex:1,color:["j2","j3","j5","j9","j12"].includes(activeGame.id)?"#000":"#fff"}}>Generar</button>
+                  <button onClick={generatePool} style={{...btnS(activeGame.color),flex:1,color:getTextColor(activeGame.color)}}>Generar</button>
                 </div>
                 {cards.filter(c=>!c.paid&&c.gameId===activeGame.id).length>0&&(
                   <button onClick={deleteUnsoldPool} style={{...btnS("#64748b"),width:"100%",marginTop:10}}>🗑️ Borrar disponibles de {activeGame.name} ({cards.filter(c=>!c.paid&&c.gameId===activeGame.id).length})</button>
@@ -653,7 +667,7 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
                   <input placeholder="Nombre completo *" value={newOwner} onChange={e=>setNewOwner(e.target.value)} style={inpS} />
                   <input type="number" placeholder="Cant." value={newQty} onChange={e=>setNewQty(e.target.value)} onKeyDown={e=>e.key==="Enter"&&assignCard()} style={{...inpS,textAlign:"center"}} />
                 </div>
-                <button onClick={assignCard} style={{...btnS(activeGame.color),width:"100%",padding:"11px",color:["j2","j3","j5","j9","j12"].includes(activeGame.id)?"#000":"#fff"}}>Asignar</button>
+                <button onClick={assignCard} style={{...btnS(activeGame.color),width:"100%",padding:"11px",color:getTextColor(activeGame.color)}}>Asignar</button>
               </div>
             </>)}
             <input placeholder="🔍 Buscar por N° cartón o nombre..." value={search} onChange={e=>setSearch(e.target.value)} style={{...inpS,width:"100%",marginBottom:12}} />
@@ -665,7 +679,7 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
             <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
               {visibleCards.map(c=>{
                 const gameColor=GAMES.find(g=>g.id===c.gameId)?.color||"#94a3b8";
-                const gameTextColor=["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff";
+                const gameTextColor=getTextColor(GAMES.find(g=>g.id===c.gameId)?.color||"#fff");
                 return (<div key={c.id}>
                   <div onClick={()=>setSelectedCard(selectedCard?.id===c.id?null:c)} style={{ background:"#ffffff", borderRadius:selectedCard?.id===c.id?"12px 12px 0 0":12, padding:"12px 16px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", border:"1px solid #e2e8f0", boxShadow:"0 1px 3px rgba(0,0,0,0.05)", borderLeft:`4px solid ${gameColor}` }}>
                     <div style={{ background:gameColor, borderRadius:8, padding:"4px 10px", fontSize:13, fontWeight:800, color:gameTextColor, minWidth:45, textAlign:"center" }}>{c.cardNum}</div>
@@ -773,7 +787,7 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
 
       <div className="sale-bot" style={{ padding:"12px 28px 22px", textAlign:"center" }}>
         <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:12 }}>
-          <span style={{ background:GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e", borderRadius:10, padding:"6px 18px", fontSize:18, fontWeight:900, color:["j2","j3","j5","j9","j12"].includes(newSaleAnim.gameId)?"#000":"#fff" }}>#{newSaleAnim.cardNum}</span>
+          <span style={{ background:GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#22c55e", borderRadius:10, padding:"6px 18px", fontSize:18, fontWeight:900, color:getTextColor(GAMES.find(g=>g.id===newSaleAnim.gameId)?.color||"#fff") }}>#{newSaleAnim.cardNum}</span>
           <span style={{ fontSize:14, color:"#94a3b8", fontWeight:600 }}>{newSaleAnim.gameName}</span>
         </div>
       </div>
@@ -832,7 +846,7 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
     {cards.filter(c=>c.paid&&c.gameId===activeGame.id).sort((a,b)=>(b.soldAt||0)-(a.soldAt||0)).slice(0,12).map((c,i,arr)=>(
       <div key={c.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"6px 0", borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none", animation:"slideIn 0.3s ease" }}>
         <span style={{ fontWeight:700, color:"#fff", fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"70%" }}>{c.owner}</span>
-        <span style={{ background:gc, borderRadius:5, padding:"2px 8px", fontSize:11, fontWeight:700, color:["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff", flexShrink:0 }}>#{c.cardNum}</span>
+        <span style={{ background:gc, borderRadius:5, padding:"2px 8px", fontSize:11, fontWeight:700, color:getTextColor(GAMES.find(g=>g.id===c.gameId)?.color||"#fff"), flexShrink:0 }}>#{c.cardNum}</span>
       </div>
     ))}
     {cards.filter(c=>c.paid&&c.gameId===activeGame.id).length===0&&<div style={{ textAlign:"center", color:"#64748b", fontSize:12 }}>Sin compradores aún</div>}
@@ -881,8 +895,8 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
         {GAMES.map(g=>(
           <div key={g.id} style={{ background:g.id===activeGame.id?g.color:"rgba(255,255,255,0.05)", borderRadius:8, padding:"4px 10px", border:`1px solid ${g.color}44`, display:"flex", alignItems:"center", gap:5 }}>
             <div style={{ width:7, height:7, borderRadius:"50%", background:g.color, flexShrink:0 }} />
-            <span style={{ fontSize:11, fontWeight:700, color:g.id===activeGame.id?(["j2","j3","j5","j9","j12"].includes(g.id)?"#000":"#fff"):"#94a3b8" }}>{g.name}</span>
-            <span style={{ fontSize:10, color:g.id===activeGame.id?(["j2","j3","j5","j9","j12"].includes(g.id)?"#00000088":"rgba(255,255,255,0.6)"):"#64748b" }}>({cards.filter(c=>c.paid&&c.gameId===g.id).length})</span>
+            <span style={{ fontSize:11, fontWeight:700, color:g.id===activeGame.id?(getTextColor(g.color)):"#94a3b8" }}>{g.name}</span>
+            <span style={{ fontSize:10, color:g.id===activeGame.id?(getTextColor(g.color)==="#000"?"#00000088":"rgba(255,255,255,0.6)"):"#64748b" }}>({cards.filter(c=>c.paid&&c.gameId===g.id).length})</span>
           </div>
         ))}
       </div>
@@ -895,7 +909,7 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
     <div style={{ display:"flex", animation:"tickerCompradores 40s linear infinite", whiteSpace:"nowrap", width:"max-content" }}>
       {[...cards.filter(c=>c.paid&&c.gameId===activeGame.id),...cards.filter(c=>c.paid&&c.gameId===activeGame.id)].map((c,i)=>(
         <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:6, marginRight:32, fontSize:12, fontWeight:700, color:"#fff" }}>
-          <span style={{ background:gc, borderRadius:5, padding:"2px 7px", fontSize:11, color:["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff", fontWeight:700 }}>#{c.cardNum}</span>
+          <span style={{ background:gc, borderRadius:5, padding:"2px 7px", fontSize:11, color:getTextColor(GAMES.find(g=>g.id===c.gameId)?.color||"#fff"), fontWeight:700 }}>#{c.cardNum}</span>
           {c.owner}
         </span>
       ))}
@@ -912,7 +926,7 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
         return (
           <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:6, marginRight:32, fontSize:12, fontWeight:700, color:"#fff" }}>
             <span style={{ fontSize:10, color:"#f59e0b" }}>🏆</span>
-            <span style={{ background:wColor, borderRadius:5, padding:"2px 7px", fontSize:11, color:["j2","j3","j5","j9","j12"].includes(w.gameId)?"#000":"#fff", fontWeight:700 }}>{w.game}</span>
+            <span style={{ background:wColor, borderRadius:5, padding:"2px 7px", fontSize:11, color:getTextColor(GAMES.find(g=>g.id===w.gameId)?.color||"#fff"), fontWeight:700 }}>{w.game}</span>
             {w.name} · #{w.card}
           </span>
         );
@@ -1045,7 +1059,7 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
                         if (confirmAssign.selected.length>=confirmAssign.qty) return;
                         setConfirmAssign(p=>({...p, selected:[...p.selected,c.id], nums:p.available.filter(x=>[...p.selected,c.id].includes(x.id)).map(x=>x.cardNum)}));
                       }
-                    }} style={{ background:isSel?activeGame.color:"#e2e8f0", color:isSel?(["j2","j3","j5","j9","j12"].includes(activeGame.id)?"#000":"#fff"):"#64748b", borderRadius:6, padding:"4px 10px", fontSize:13, fontWeight:700, cursor:"pointer", border:isSel?`2px solid ${activeGame.color}`:"2px solid #e2e8f0" }}>{c.cardNum}</span>);
+                    }} style={{ background:isSel?activeGame.color:"#e2e8f0", color:isSel?(getTextColor(activeGame.color)):"#64748b", borderRadius:6, padding:"4px 10px", fontSize:13, fontWeight:700, cursor:"pointer", border:isSel?`2px solid ${activeGame.color}`:"2px solid #e2e8f0" }}>{c.cardNum}</span>);
                   })}
                 </div>
               </div>
@@ -1060,7 +1074,7 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
                         const newSelected=p.selected.filter(id=>id!==c.id);
                         return {...p, selected:newSelected, nums:p.available.filter(x=>newSelected.includes(x.id)).map(x=>x.cardNum)};
                       });
-                    }} style={{ background:activeGame.color, color:["j2","j3","j5","j9","j12"].includes(activeGame.id)?"#000":"#fff", borderRadius:6, padding:"4px 10px", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:4 }}>
+                    }} style={{ background:activeGame.color, color:getTextColor(activeGame.color), borderRadius:6, padding:"4px 10px", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:4 }}>
                       {c.cardNum} <span style={{ fontSize:10, opacity:0.7 }}>✕</span>
                     </span>
                   ))}
@@ -1069,7 +1083,7 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
             )}
             <div style={{ display:"flex", gap:12 }}>
               <button onClick={()=>setConfirmAssign(null)} style={{ flex:1, background:"#f1f5f9", border:"none", borderRadius:10, padding:"12px", color:"#64748b", fontWeight:700, fontSize:14, cursor:"pointer" }}>Cancelar</button>
-              <button onClick={confirmAssignCard} style={{ flex:1, background:activeGame.color, border:"none", borderRadius:10, padding:"12px", color:["j2","j3","j5","j9","j12"].includes(activeGame.id)?"#000":"#fff", fontWeight:700, fontSize:14, cursor:"pointer" }}>Confirmar</button>
+              <button onClick={confirmAssignCard} style={{ flex:1, background:activeGame.color, border:"none", borderRadius:10, padding:"12px", color:getTextColor(activeGame.color), fontWeight:700, fontSize:14, cursor:"pointer" }}>Confirmar</button>
             </div>
           </div>
         </div>
