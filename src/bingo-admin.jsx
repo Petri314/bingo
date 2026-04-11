@@ -276,12 +276,27 @@ const prevSoldIds = React.useRef(new Set());
   const showToast = (msg,type="ok") => { setToast({msg,type}); setTimeout(()=>setToast(null),2500); };
 
   const speakNumber = (num) => {
-    if (isMuted||!num) return;
-    window.speechSynthesis.cancel();
+  if (isMuted||!num) return;
+  window.speechSynthesis.cancel();
+  const speak = () => {
     const u = new SpeechSynthesisUtterance(`${getLetterForNum(num)}, ${num}`);
-    u.lang="es-ES"; u.rate=0.9;
+    u.lang="es-ES";
+    u.rate=0.75;
+    u.pitch=1.1;
+    u.volume=1;
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v=>v.name==="Google español") || 
+                  voices.find(v=>v.name==="Microsoft Laura - Spanish (Spain)") ||
+                  voices.find(v=>v.lang==="es-ES");
+    if (preferred) u.voice = preferred;
     window.speechSynthesis.speak(u);
   };
+  if (window.speechSynthesis.getVoices().length === 0) {
+    window.speechSynthesis.onvoiceschanged = speak;
+  } else {
+    speak();
+  }
+};
 
   useEffect(()=>{
     const uC = onValue(ref(db,DB_CARDS), s=>{
@@ -497,34 +512,64 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
     <div style={{ minHeight:"100vh", background:"linear-gradient(135deg,#172441 0%,#285289 50%,#0a101f 100%)", fontFamily:"sans-serif", color:"#1e293b", paddingBottom:60 }}>
 
       {/* ── HEADER ── */}
-      <div style={{ background:"#ffffff", borderBottom:"1px solid #e2e8f0", padding:"14px 18px", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:10, boxShadow:"0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-        <div>
-          <h1 style={{ margin:0, fontSize:20, fontWeight:800 }}>🎰 Bingo Solidario</h1>
-          <p style={{ margin:"3px 0 0", fontSize:12, color:"#64748b" }}>{isAdmin?"👤 Admin":"👁 Visualización"}</p>
-        </div>
-        <div style={{ display:"flex", gap:10, alignItems:"center" }}>
-          <button onClick={()=>setIsMuted(!isMuted)} style={{ background:isMuted?"#fee2e2":"#f0fdf4", border:"none", borderRadius:8, padding:"6px 10px", fontSize:20, cursor:"pointer" }}>{isMuted?"🔇":"🔊"}</button>
-          {isAdmin&&(<>
-            <div style={{ background:"#f8fafc", borderRadius:8, padding:"6px 14px", textAlign:"center", border:"1px solid #e2e8f0" }}><div style={{ fontSize:18, fontWeight:800, color:"#3b82f6" }}>{cards.length}</div><div style={{ fontSize:11, color:"#64748b" }}>Creados</div></div>
-            <div style={{ background:"#f8fafc", borderRadius:8, padding:"6px 14px", textAlign:"center", border:"1px solid #e2e8f0" }}><div style={{ fontSize:18, fontWeight:800, color:"#16a34a" }}>${totalRecaudado.toLocaleString("es-CL")}</div><div style={{ fontSize:11, color:"#64748b" }}>Recaudado</div></div>
-          </>)}
-          {!isAdmin
-            ?<button onClick={()=>setShowLogin(true)} style={{...btnS("#3b82f6"),fontSize:13,padding:"8px 14px"}}>🔐 Admin</button>
-            :<button onClick={handleLogout} style={{...btnS("#ef4444"),fontSize:13,padding:"8px 14px"}}>Cerrar sesión</button>
-          }
-        </div>
+<div style={{ background:"#0f1221", borderBottom:"1px solid rgba(255,255,255,0.08)", padding:"10px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", gap:10 }}>
+  <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+    <div style={{ background:gc, borderRadius:10, width:38, height:38, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>🎰</div>
+    <div>
+      <div style={{ fontSize:16, fontWeight:800, color:"#fff", lineHeight:1.1 }}>Bingo Solidario</div>
+      <div style={{ fontSize:11, color:gc, fontWeight:600 }}>{isAdmin?"👤 Admin":"👁 Visualización"}</div>
+    </div>
+  </div>
+  <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+    <button onClick={()=>setIsMuted(!isMuted)} style={{ background:"rgba(255,255,255,0.07)", border:"none", borderRadius:8, padding:"6px 10px", fontSize:18, cursor:"pointer" }}>{isMuted?"🔇":"🔊"}</button>
+    {isAdmin&&(<>
+      <div style={{ background:"rgba(255,255,255,0.07)", borderRadius:8, padding:"6px 12px", textAlign:"center", border:"1px solid rgba(255,255,255,0.1)" }}>
+        <div style={{ fontSize:16, fontWeight:800, color:"#3b82f6" }}>{cards.length}</div>
+        <div style={{ fontSize:10, color:"#64748b" }}>Creados</div>
       </div>
+      <div style={{ background:"rgba(255,255,255,0.07)", borderRadius:8, padding:"6px 12px", textAlign:"center", border:"1px solid rgba(255,255,255,0.1)" }}>
+        <div style={{ fontSize:16, fontWeight:800, color:"#16a34a" }}>${totalRecaudado.toLocaleString("es-CL")}</div>
+        <div style={{ fontSize:10, color:"#64748b" }}>Recaudado</div>
+      </div>
+    </>)}
+    {!isAdmin
+      ?<button onClick={()=>setShowLogin(true)} style={{ background:gc, border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, cursor:"pointer", color:getTextColor(gc) }}>🔐 Admin</button>
+      :<button onClick={handleLogout} style={{ background:"#ef4444", border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, cursor:"pointer", color:"#fff" }}>Salir</button>
+    }
+  </div>
+</div>
 
       {/* ── TABS ── */}
-      <div style={{ display:"flex", borderBottom:"1px solid #e2e8f0", background:"#ffffff" }}>
-        {TABS.map((t,i)=>(<button key={t} onClick={()=>setTab(i)} style={{ flex:1, padding:"12px 4px", background:"none", border:"none", color:tab===i?"#7c3aed":"#94a3b8", fontWeight:tab===i?700:400, fontSize:13, cursor:"pointer", borderBottom:tab===i?"2px solid #7c3aed":"2px solid transparent", fontFamily:"sans-serif" }}>{t}</button>))}
-      </div>
+<div style={{ display:"flex", background:"#0f1221", padding:"8px 12px", gap:6, borderBottom:"1px solid rgba(255,255,255,0.08)" }}>
+  {TABS.map((t,i)=>{
+    const isActive = tab===i;
+    const labels = ["Cartones","Información","Sorteo","Ganadores"];
+return (
+  <button key={t} onClick={()=>setTab(i)} style={{
+    flex:1,
+    padding:"10px 6px",
+    background:isActive?gc:"rgba(255,255,255,0.05)",
+    border:"none",
+    borderRadius:10,
+    color:isActive?getTextColor(gc):"#64748b",
+    fontWeight:isActive?700:500,
+    fontSize:15,
+    cursor:"pointer",
+    fontFamily:"'Righteous', cursive",
+    transition:"all 0.2s ease",
+    boxShadow:isActive?`0 0 12px ${gc}66`:"none"
+  }}>
+    {labels[i]}
+  </button>
+    );
+  })}
+</div>
 
       {/* ══ TAB SORTEO ══ */}
       {tab===2&&(
         <div style={{ padding:"16px 20px", width:"100%", boxSizing:"border-box", minHeight:"calc(100vh - 112px)", display:"flex", flexDirection:"column", gap:14, paddingBottom: isAdmin ? 90 : 60 }}>
           <style>{`
-            @import url('https://fonts.googleapis.com/css2?family=Poller+One&display=swap');
+            @import url('https://fonts.googleapis.com/css2?family=Poller+One&family=Nunito:wght@700&family=Bebas+Neue&family=Righteous&display=swap');
             @keyframes numPop { 0%{transform:scale(0.3) rotate(-8deg);opacity:0} 60%{transform:scale(1.4) rotate(3deg);opacity:1} 100%{transform:scale(1) rotate(0deg);opacity:1} }
 .num-pop { animation: numPop 0.9s cubic-bezier(0.34,1.56,0.64,1) forwards; }
             @media (min-width: 769px) {
@@ -569,7 +614,7 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
 
           <div className="mobile-bingo-letters" style={{ display: 'none', justifyContent: 'space-around', marginBottom: 10 }}>
             {Object.keys(COLS).map((letter, idx) => (
-              <div key={letter} style={{ width:50, height:50, borderRadius:12, flexShrink:0, background:BINGO_LETTER_COLORS[idx], display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Poller One', cursive", fontWeight:900, fontSize:24, color:"#fff", boxShadow:`0 0 12px ${BINGO_LETTER_COLORS[idx]}99` }}>{letter}</div>
+              <div key={letter} style={{ width:50, height:50, borderRadius:12, flexShrink:0, background:BINGO_LETTER_COLORS[idx], display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Nunito', sans-serif", fontWeight:900, fontSize:24, color:"#fff", boxShadow:`0 0 12px ${BINGO_LETTER_COLORS[idx]}99` }}>{letter}</div>
             ))}
           </div>
 
@@ -617,7 +662,7 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
 
 {/* ZONA 3 — Premio */}
 <div className="zona-premio" style={{ borderRadius:14, overflow:"hidden", border:`1px solid ${gc}33`, background:`linear-gradient(135deg,${gc}11,${gc}22)`, display:"flex", alignItems:"center", justifyContent:"center", maxHeight:300 }}>
-  <img key={activeGame.id} src={window.innerWidth < 768 ? `/premios/premios/${activeGame.id}-mobile.png` : `/premios/premios/premios/premios/premios/premios/premios/premios/premios/${activeGame.id}.png`} alt="Premio" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
+  <img key={activeGame.id} src={window.innerWidth < 768 ? `/premios/${activeGame.id}-mobile.png` : `/premios/premios/premios/premios/premios/premios/${activeGame.id}.png`} alt="Premio" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
   onError={e=>{ e.target.src=e.target.src.includes("-mobile") ? "/premios/placeholder-mobile.png" : "/premios/placeholder.png"; e.target.onerror=null; }}
 />
 </div>
@@ -883,7 +928,7 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
 
     {/* Imagen del premio */}
 <div style={{ borderRadius:12, overflow:"hidden", border:`2px solid ${gc}33`, background:"#000", height:300, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <img key={activeGame.id} src={window.innerWidth < 768 ? `/premios/premios/${activeGame.id}-mobile.png` : `/premios/premios/premios/premios/premios/premios/premios/premios/premios/${activeGame.id}.png`} alt="Premio" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
+      <img key={activeGame.id} src={window.innerWidth < 768 ? `/premios/${activeGame.id}-mobile.png` : `/premios/premios/premios/premios/premios/premios/${activeGame.id}.png`} alt="Premio" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
   onError={e=>{ e.target.src=e.target.src.includes("-mobile") ? "/premios/placeholder-mobile.png" : "/premios/placeholder.png"; e.target.onerror=null; }}
 />
     </div>
