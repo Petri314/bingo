@@ -473,7 +473,7 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
     <style>
       *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
       body{font-family:sans-serif;margin:0;padding:0 0 0 0;box-sizing:border-box;}
-      .grid-container{display:grid;grid-template-columns:repeat(2,110mm);gap:0;margin-left:7mm;}
+      .grid-container{display:grid;grid-template-columns:repeat(2,110mm);gap:0;margin-left:4mm;transform:scale(0.9);transform-origin:top left;}
       .card-box{width:110mm;height:130mm;border:2px solid #000;padding:3mm;border-radius:8px;text-align:center;page-break-inside:avoid;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;background:#fff;}
       .color-strip{height:5mm;width:100%;position:absolute;top:0;left:0;}
       .game-info{font-family:'Poller One',cursive;font-size:13px;font-weight:900;margin-top:2mm;margin-bottom:2mm;color:#000;border-top:1px dashed #aaa;border-bottom:1px dashed #aaa;padding:2mm 0;}
