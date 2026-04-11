@@ -692,13 +692,12 @@ export default function BingoAdmin() {
                 }
               </div>
             ) : (
-              /* ══ PANTALLA VISUALIZACIÓN ══ */
-              <div style={{
+  <div className="viz-grid" style={{
   background:"linear-gradient(135deg,#0f1221 0%,#1a1d2b 100%)",
   height:"auto",
   padding:"12px 16px 60px 16px",
   display:"grid",
-  gridTemplateColumns:window.innerWidth<768?"1fr":"264px 1fr",
+  gridTemplateColumns:"264px 1fr",
   gridTemplateRows:"auto",
   minHeight:"100vh",
   gap:10,
@@ -706,147 +705,155 @@ export default function BingoAdmin() {
   width:"100%",
   overflow:"visible"
 }}>
-                <style>{`
-                  @keyframes slideIn { from{transform:translateY(-10px);opacity:0} to{transform:translateY(0);opacity:1} }
-                  @keyframes pulseViz { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
-                  @keyframes ticker { 0%{transform:translateX(100%)} 100%{transform:translateX(-100%)} }
-                  @keyframes salePopIn { 0%{transform:scale(0.5) translateY(20px);opacity:0} 60%{transform:scale(1.1) translateY(-5px);opacity:1} 100%{transform:scale(1) translateY(0);opacity:1} }
-                `}</style>
+  {/* ══ PANTALLA VISUALIZACIÓN ══ */}
+  <style>{`
+    @keyframes slideIn { from{transform:translateY(-10px);opacity:0} to{transform:translateY(0);opacity:1} }
+    @keyframes pulseViz { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
+    @keyframes ticker { 0%{transform:translateX(100%)} 100%{transform:translateX(-100%)} }
+    @keyframes salePopIn { 0%{transform:scale(0.5) translateY(20px);opacity:0} 60%{transform:scale(1.1) translateY(-5px);opacity:1} 100%{transform:scale(1) translateY(0);opacity:1} }
+    @keyframes barGlow { 0%,100%{opacity:1} 50%{opacity:0.7} }
+    @media (max-width: 768px) {
+      .viz-grid { grid-template-columns: 1fr !important; }
+      .viz-grid > * { grid-column: 1 / -1 !important; }
+      .viz-col-left { width: 100% !important; min-width: 0 !important; }
+      .viz-col-right { width: 100% !important; min-width: 0 !important; }
+      .viz-col-left *, .viz-col-right * { max-width: 100% !important; box-sizing: border-box !important; }
+      .viz-stats { grid-template-columns: 1fr 1fr !important; }
+      .viz-patron-grid { width: 120px !important; }
+    }
+  `}</style>
 
-                {newSaleAnim&&(
-                  <div style={{ position:"fixed", top:20, left:"50%", transform:"translateX(-50%)", zIndex:400, animation:"salePopIn 0.5s ease forwards", background:"linear-gradient(135deg,#16a34a,#22c55e)", borderRadius:20, padding:"14px 24px", textAlign:"center", boxShadow:"0 10px 40px rgba(34,197,94,0.5)", minWidth:240 }}>
-                    <div style={{ fontSize:10, fontWeight:700, letterSpacing:3, color:"rgba(255,255,255,0.8)", marginBottom:3 }}>🎟️ NUEVO CARTÓN VENDIDO</div>
-                    <div style={{ fontSize:20, fontWeight:900, color:"#fff", marginBottom:2 }}>{newSaleAnim.owner}</div>
-                    <div style={{ fontSize:13, color:"rgba(255,255,255,0.85)", fontWeight:600 }}>Cartón #{newSaleAnim.cardNum} · {newSaleAnim.gameName}</div>
-                  </div>
-                )}
-
-                {/* FILA 1: Juego activo — full width */}
-                <div style={{ gridColumn:"1/-1", background:`linear-gradient(135deg,${gc}22,${gc}44)`, borderRadius:12, padding:"10px 18px", border:`2px solid ${gc}`, textAlign:"center" }}>
-                  <div style={{ fontSize:10, fontWeight:700, color:gc, letterSpacing:3, textTransform:"uppercase" }}>Juego Activo</div>
-                  <div style={{ fontSize:26, fontWeight:900, color:"#fff", lineHeight:1.1, textTransform:"uppercase", letterSpacing:2 }}>{activeGame.name}</div>
-                </div>
-
-                {/* FILA 2: Countdown — full width (solo si activo) */}
-                {countdown>0 ? (
-  <div style={{ gridColumn:"1/-1", background:"#1a1d2b", borderRadius:12, padding:"10px 20px", border:"2px solid #f59e0b", textAlign:"center", animation:"pulseViz 1s ease infinite", display:"flex", alignItems:"center", justifyContent:"center", gap:16 }}>
-    <div style={{ fontSize:11, fontWeight:700, color:"#f59e0b", letterSpacing:3 }}>EL BINGO COMIENZA EN</div>
-    <div style={{ fontSize:42, fontWeight:900, color:"#f59e0b", lineHeight:1, fontFamily:"'Poller One',cursive" }}>
-      {String(Math.floor(countdown/60)).padStart(2,"0")}:{String(countdown%60).padStart(2,"0")}
+  {newSaleAnim&&(
+    <div style={{ position:"fixed", top:20, left:"50%", transform:"translateX(-50%)", zIndex:400, animation:"salePopIn 0.5s ease forwards", background:"linear-gradient(135deg,#16a34a,#22c55e)", borderRadius:20, padding:"14px 24px", textAlign:"center", boxShadow:"0 10px 40px rgba(34,197,94,0.5)", minWidth:240 }}>
+      <div style={{ fontSize:10, fontWeight:700, letterSpacing:3, color:"rgba(255,255,255,0.8)", marginBottom:3 }}>🎟️ NUEVO CARTÓN VENDIDO</div>
+      <div style={{ fontSize:20, fontWeight:900, color:"#fff", marginBottom:2 }}>{newSaleAnim.owner}</div>
+      <div style={{ fontSize:13, color:"rgba(255,255,255,0.85)", fontWeight:600 }}>Cartón #{newSaleAnim.cardNum} · {newSaleAnim.gameName}</div>
     </div>
+  )}
+
+  {/* FILA 1: Juego activo */}
+  <div style={{ gridColumn:"1/-1", background:`linear-gradient(135deg,${gc}22,${gc}44)`, borderRadius:12, padding:"10px 18px", border:`2px solid ${gc}`, textAlign:"center" }}>
+    <div style={{ fontSize:10, fontWeight:700, color:gc, letterSpacing:3, textTransform:"uppercase" }}>Juego Activo</div>
+    <div style={{ fontSize:26, fontWeight:900, color:"#fff", lineHeight:1.1, textTransform:"uppercase", letterSpacing:2 }}>{activeGame.name}</div>
   </div>
-) : (
-  <div style={{ gridColumn:"1/-1", background:"#1a1d2b", borderRadius:12, padding:"10px 20px", border:`2px solid ${gc}`, textAlign:"center", display:"flex", alignItems:"center", justifyContent:"center" }}>
-    <div style={{ fontSize:16, fontWeight:700, color:gc, letterSpacing:2 }}>El {activeGame.name} comenzará luego</div>
+
+  {/* FILA 2: Countdown */}
+  {countdown>0 ? (
+    <div style={{ gridColumn:"1/-1", background:"#1a1d2b", borderRadius:12, padding:"10px 20px", border:"2px solid #f59e0b", textAlign:"center", animation:"pulseViz 1s ease infinite", display:"flex", alignItems:"center", justifyContent:"center", gap:16, flexWrap:"wrap" }}>
+      <div style={{ fontSize:11, fontWeight:700, color:"#f59e0b", letterSpacing:3 }}>EL BINGO COMIENZA EN</div>
+      <div style={{ fontSize:42, fontWeight:900, color:"#f59e0b", lineHeight:1, fontFamily:"'Poller One',cursive" }}>
+        {String(Math.floor(countdown/60)).padStart(2,"0")}:{String(countdown%60).padStart(2,"0")}
+      </div>
+    </div>
+  ) : (
+    <div style={{ gridColumn:"1/-1", background:"#1a1d2b", borderRadius:12, padding:"10px 20px", border:`2px solid ${gc}`, textAlign:"center", display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ fontSize:16, fontWeight:700, color:gc, letterSpacing:2 }}>El {activeGame.name} comenzará luego</div>
+    </div>
+  )}
+
+  {/* COLUMNA IZQUIERDA */}
+  <div className="viz-col-left" style={{ display:"flex", flexDirection:"column", gap:10, overflow:"visible", minHeight:"auto", paddingBottom:12 }}>
+
+    {/* Patrón activo */}
+    <div style={{ background:"#1a1d2b", borderRadius:12, height:180, padding:"12px 14px", border:`1px solid ${gc}44`, flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8 }}>
+      <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:8, letterSpacing:2, textAlign:"center" }}>PATRÓN ACTIVO</div>
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
+        <div className="viz-patron-grid" style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:2, width:150, flexShrink:0 }}>
+          {activePattern.grid.flat().map((cell,i)=>(<div key={i} style={{ height:18, borderRadius:3, background:cell?gc:"rgba(255,255,255,0.07)" }} />))}
+        </div>
+        <div>
+          <div style={{ fontSize:14, fontWeight:800, color:"#fff", lineHeight:1.2, textAlign:"center" }}>{activePattern.name}</div>
+          <div style={{ fontSize:11, color:gc, fontWeight:600, marginTop:3, textAlign:"center" }}>{activeGame.name}</div>
+        </div>
+      </div>
+    </div>
+
+    {/* Precio cartón */}
+    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, flexShrink:0, textAlign:"center" }}>
+      <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, letterSpacing:2, marginBottom:4 }}>PRECIO CARTÓN</div>
+      <div style={{ fontSize:28, fontWeight:900, color:gc, fontFamily:"'Poller One',cursive" }}>${PRICE.toLocaleString("es-CL")}</div>
+    </div>
+
+    {/* Últimos compradores */}
+    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"12px 14px", border:`1px solid ${gc}44`, height:375, overflow:"auto", display:"flex", flexDirection:"column" }}>
+      <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:10, letterSpacing:2 }}>ÚLTIMOS COMPRADORES</div>
+      <div style={{ flex:1, overflow:"auto", display:"flex", flexDirection:"column", gap:1 }}>
+        {cards.filter(c=>c.paid&&c.gameId===activeGame.id).slice(-20).reverse().map((c,i,arr)=>(
+          <div key={c.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"6px 0", borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none", animation:"slideIn 0.3s ease" }}>
+            <span style={{ fontWeight:700, color:"#fff", fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"70%" }}>{c.owner}</span>
+            <span style={{ background:gc, borderRadius:5, padding:"2px 8px", fontSize:11, fontWeight:700, color:["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff", flexShrink:0 }}>#{c.cardNum}</span>
+          </div>
+        ))}
+        {cards.filter(c=>c.paid&&c.gameId===activeGame.id).length===0&&<div style={{ textAlign:"center", color:"#64748b", fontSize:12 }}>Sin compradores aún</div>}
+      </div>
+    </div>
+
   </div>
-)}
 
-                {/* COLUMNA IZQUIERDA */}
-                <div style={{ display:"flex", flexDirection:"column", gap:10, overflow:"visible", minHeight:"auto", flex:1, paddingBottom:12 }}>
+  {/* COLUMNA DERECHA */}
+  <div className="viz-col-right" style={{ display:"flex", flexDirection:"column", gap:10, overflow:"visible", minHeight:"auto" }}>
 
-                  {/* Patrón activo */}
-                  <div style={{ background:"#1a1d2b", borderRadius:12, height: 180, padding:"12px 14px", border:`1px solid ${gc}44`, flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8 }}>
-    <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:8, letterSpacing:2, textAlign:"center" }}>PATRÓN ACTIVO</div>
-    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
-                      <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:2, width:150, flexShrink:0 }}>
-                        {activePattern.grid.flat().map((cell,i)=>(<div key={i} style={{ height:18, borderRadius:3, background:cell?gc:"rgba(255,255,255,0.07)" }} />))}
-                      </div>
-                      <div>
-                        <div style={{ fontSize:14, fontWeight:800, color:"#fff", lineHeight:1.2 }}>{activePattern.name}</div>
-                        <div style={{ fontSize:11, color:gc, fontWeight:600, marginTop:3, textAlign:"center" }}>{activeGame.name}</div>
-                      </div>
-                    </div>
-                  </div>
+    {/* Stats */}
+    <div className="viz-stats" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, flexShrink:0 }}>
+      <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, textAlign:"center" }}>
+        <div style={{ fontSize:40, fontWeight:900, color:gc, lineHeight:1, fontFamily:"'Poller One',cursive" }}>{cards.filter(c=>c.paid&&c.gameId===activeGame.id).length}</div>
+        <div style={{ fontSize:10, color:"#94a3b8", marginTop:3, fontWeight:600, letterSpacing:1 }}>JUGADORES</div>
+      </div>
+      <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:"1px solid #16a34a44", textAlign:"center" }}>
+        <div style={{ fontSize:20, fontWeight:900, color:"#16a34a", lineHeight:1.2 }}>${totalRecaudado.toLocaleString("es-CL")}</div>
+        <div style={{ fontSize:10, color:"#94a3b8", marginTop:3, fontWeight:600, letterSpacing:1 }}>RECAUDADO</div>
+      </div>
+    </div>
 
-                  {/* Precio cartón */}
-                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, flexShrink:0, textAlign:"center" }}>
-                    <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, letterSpacing:2, marginBottom:4 }}>PRECIO CARTÓN</div>
-                    <div style={{ fontSize:28, fontWeight:900, color:gc, fontFamily:"'Poller One',cursive" }}>${PRICE.toLocaleString("es-CL")}</div>
-                  </div>
+    {/* Barra de progreso */}
+    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"14px 18px", border:`1px solid ${gc}44`, flexShrink:0 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
+        <span style={{ fontSize:13, color:"#94a3b8", fontWeight:700, letterSpacing:1 }}>CARTONES VENDIDOS</span>
+        <span style={{ fontSize:15, color:gc, fontWeight:800 }}>{cards.filter(c=>c.paid&&c.gameId===activeGame.id).length} / {cards.filter(c=>c.gameId===activeGame.id).length}</span>
+      </div>
+      <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:99, height:18, overflow:"hidden" }}>
+        <div style={{ background:gc, height:"100%", borderRadius:99, width:`${cards.filter(c=>c.gameId===activeGame.id).length>0?(cards.filter(c=>c.paid&&c.gameId===activeGame.id).length/cards.filter(c=>c.gameId===activeGame.id).length)*100:0}%`, transition:"width 0.8s ease", animation:"barGlow 2s ease-in-out infinite", boxShadow:`0 0 12px ${gc}99` }} />
+      </div>
+    </div>
 
-                  {/* Últimos compradores */}
-                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"12px 14px", border:`1px solid ${gc}44`, height: 375, overflow:"auto", display:"flex", flexDirection:"column" }}>
-                    <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:10, letterSpacing:2 }}>ÚLTIMOS COMPRADORES</div>
-                    <div style={{ flex:2, overflow:"auto", display:"flex", flexDirection:"column", gap:1 }}>
-                      {cards.filter(c=>c.paid&&c.gameId===activeGame.id).slice(-20).reverse().map((c,i,arr)=>(
-                        <div key={c.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"6px 0", borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none", animation:"slideIn 0.3s ease" }}>
-                          <span style={{ fontWeight:700, color:"#fff", fontSize:13, overflow:"visible", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:130 }}>{c.owner}</span>
-                          <span style={{ background:gc, borderRadius:5, padding:"2px 8px", fontSize:11, fontWeight:700, color:["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff", flexShrink:0 }}>#{c.cardNum}</span>
-                        </div>
-                      ))}
-                      {cards.filter(c=>c.paid&&c.gameId===activeGame.id).length===0&&<div style={{ textAlign:"center", color:"#64748b", fontSize:12 }}>Sin compradores aún</div>}
-                    </div>
-                  </div>
+    {/* Imagen del premio */}
+    <div style={{ borderRadius:12, overflow:"hidden", border:`2px solid ${gc}33`, background:"#000", flex:1, minHeight:200, display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <img src="/img.png" alt="Premio" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
+        onError={e=>{ e.target.style.display="none"; e.target.parentNode.innerHTML=`<div style="height:100%;display:flex;align-items:center;justify-content:center;background:#1a1d2b;color:${gc};font-size:14px;font-weight:700;text-align:center;padding:20px;font-family:sans-serif">🏅 Imagen del premio<br><span style='font-size:11px;color:#64748b'>Sube img.png a public/</span></div>`; }}
+      />
+    </div>
 
-                </div>
+    {/* Juegos */}
+    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, flexShrink:0 }}>
+      <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:8, letterSpacing:2 }}>JUEGOS</div>
+      <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+        {GAMES.map(g=>(
+          <div key={g.id} style={{ background:g.id===activeGame.id?g.color:"rgba(255,255,255,0.05)", borderRadius:8, padding:"4px 10px", border:`1px solid ${g.color}44`, display:"flex", alignItems:"center", gap:5 }}>
+            <div style={{ width:7, height:7, borderRadius:"50%", background:g.color, flexShrink:0 }} />
+            <span style={{ fontSize:11, fontWeight:700, color:g.id===activeGame.id?(["j2","j3","j5","j9","j12"].includes(g.id)?"#000":"#fff"):"#94a3b8" }}>{g.name}</span>
+            <span style={{ fontSize:10, color:g.id===activeGame.id?(["j2","j3","j5","j9","j12"].includes(g.id)?"#00000088":"rgba(255,255,255,0.6)"):"#64748b" }}>({cards.filter(c=>c.paid&&c.gameId===g.id).length})</span>
+          </div>
+        ))}
+      </div>
+    </div>
 
-                {/* COLUMNA DERECHA */}
-                <div style={{ display:"flex", flexDirection:"column", gap:10, overflow:"visible", minHeight:"auto" }}>
+    {/* Ticker */}
+    {cards.filter(c=>c.paid&&c.gameId===activeGame.id).length>0&&(
+      <div style={{ background:"#1a1d2b", borderRadius:10, padding:"8px 0", border:`1px solid ${gc}44`, overflow:"hidden", flexShrink:0 }}>
+        <div style={{ display:"flex", animation:"ticker 20s linear infinite", whiteSpace:"nowrap" }}>
+          {[...cards.filter(c=>c.paid&&c.gameId===activeGame.id),...cards.filter(c=>c.paid&&c.gameId===activeGame.id)].map((c,i)=>(
+            <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:6, marginRight:32, fontSize:12, fontWeight:700, color:"#fff" }}>
+              <span style={{ background:gc, borderRadius:5, padding:"2px 7px", fontSize:11, color:["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff", fontWeight:700 }}>#{c.cardNum}</span>
+              {c.owner}
+            </span>
+          ))}
+        </div>
+      </div>
+    )}
 
-                  {/* Stats */}
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, flexShrink:0 }}>
-                    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, textAlign:"center" }}>
-                      <div style={{ fontSize:40, fontWeight:900, color:gc, lineHeight:1, fontFamily:"'Poller One',cursive" }}>{cards.filter(c=>c.paid&&c.gameId===activeGame.id).length}</div>
-                      <div style={{ fontSize:10, color:"#94a3b8", marginTop:3, fontWeight:600, letterSpacing:1 }}>JUGADORES</div>
-                    </div>
-                    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:"1px solid #16a34a44", textAlign:"center" }}>
-                      <div style={{ fontSize:20, fontWeight:900, color:"#16a34a", lineHeight:1.2 }}>${totalRecaudado.toLocaleString("es-CL")}</div>
-                      <div style={{ fontSize:10, color:"#94a3b8", marginTop:3, fontWeight:600, letterSpacing:1 }}>RECAUDADO</div>
-                    </div>
-                  </div>
+  </div>
 
-                  {/* Barra de progreso */}
-                          <style>{`
-                            @keyframes barGlow { 0%,100%{opacity:1} 50%{opacity:0.7} }
-                          `}</style>
-                          <div style={{ background:"#1a1d2b", borderRadius:12, padding:"14px 18px", border:`1px solid ${gc}44`, flexShrink:0 }}>
-                            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
-                              <span style={{ fontSize:13, color:"#94a3b8", fontWeight:700, letterSpacing:1 }}>CARTONES VENDIDOS</span>
-                              <span style={{ fontSize:15, color:gc, fontWeight:800 }}>{cards.filter(c=>c.paid&&c.gameId===activeGame.id).length} / {cards.filter(c=>c.gameId===activeGame.id).length}</span>
-                            </div>
-                            <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:99, height:18, overflow:"hidden" }}>
-                              <div style={{ background:gc, height:"100%", borderRadius:99, width:`${cards.filter(c=>c.gameId===activeGame.id).length>0?(cards.filter(c=>c.paid&&c.gameId===activeGame.id).length/cards.filter(c=>c.gameId===activeGame.id).length)*100:0}%`, transition:"width 0.8s ease", animation:"barGlow 2s ease-in-out infinite", boxShadow:`0 0 12px ${gc}99` }} />
-                            </div>
-                          </div>
-
-                  {/* Imagen del premio */}
-                  <div style={{ borderRadius:12, overflow:"visible", border:`2px solid ${gc}33`, background:"#000", flex:1, minHeight:"auto", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                    <img src="/img.png" alt="Premio" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
-                      onError={e=>{ e.target.style.display="none"; e.target.parentNode.innerHTML=`<div style="height:100%;display:flex;align-items:center;justify-content:center;background:#1a1d2b;color:${gc};font-size:14px;font-weight:700;text-align:center;padding:20px;font-family:sans-serif">🏅 Imagen del premio<br><span style='font-size:11px;color:#64748b'>Sube img.png a public/</span></div>`; }}
-                    />
-                  </div>
-
-                  {/* Juegos */}
-                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, flexShrink:0 }}>
-                    <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:8, letterSpacing:2 }}>JUEGOS</div>
-                    <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                      {GAMES.map(g=>(
-                        <div key={g.id} style={{ background:g.id===activeGame.id?g.color:"rgba(255,255,255,0.05)", borderRadius:8, padding:"4px 10px", border:`1px solid ${g.color}44`, display:"flex", alignItems:"center", gap:5 }}>
-                          <div style={{ width:7, height:7, borderRadius:"50%", background:g.color, flexShrink:0 }} />
-                          <span style={{ fontSize:11, fontWeight:700, color:g.id===activeGame.id?(["j2","j3","j5","j9","j12"].includes(g.id)?"#000":"#fff"):"#94a3b8" }}>{g.name}</span>
-                          <span style={{ fontSize:10, color:g.id===activeGame.id?(["j2","j3","j5","j9","j12"].includes(g.id)?"#00000088":"rgba(255,255,255,0.6)"):"#64748b" }}>({cards.filter(c=>c.paid&&c.gameId===g.id).length})</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Ticker */}
-                  {cards.filter(c=>c.paid&&c.gameId===activeGame.id).length>0&&(
-                    <div style={{ background:"#1a1d2b", borderRadius:10, padding:"8px 0", border:`1px solid ${gc}44`, overflow:"hidden", flexShrink:0 }}>
-                      <div style={{ display:"flex", animation:"ticker 20s linear infinite", whiteSpace:"nowrap" }}>
-                        {[...cards.filter(c=>c.paid&&c.gameId===activeGame.id),...cards.filter(c=>c.paid&&c.gameId===activeGame.id)].map((c,i)=>(
-                          <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:6, marginRight:32, fontSize:12, fontWeight:700, color:"#fff" }}>
-                            <span style={{ background:gc, borderRadius:5, padding:"2px 7px", fontSize:11, color:["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff", fontWeight:700 }}>#{c.cardNum}</span>
-                            {c.owner}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                </div>
-
-              </div>
+</div>
             )}
           </div>)}
 
