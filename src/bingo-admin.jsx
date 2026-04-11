@@ -514,7 +514,6 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
       {/* ── HEADER ── */}
 <div style={{ background:"#0f1221", borderBottom:"1px solid rgba(255,255,255,0.08)", padding:"10px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", gap:10 }}>
   <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-    <div style={{ background:gc, borderRadius:10, width:38, height:38, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>🎰</div>
     <div>
       <div style={{ fontSize:16, fontWeight:800, color:"#fff", lineHeight:1.1 }}>Bingo Solidario</div>
       <div style={{ fontSize:11, color:gc, fontWeight:600 }}>{isAdmin?"👤 Admin":"👁 Visualización"}</div>
@@ -555,7 +554,7 @@ return (
     fontWeight:isActive?700:500,
     fontSize:15,
     cursor:"pointer",
-    fontFamily:"'Righteous', cursive",
+    fontFamily:"'Nunito', sans-serif",
     transition:"all 0.2s ease",
     boxShadow:isActive?`0 0 12px ${gc}66`:"none"
   }}>
