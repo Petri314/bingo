@@ -469,16 +469,16 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
     let html=`<!DOCTYPE html><html><head><title>Imprimir Cartones</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Stencil&family=Varsity&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poller+One&display=swap" rel="stylesheet">
     <style>
       *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
       body{font-family:sans-serif;margin:0;padding:10mm;box-sizing:border-box;}
       .grid-container{display:grid;grid-template-columns:1fr 1fr;gap:8mm;}
       .card-box{width:100mm;height:130mm;border:2px solid #000;padding:3mm;border-radius:8px;text-align:center;page-break-inside:avoid;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;background:#fff;}
       .color-strip{height:5mm;width:100%;position:absolute;top:0;left:0;}
-      .game-info{font-family:'Stencil',sans-serif;font-size:13px;margin-top:2mm;margin-bottom:2mm;color:#000;border-top:1px dashed #aaa;border-bottom:1px dashed #aaa;padding:2mm 0;}
+      .game-info{font-family:'Poller One',cursive;font-size:13px;font-weight:900;margin-top:2mm;margin-bottom:2mm;color:#000;border-top:1px dashed #aaa;border-bottom:1px dashed #aaa;padding:2mm 0;}
       .bingo-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:0;height:100mm;margin-top:2mm;}
-      .bingo-cell{display:flex;align-items:center;justify-content:center;border-radius:2px;font-family:'Stencil',sans-serif;font-size:45px;font-weight:400;border:1px solid #bbb;height:85%;width:85%;margin:auto;}
+      .bingo-cell{display:flex;align-items:center;justify-content:center;border-radius:2px;font-family:'Poller One',cursive;font-size:45px;font-weight:400;border:1px solid #bbb;height:85%;width:85%;margin:auto;}
       .footer-info{font-size:8px;color:#000;margin-top:3mm;border-top:1px dashed #000;padding-top:2mm;font-family:sans-serif;line-height:1.3;font-weight:600;}
       .no-print{text-align:center;margin-bottom:20px;}
       @media print{body{padding:5mm;}.no-print{display:none;}}
@@ -491,7 +491,7 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
       html+=`<div class="card-box"><div class="color-strip" style="background:${gc2};"></div>
       <div class="game-info">JUEGO ${gn} | CARTÓN ${c.cardNum}</div>
       <div class="bingo-grid">
-        ${Object.keys(COLS).map(l=>`<div class="bingo-cell" style="background:${gc2};color:white;border:none;font-size:20px;">${l}</div>`).join('')}
+        ${Object.keys(COLS).map(l=>`<div class="bingo-cell" style="background:${gc2};color:white;border:none;font-size:20px;font-family:'Poller One',cursive;">${l}</div>`).join('')}
         ${Array.isArray(c.grid)&&c.grid[0]?c.grid[0].map((_,row)=>c.grid.map((col,ci)=>{ const val=col[row]; const isFree=val==="FREE"; return `<div class="bingo-cell" style="background:${isFree?"#facc15":"#f8fafc"};color:${isFree?"#000":"#222"};padding:2px;">${isFree?'<img src="/qr-code.png" style="width:100%;height:100%;object-fit:contain;">':val}</div>`; }).join('')).join(''):''}
       </div>
       <div class="footer-info">BINGO SOLIDARIO CRISTIAN HIDALGO<br>ESCANEA EL QR DEL CENTRO PARA VER INFO DEL JUEGO</div></div>`;
