@@ -573,7 +573,7 @@ export default function BingoAdmin() {
             </div>
 
             {/* ZONA 3 — Premio */}
-            <div className="zona-premio" style={{ borderRadius:14, overflow:"hidden", border:`1px solid ${gc}33`, background:`linear-gradient(135deg,${gc}11,${gc}22)`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <div className="zona-premio" style={{ borderRadius:14, overflow:"visible", border:`1px solid ${gc}33`, background:`linear-gradient(135deg,${gc}11,${gc}22)`, display:"flex", alignItems:"center", justifyContent:"center" }}>
               <img src="/img.png" alt="Premio" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
                 onError={e=>{ e.target.style.display="none"; e.target.parentNode.innerHTML=`<div style="color:${gc};font-size:15px;font-weight:700;text-align:center;padding:20px;line-height:1.8;font-family:sans-serif">🏅 Información<br>del premio<br><span style='font-size:11px;color:#64748b'>Sube <code>img.png</code> a <code>public/</code></span></div>`; }}
               />
@@ -697,15 +697,15 @@ export default function BingoAdmin() {
                 background:"linear-gradient(135deg,#0f1221 0%,#1a1d2b 100%)",
                 height:"calc(100vh - 112px)",
                 width:"100vw",
-                padding:"12px 16px",
+                padding:"12px 16px 60px 16px",
                 display:"grid",
                 gridTemplateColumns:"264px 1fr",
                 gridTemplateRows:"auto auto 1fr",
-                minHeight:"calc(100vh - 112px)",
+                minHeight:"100vh",
                 gap:10,
                 boxSizing:"border-box",
                 width:"100%",
-                overflow:"hidden"
+                overflow:"visible"
               }}>
                 <style>{`
                   @keyframes slideIn { from{transform:translateY(-10px);opacity:0} to{transform:translateY(0);opacity:1} }
@@ -730,38 +730,48 @@ export default function BingoAdmin() {
 
                 {/* FILA 2: Countdown — full width (solo si activo) */}
                 {countdown>0 ? (
-                  <div style={{ gridColumn:"1/-1", background:"#1a1d2b", borderRadius:12, padding:"10px 20px", border:"2px solid #f59e0b", textAlign:"center", animation:"pulseViz 1s ease infinite", display:"flex", alignItems:"center", justifyContent:"center", gap:16 }}>
-                    <div style={{ fontSize:11, fontWeight:700, color:"#f59e0b", letterSpacing:3 }}>EL BINGO COMIENZA EN</div>
-                    <div style={{ fontSize:42, fontWeight:900, color:"#f59e0b", lineHeight:1, fontFamily:"'Poller One',cursive" }}>
-                      {String(Math.floor(countdown/60)).padStart(2,"0")}:{String(countdown%60).padStart(2,"0")}
-                    </div>
-                  </div>
-                ) : null}
+  <div style={{ gridColumn:"1/-1", background:"#1a1d2b", borderRadius:12, padding:"10px 20px", border:"2px solid #f59e0b", textAlign:"center", animation:"pulseViz 1s ease infinite", display:"flex", alignItems:"center", justifyContent:"center", gap:16 }}>
+    <div style={{ fontSize:11, fontWeight:700, color:"#f59e0b", letterSpacing:3 }}>EL BINGO COMIENZA EN</div>
+    <div style={{ fontSize:42, fontWeight:900, color:"#f59e0b", lineHeight:1, fontFamily:"'Poller One',cursive" }}>
+      {String(Math.floor(countdown/60)).padStart(2,"0")}:{String(countdown%60).padStart(2,"0")}
+    </div>
+  </div>
+) : (
+  <div style={{ gridColumn:"1/-1", background:"#1a1d2b", borderRadius:12, padding:"10px 20px", border:`2px solid ${gc}`, textAlign:"center", display:"flex", alignItems:"center", justifyContent:"center" }}>
+    <div style={{ fontSize:16, fontWeight:700, color:gc, letterSpacing:2 }}>El {activeGame.name} comenzará luego</div>
+  </div>
+)}
 
                 {/* COLUMNA IZQUIERDA */}
-                <div style={{ display:"flex", flexDirection:"column", gap:10, overflow:"hidden", minHeight:0, flex:1, paddingBottom:12 }}>
+                <div style={{ display:"flex", flexDirection:"column", gap:10, overflow:"visible", minHeight:"auto", flex:1, paddingBottom:12 }}>
 
                   {/* Patrón activo */}
-                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"12px 14px", border:`1px solid ${gc}44`, flexShrink:0 }}>
-                    <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:8, letterSpacing:2 }}>PATRÓN ACTIVO</div>
-                    <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                      <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:2, width:65, flexShrink:0 }}>
-                        {activePattern.grid.flat().map((cell,i)=>(<div key={i} style={{ height:11, borderRadius:2, background:cell?gc:"rgba(255,255,255,0.07)" }} />))}
+                  <div style={{ background:"#1a1d2b", borderRadius:12, height: 180, padding:"12px 14px", border:`1px solid ${gc}44`, flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8 }}>
+    <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:8, letterSpacing:2, textAlign:"center" }}>PATRÓN ACTIVO</div>
+    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
+                      <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:2, width:150, flexShrink:0 }}>
+                        {activePattern.grid.flat().map((cell,i)=>(<div key={i} style={{ height:18, borderRadius:3, background:cell?gc:"rgba(255,255,255,0.07)" }} />))}
                       </div>
                       <div>
                         <div style={{ fontSize:14, fontWeight:800, color:"#fff", lineHeight:1.2 }}>{activePattern.name}</div>
-                        <div style={{ fontSize:11, color:gc, fontWeight:600, marginTop:3 }}>{activeGame.name}</div>
+                        <div style={{ fontSize:11, color:gc, fontWeight:600, marginTop:3, textAlign:"center" }}>{activeGame.name}</div>
                       </div>
                     </div>
                   </div>
 
+                  {/* Precio cartón */}
+                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, flexShrink:0, textAlign:"center" }}>
+                    <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, letterSpacing:2, marginBottom:4 }}>PRECIO CARTÓN</div>
+                    <div style={{ fontSize:28, fontWeight:900, color:gc, fontFamily:"'Poller One',cursive" }}>${PRICE.toLocaleString("es-CL")}</div>
+                  </div>
+
                   {/* Últimos compradores */}
-                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"12px 14px", border:`1px solid ${gc}44`, flex:2, overflow:"auto", display:"flex", flexDirection:"column" }}>
+                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"12px 14px", border:`1px solid ${gc}44`, height: 375, overflow:"auto", display:"flex", flexDirection:"column" }}>
                     <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:10, letterSpacing:2 }}>ÚLTIMOS COMPRADORES</div>
                     <div style={{ flex:2, overflow:"auto", display:"flex", flexDirection:"column", gap:1 }}>
                       {cards.filter(c=>c.paid&&c.gameId===activeGame.id).slice(-20).reverse().map((c,i,arr)=>(
                         <div key={c.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"6px 0", borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none", animation:"slideIn 0.3s ease" }}>
-                          <span style={{ fontWeight:700, color:"#fff", fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:130 }}>{c.owner}</span>
+                          <span style={{ fontWeight:700, color:"#fff", fontSize:13, overflow:"visible", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:130 }}>{c.owner}</span>
                           <span style={{ background:gc, borderRadius:5, padding:"2px 8px", fontSize:11, fontWeight:700, color:["j2","j3","j5","j9","j12"].includes(c.gameId)?"#000":"#fff", flexShrink:0 }}>#{c.cardNum}</span>
                         </div>
                       ))}
@@ -772,7 +782,7 @@ export default function BingoAdmin() {
                 </div>
 
                 {/* COLUMNA DERECHA */}
-                <div style={{ display:"flex", flexDirection:"column", gap:10, overflow:"hidden", minHeight:0 }}>
+                <div style={{ display:"flex", flexDirection:"column", gap:10, overflow:"visible", minHeight:"auto" }}>
 
                   {/* Stats */}
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, flexShrink:0 }}>
@@ -787,24 +797,21 @@ export default function BingoAdmin() {
                   </div>
 
                   {/* Barra de progreso */}
-                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, flexShrink:0 }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
-                      <span style={{ fontSize:10, color:"#94a3b8", fontWeight:600, letterSpacing:1 }}>CARTONES VENDIDOS</span>
-                      <span style={{ fontSize:11, color:gc, fontWeight:700 }}>{cards.filter(c=>c.paid&&c.gameId===activeGame.id).length} / {cards.filter(c=>c.gameId===activeGame.id).length}</span>
-                    </div>
-                    <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:99, height:10, overflow:"hidden" }}>
-                      <div style={{ background:gc, height:"100%", borderRadius:99, width:`${cards.filter(c=>c.gameId===activeGame.id).length>0?(cards.filter(c=>c.paid&&c.gameId===activeGame.id).length/cards.filter(c=>c.gameId===activeGame.id).length)*100:0}%`, transition:"width 0.5s ease" }} />
-                    </div>
-                  </div>
-
-                  {/* Precio cartón */}
-                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, flexShrink:0, textAlign:"center" }}>
-                    <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, letterSpacing:2, marginBottom:4 }}>PRECIO CARTÓN</div>
-                    <div style={{ fontSize:28, fontWeight:900, color:gc, fontFamily:"'Poller One',cursive" }}>${PRICE.toLocaleString("es-CL")}</div>
-                  </div>
+                          <style>{`
+                            @keyframes barGlow { 0%,100%{opacity:1} 50%{opacity:0.7} }
+                          `}</style>
+                          <div style={{ background:"#1a1d2b", borderRadius:12, padding:"14px 18px", border:`1px solid ${gc}44`, flexShrink:0 }}>
+                            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
+                              <span style={{ fontSize:13, color:"#94a3b8", fontWeight:700, letterSpacing:1 }}>CARTONES VENDIDOS</span>
+                              <span style={{ fontSize:15, color:gc, fontWeight:800 }}>{cards.filter(c=>c.paid&&c.gameId===activeGame.id).length} / {cards.filter(c=>c.gameId===activeGame.id).length}</span>
+                            </div>
+                            <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:99, height:18, overflow:"hidden" }}>
+                              <div style={{ background:gc, height:"100%", borderRadius:99, width:`${cards.filter(c=>c.gameId===activeGame.id).length>0?(cards.filter(c=>c.paid&&c.gameId===activeGame.id).length/cards.filter(c=>c.gameId===activeGame.id).length)*100:0}%`, transition:"width 0.8s ease", animation:"barGlow 2s ease-in-out infinite", boxShadow:`0 0 12px ${gc}99` }} />
+                            </div>
+                          </div>
 
                   {/* Imagen del premio */}
-                  <div style={{ borderRadius:12, overflow:"hidden", border:`2px solid ${gc}33`, background:"#000", flex:1, minHeight:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <div style={{ borderRadius:12, overflow:"visible", border:`2px solid ${gc}33`, background:"#000", flex:1, minHeight:"auto", display:"flex", alignItems:"center", justifyContent:"center" }}>
                     <img src="/img.png" alt="Premio" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
                       onError={e=>{ e.target.style.display="none"; e.target.parentNode.innerHTML=`<div style="height:100%;display:flex;align-items:center;justify-content:center;background:#1a1d2b;color:${gc};font-size:14px;font-weight:700;text-align:center;padding:20px;font-family:sans-serif">🏅 Imagen del premio<br><span style='font-size:11px;color:#64748b'>Sube img.png a public/</span></div>`; }}
                     />
