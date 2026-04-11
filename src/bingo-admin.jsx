@@ -618,7 +618,7 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
 {/* ZONA 3 — Premio */}
 <div className="zona-premio" style={{ borderRadius:14, overflow:"hidden", border:`1px solid ${gc}33`, background:`linear-gradient(135deg,${gc}11,${gc}22)`, display:"flex", alignItems:"center", justifyContent:"center", maxHeight:300 }}>
   <img key={activeGame.id} src={window.innerWidth < 768 ? `/${activeGame.id}-mobile.png` : `/${activeGame.id}.png`} alt="Premio" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
-  onError={e=>{ e.target.src="/placeholder.png"; e.target.onerror=null; }}
+  onError={e=>{ e.target.src="/placeholder-mobile.png"; e.target.onerror=null; }}
 />
 </div>
 
@@ -884,7 +884,7 @@ prevSoldIds.current = new Set(soldNow.map(c=>c.id));
     {/* Imagen del premio */}
 <div style={{ borderRadius:12, overflow:"hidden", border:`2px solid ${gc}33`, background:"#000", height:300, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
       <img key={activeGame.id} src={window.innerWidth < 768 ? `/${activeGame.id}-mobile.png` : `/${activeGame.id}.png`} alt="Premio" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
-  onError={e=>{ e.target.src="/placeholder.png"; e.target.onerror=null; }}
+  onError={e=>{ e.target.src="/placeholder-mobile.png"; e.target.onerror=null; }}
 />
     </div>
 
