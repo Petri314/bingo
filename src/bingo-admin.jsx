@@ -48,7 +48,7 @@ const arrowTimeout = useRef(null);
   const [selectedWinner, setSelectedWinner] = useState(null);
   const [confirmAssign, setConfirmAssign] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
-
+const [showSoundModal, setShowSoundModal] = useState(true);
   const [countdownEndsAt, setCountdownEndsAt] = useState(null);
   const [countdownDisplay, setCountdownDisplay] = useState(0);
   const [countdownInput, setCountdownInput] = useState("5");
@@ -1065,6 +1065,19 @@ if (preferred) u.voice = preferred;
   </>
 )}
 
+{showSoundModal && (
+  <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:600, backdropFilter:"blur(4px)" }}>
+    <div style={{ background:"#1a1d2b", border:"1px solid #2e3244", borderRadius:20, padding:"32px 40px", textAlign:"center", maxWidth:340, width:"90vw" }}>
+      <div style={{ fontSize:48, marginBottom:12 }}>🔊</div>
+      <div style={{ fontSize:18, fontWeight:700, color:"#fff", marginBottom:8 }}>Sonido</div>
+      <div style={{ fontSize:14, color:"#94a3b8", marginBottom:24, lineHeight:1.6 }}>Esta app anuncia los números en voz alta. ¿Querés activar el sonido?</div>
+      <div style={{ display:"flex", gap:12 }}>
+        <button onClick={() => { setIsMuted(true); setShowSoundModal(false); }} style={{ flex:1, background:"rgba(255,255,255,0.08)", border:"1px solid #2e3244", borderRadius:12, padding:"12px", color:"#94a3b8", fontWeight:700, fontSize:14, cursor:"pointer" }}>🔇 Silenciar</button>
+        <button onClick={() => { setIsMuted(false); setShowSoundModal(false); }} style={{ flex:1, background:gc, border:"none", borderRadius:12, padding:"12px", color:getTextColor(gc), fontWeight:700, fontSize:14, cursor:"pointer" }}>🔊 Activar</button>
+      </div>
+    </div>
+  </div>
+)}
       {toast && <div style={{ position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", background:toast.type === "err" ? "#ef4444" : "#10b981", color:"#fff", padding:"12px 24px", borderRadius:12, fontWeight:700, fontSize:14, zIndex:999, boxShadow:"0 10px 15px -3px rgba(0,0,0,0.1)", whiteSpace:"nowrap", fontFamily:"sans-serif" }}>{toast.msg}</div>}
       {showLogin && <LoginModal pwInput={pwInput} setPwInput={setPwInput} pwError={pwError} onLogin={handleLogin} onClose={() => { setShowLogin(false); setPwInput(""); setPwError(false); }} />}
       {showPatternModal && <PatternModal activePattern={activePattern} activeGame={activeGame} onSelect={handleSelectPattern} onClose={() => setShowPatternModal(false)} />}
