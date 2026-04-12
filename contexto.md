@@ -23,11 +23,14 @@ proyecto/
 │   ├── components/
 │   │   ├── LoginModal.jsx    ✅ Separado
 │   │   ├── ResetModal.jsx    ✅ Separado
-│   │   ── (pendientes)
+│   │   ├── CardGrid.jsx      ✅ Separado (exporta CardGrid default + CardGridMemo named)
+│   │   ├── GameModal.jsx     ✅ Separado
+│   │   ├── PatternModal.jsx  ✅ Separado
+│   │   └── WinnerPopup.jsx   ✅ Separado
 │   ├── constants/
 │   │   └── index.js          ✅ Constantes globales separadas
 │   ├── utils.js              ✅ Funciones helpers separadas
-│   ├── bingo-admin.jsx       🔄 Componente principal (en refactor)
+│   ├── bingo-admin.jsx       ✅ Componente principal (refactor completo)
 │   ├── firebase.js           ✅ Configuración Firebase
 │   └── main.jsx              ✅ Entry point
 ├── public/
@@ -63,15 +66,13 @@ proyecto/
 - Funciones helpers → `src/utils.js` (pad, getTextColor, getLetterForNum, generateCardGrid, checkPattern)
 - LoginModal → `src/components/LoginModal.jsx`
 - ResetModal → `src/components/ResetModal.jsx`
+- CardGrid + CardGridMemo → `src/components/CardGrid.jsx`
+- GameModal → `src/components/GameModal.jsx`
+- PatternModal → `src/components/PatternModal.jsx`
+- WinnerPopup → `src/components/WinnerPopup.jsx`
+- `bingo-admin.jsx` queda como orquestador puro: solo estado, lógica y llamadas a Firebase
 
 ## Mejoras pendientes 🔄
-
-### 🧩 Estructura (en curso)
-Componentes que faltan separar de bingo-admin.jsx:
-- [ ] GameModal → `src/components/GameModal.jsx`
-- [ ] PatternModal → `src/components/PatternModal.jsx`
-- [ ] WinnerPopup → `src/components/WinnerPopup.jsx`
-- [ ] CardGrid → `src/components/CardGrid.jsx`
 
 ### 🔐 Seguridad (post-evento)
 - [ ] Firebase Security Rules — actualmente abiertas (.read y .write: true)
@@ -99,3 +100,4 @@ Componentes que faltan separar de bingo-admin.jsx:
 - El countdown usa timestamp absoluto (countdownEndsAt) para sincronizar todos los clientes
 - La detección de ganadores usa runTransaction para evitar condiciones de carrera
 - Las imágenes de premios van en /public/premios/j1.png ... j12.png (y versión mobile)
+- `import { PIN } from "./firebase.js"` fue eliminado de bingo-admin.jsx (PIN migró al servidor)
