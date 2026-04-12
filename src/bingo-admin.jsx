@@ -490,9 +490,7 @@ if (preferred) u.voice = preferred;
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
           <button onClick={() => { const next = !isMuted; setIsMuted(next); isMutedRef.current = next; }} style={{ background:"rgba(255,255,255,0.07)", border:"none", borderRadius:8, padding:"6px 10px", fontSize:18, cursor:"pointer" }}>{isMuted ? "🔇" : "🔊"}</button>
-          {window.innerWidth > 768 && (
-  <button onClick={()=>{ isFullscreen ? document.exitFullscreen() : document.documentElement.requestFullscreen(); }} style={{ background:"rgba(255,255,255,0.07)", border:"none", borderRadius:8, padding:"6px 10px", fontSize:14, cursor:"pointer", color:"#fff", fontWeight:700 }}>{isFullscreen ? "Salir FS" : "⛶"}</button>
-)}
+          <button onClick={()=>{ isFullscreen ? document.exitFullscreen() : document.documentElement.requestFullscreen(); }} style={{ background:"rgba(255,255,255,0.07)", border:"none", borderRadius:8, padding:"6px 10px", fontSize:18, cursor:"pointer", color:"#fff" }}>{isFullscreen ? "⛶" : "⛶"}</button>
           {!isAdmin
             ? <button onClick={() => setShowLogin(true)} style={{ background:gc, border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, cursor:"pointer", color:getTextColor(gc) }}>🔐 Admin</button>
             : <button onClick={handleLogout} style={{ background:"#ef4444", border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, cursor:"pointer", color:"#fff" }}>Salir</button>
