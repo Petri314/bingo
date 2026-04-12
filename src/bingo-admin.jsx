@@ -52,6 +52,7 @@ const arrowTimeout = useRef(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
 const [showSoundModal, setShowSoundModal] = useState(false);
 const [showSoundTip, setShowSoundTip] = useState(false);
+const [showFullscreenTip, setShowFullscreenTip] = useState(false);
   const [countdownEndsAt, setCountdownEndsAt] = useState(null);
   const [countdownDisplay, setCountdownDisplay] = useState(0);
   const [countdownInput, setCountdownInput] = useState("5");
@@ -96,6 +97,15 @@ const [showSoundTip, setShowSoundTip] = useState(false);
       setTimeout(() => setShowSoundTip(false), 5000);
     }
   }, 20000);
+  return () => clearTimeout(timer);
+}, []);
+useEffect(() => {
+  const timer = setTimeout(() => {
+    if (!document.fullscreenElement) {
+      setShowFullscreenTip(true);
+      setTimeout(() => setShowFullscreenTip(false), 5000);
+    }
+  }, 60000);
   return () => clearTimeout(timer);
 }, []);
 
