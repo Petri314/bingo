@@ -33,7 +33,8 @@ export default function BingoAdmin() {
   const [winnerName, setWinnerName]     = useState("");
   const [winnerCard, setWinnerCard]     = useState("");
   const [toast, setToast]               = useState(null);
-  const [isMuted, setIsMuted]           = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+const isMutedRef = useRef(false);
   const [isAdmin, setIsAdmin]           = useState(false);
   const [showLogin, setShowLogin]       = useState(false);
   const [pwInput, setPwInput]           = useState("");
@@ -245,7 +246,7 @@ if (preferred) u.voice = preferred;
         setCountdownEndsAt(v.countdownEndsAt > Date.now() ? v.countdownEndsAt : null);
       }
       if (v.lastSpoken && v.lastSpokenAt && Date.now() - v.lastSpokenAt < 4000 && !isAdmin) {
-  if (!isMuted) speakNumber(v.lastSpoken);
+  if (!isMutedRef.current) speakNumber(v.lastSpoken);
 }
       if (v.currentWinner && v.currentWinner.ts && Date.now() - v.currentWinner.ts < 8000) {
         setWinnerPopup(v.currentWinner);
@@ -472,7 +473,7 @@ if (preferred) u.voice = preferred;
           </div>
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-          <button onClick={() => setIsMuted(!isMuted)} style={{ background:"rgba(255,255,255,0.07)", border:"none", borderRadius:8, padding:"6px 10px", fontSize:18, cursor:"pointer" }}>{isMuted ? "🔇" : "🔊"}</button>
+          <button onClick={() => { const next = !isMuted; setIsMuted(next); isMutedRef.current = next; }} style={{ background:"rgba(255,255,255,0.07)", border:"none", borderRadius:8, padding:"6px 10px", fontSize:18, cursor:"pointer" }}>{isMuted ? "🔇" : "🔊"}</button>
           <button onClick={()=>{ isFullscreen ? document.exitFullscreen() : document.documentElement.requestFullscreen(); }} style={{ background:"rgba(255,255,255,0.07)", border:"none", borderRadius:8, padding:"6px 10px", fontSize:18, cursor:"pointer" }}>{isFullscreen ? "⛶" : "⛶"}</button>
           {!isAdmin
             ? <button onClick={() => setShowLogin(true)} style={{ background:gc, border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, cursor:"pointer", color:getTextColor(gc) }}>🔐 Admin</button>
@@ -1072,8 +1073,8 @@ if (preferred) u.voice = preferred;
       <div style={{ fontSize:18, fontWeight:700, color:"#fff", marginBottom:8 }}>Sonido</div>
       <div style={{ fontSize:14, color:"#94a3b8", marginBottom:24, lineHeight:1.6 }}>Esta app anuncia los números en voz alta. ¿Querés activar el sonido?</div>
       <div style={{ display:"flex", gap:12 }}>
-        <button onClick={() => { setIsMuted(true); setShowSoundModal(false); }} style={{ flex:1, background:"rgba(255,255,255,0.08)", border:"1px solid #2e3244", borderRadius:12, padding:"12px", color:"#94a3b8", fontWeight:700, fontSize:14, cursor:"pointer" }}>🔇 Silenciar</button>
-        <button onClick={() => { setIsMuted(false); setShowSoundModal(false); }} style={{ flex:1, background:gc, border:"none", borderRadius:12, padding:"12px", color:getTextColor(gc), fontWeight:700, fontSize:14, cursor:"pointer" }}>🔊 Activar</button>
+        <button onClick={() => { setIsMuted(true); isMutedRef.current = true; setShowSoundModal(false); }} style={{ flex:1, background:"rgba(255,255,255,0.08)", border:"1px solid #2e3244", borderRadius:12, padding:"12px", color:"#94a3b8", fontWeight:700, fontSize:14, cursor:"pointer" }}>🔇 Silenciar</button>
+        <button onClick={() => { setIsMuted(false); isMutedRef.current = false; setShowSoundModal(false); }} style={{ flex:1, background:gc, border:"none", borderRadius:12, padding:"12px", color:getTextColor(gc), fontWeight:700, fontSize:14, cursor:"pointer" }}>🔊 Activar</button>
       </div>
     </div>
   </div>
