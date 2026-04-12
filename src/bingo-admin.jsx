@@ -21,6 +21,7 @@ export default function BingoAdmin() {
   const [winners, setWinners] = useState([]);
   const winnersRef = useRef([]);
   const savingWinnerRef = useRef(false);
+  const touchStartX = useRef(null);
   const [activePattern, setActivePattern] = useState(PATTERNS[0]);
   const [activeGame, setActiveGame]     = useState(GAMES[0]);
   const [alreadyWon, setAlreadyWon]     = useState(false);
@@ -41,6 +42,8 @@ export default function BingoAdmin() {
   const [showGameModal, setShowGameModal]       = useState(false);
   const [showResetModal, setShowResetModal]     = useState(false);
   const [isFullscreen, setIsFullscreen]         = useState(false);
+  const [showArrows, setShowArrows] = useState(false);
+const arrowTimeout = useRef(null);
   const [winnerPopup, setWinnerPopup]   = useState(null);
   const [selectedWinner, setSelectedWinner] = useState(null);
   const [confirmAssign, setConfirmAssign] = useState(null);
@@ -122,6 +125,29 @@ export default function BingoAdmin() {
   };
 
   const showToast = (msg, type="ok") => { setToast({msg, type}); setTimeout(() => setToast(null), 2500); };
+  const handleDragStart = (e) => {
+  touchStartX.current = e.clientX ?? e.touches?.[0]?.clientX;
+};
+const handleShowArrows = () => {
+  if (!isFullscreen) return;
+  setShowArrows(true);
+  clearTimeout(arrowTimeout.current);
+  arrowTimeout.current = setTimeout(() => setShowArrows(false), 2000);
+};
+
+const handleDragEnd = (e) => {
+  if (touchStartX.current === null) return;
+  const endX = e.clientX ?? e.changedTouches?.[0]?.clientX;
+  const diff = touchStartX.current - endX;
+  if (Math.abs(diff) > 50) {
+    if (diff > 0) {
+      setTab(prev => Math.min(prev + 1, TABS.length - 1));
+    } else {
+      setTab(prev => Math.max(prev - 1, 0));
+    }
+  }
+  touchStartX.current = null;
+};
 
   const speakNumber = (num) => {
     if (isMuted || !num) return;
@@ -424,7 +450,9 @@ export default function BingoAdmin() {
   const premioSrcMobile = (gameId) => `/premios/${gameId}-mobile.png`;
 
   return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(135deg,#172441 0%,#285289 50%,#0a101f 100%)", fontFamily:"sans-serif", color:"#1e293b", paddingBottom:60 }}>
+
+    
+    <div onMouseDown={handleDragStart} onMouseUp={handleDragEnd} onClick={handleShowArrows} onTouchStart={handleDragStart} onTouchEnd={handleDragEnd} style={{ minHeight:"100vh", background:"linear-gradient(135deg,#172441 0%,#285289 50%,#0a101f 100%)", fontFamily:"sans-serif", color:"#1e293b", paddingBottom:60 }}>
 
       {/* ── HEADER ── */}
       <div style={{ background:"#0f1221", borderBottom:"1px solid rgba(255,255,255,0.08)", padding:"10px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", gap:10 }}>
@@ -436,6 +464,7 @@ export default function BingoAdmin() {
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
           <button onClick={() => setIsMuted(!isMuted)} style={{ background:"rgba(255,255,255,0.07)", border:"none", borderRadius:8, padding:"6px 10px", fontSize:18, cursor:"pointer" }}>{isMuted ? "🔇" : "🔊"}</button>
+          <button onClick={()=>{ isFullscreen ? document.exitFullscreen() : document.documentElement.requestFullscreen(); }} style={{ background:"rgba(255,255,255,0.07)", border:"none", borderRadius:8, padding:"6px 10px", fontSize:18, cursor:"pointer" }}>{isFullscreen ? "⛶" : "⛶"}</button>
           {!isAdmin
             ? <button onClick={() => setShowLogin(true)} style={{ background:gc, border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, cursor:"pointer", color:getTextColor(gc) }}>🔐 Admin</button>
             : <button onClick={handleLogout} style={{ background:"#ef4444", border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, cursor:"pointer", color:"#fff" }}>Salir</button>
@@ -1015,6 +1044,17 @@ export default function BingoAdmin() {
           </div>
         </div>
       )}
+
+      {isFullscreen && showArrows && (
+  <>
+    <div onClick={() => setTab(prev => Math.max(prev - 1, 0))} style={{ position:"fixed", left:0, top:0, bottom:0, width:80, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", zIndex:200, background:"linear-gradient(to right, rgba(0,0,0,0.35), transparent)", transition:"opacity 0.3s" }}>
+      <div style={{ fontSize:48, color:"#fff", opacity:0.85, userSelect:"none" }}>‹</div>
+    </div>
+    <div onClick={() => setTab(prev => Math.min(prev + 1, TABS.length - 1))} style={{ position:"fixed", right:0, top:0, bottom:0, width:80, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", zIndex:200, background:"linear-gradient(to left, rgba(0,0,0,0.35), transparent)", transition:"opacity 0.3s" }}>
+      <div style={{ fontSize:48, color:"#fff", opacity:0.85, userSelect:"none" }}>›</div>
+    </div>
+  </>
+)}
 
       {toast && <div style={{ position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", background:toast.type === "err" ? "#ef4444" : "#10b981", color:"#fff", padding:"12px 24px", borderRadius:12, fontWeight:700, fontSize:14, zIndex:999, boxShadow:"0 10px 15px -3px rgba(0,0,0,0.1)", whiteSpace:"nowrap", fontFamily:"sans-serif" }}>{toast.msg}</div>}
       {showLogin && <LoginModal pwInput={pwInput} setPwInput={setPwInput} pwError={pwError} onLogin={handleLogin} onClose={() => { setShowLogin(false); setPwInput(""); setPwError(false); }} />}
