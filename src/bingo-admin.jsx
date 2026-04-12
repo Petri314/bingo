@@ -159,11 +159,14 @@ const handleDragEnd = (e) => {
       u.pitch = 1.1;
       u.volume = 1;
       const voices = window.speechSynthesis.getVoices();
-      const preferred =
-        voices.find(v => v.name === "Google español") ||
-        voices.find(v => v.name === "Microsoft Laura - Spanish (Spain)") ||
-        voices.find(v => v.lang === "es-ES");
-      if (preferred) u.voice = preferred;
+const preferred =
+  voices.find(v => v.name === "Google español") ||
+  voices.find(v => v.name === "Microsoft Laura - Spanish (Spain)") ||
+  voices.find(v => v.lang === "es-ES" && !v.localService) ||
+  voices.find(v => v.lang === "es-ES") ||
+  voices.find(v => v.lang?.startsWith("es")) ||
+  voices.find(v => v.lang?.startsWith("es-"));
+if (preferred) u.voice = preferred;
       window.speechSynthesis.speak(u);
     };
     if (window.speechSynthesis.getVoices().length === 0) {
