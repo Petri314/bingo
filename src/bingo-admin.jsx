@@ -1105,6 +1105,15 @@ if (preferred) u.voice = preferred;
     </div>
   </div>
 )}
+{showFullscreenTip && !isFullscreen && (
+  <div onClick={() => { document.documentElement.requestFullscreen(); setShowFullscreenTip(false); }} style={{ position:"fixed", top:70, right:16, background:"#1a1d2b", border:"1px solid #2e3244", borderRadius:12, padding:"10px 14px", display:"flex", alignItems:"center", gap:10, cursor:"pointer", zIndex:500, boxShadow:"0 4px 20px rgba(0,0,0,0.4)", animation:"slideIn 0.3s ease" }}>
+    <span style={{ fontSize:20 }}>⛶</span>
+    <div>
+      <div style={{ fontSize:13, fontWeight:700, color:"#fff", lineHeight:1.3 }}>Pantalla completa</div>
+      <div style={{ fontSize:11, color:"#94a3b8" }}>Toca para activar</div>
+    </div>
+  </div>
+)}
       {toast && <div style={{ position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", background:toast.type === "err" ? "#ef4444" : "#10b981", color:"#fff", padding:"12px 24px", borderRadius:12, fontWeight:700, fontSize:14, zIndex:999, boxShadow:"0 10px 15px -3px rgba(0,0,0,0.1)", whiteSpace:"nowrap", fontFamily:"sans-serif" }}>{toast.msg}</div>}
       {showLogin && <LoginModal pwInput={pwInput} setPwInput={setPwInput} pwError={pwError} onLogin={handleLogin} onClose={() => { setShowLogin(false); setPwInput(""); setPwError(false); }} />}
       {showPatternModal && <PatternModal activePattern={activePattern} activeGame={activeGame} onSelect={handleSelectPattern} onClose={() => setShowPatternModal(false)} />}
