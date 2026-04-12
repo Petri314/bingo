@@ -245,7 +245,7 @@ if (preferred) u.voice = preferred;
         setCountdownEndsAt(v.countdownEndsAt > Date.now() ? v.countdownEndsAt : null);
       }
       if (v.lastSpoken && v.lastSpokenAt && Date.now() - v.lastSpokenAt < 4000 && !isAdmin) {
-  speakNumber(v.lastSpoken);
+  if (!isMuted) speakNumber(v.lastSpoken);
 }
       if (v.currentWinner && v.currentWinner.ts && Date.now() - v.currentWinner.ts < 8000) {
         setWinnerPopup(v.currentWinner);
@@ -348,7 +348,7 @@ if (preferred) u.voice = preferred;
     const next = isMarking ? [...drawn, n] : drawn.filter(x => x !== n);
     await set(ref(db, DB_DRAWN), next.length ? Object.fromEntries(next.map((v, i) => [i, v])) : null);
     if (isMarking) {
-  speakNumber(n);
+  if (!isMuted) speakNumber(n);
   await update(ref(db, DB_STATE), { lastSpoken: n, lastSpokenAt: Date.now() });
 }
 
