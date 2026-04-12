@@ -33,8 +33,8 @@ export default function BingoAdmin() {
   const [winnerName, setWinnerName]     = useState("");
   const [winnerCard, setWinnerCard]     = useState("");
   const [toast, setToast]               = useState(null);
-  const [isMuted, setIsMuted] = useState(false);
-const isMutedRef = useRef(false);
+  const [isMuted, setIsMuted] = useState(true);
+const isMutedRef = useRef(true);
   const [isAdmin, setIsAdmin]           = useState(false);
   const [showLogin, setShowLogin]       = useState(false);
   const [pwInput, setPwInput]           = useState("");
@@ -50,6 +50,7 @@ const arrowTimeout = useRef(null);
   const [confirmAssign, setConfirmAssign] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
 const [showSoundModal, setShowSoundModal] = useState(true);
+const [showSoundTip, setShowSoundTip] = useState(false);
   const [countdownEndsAt, setCountdownEndsAt] = useState(null);
   const [countdownDisplay, setCountdownDisplay] = useState(0);
   const [countdownInput, setCountdownInput] = useState("5");
@@ -88,12 +89,14 @@ const [showSoundModal, setShowSoundModal] = useState(true);
   }, []);
 
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, []);
+  const timer = setTimeout(() => {
+    if (isMutedRef.current) {
+      setShowSoundTip(true);
+      setTimeout(() => setShowSoundTip(false), 5000);
+    }
+  }, 20000);
+  return () => clearTimeout(timer);
+}, []);
 
   const handleLogin = async () => {
     try {
@@ -1076,6 +1079,16 @@ if (preferred) u.voice = preferred;
         <button onClick={() => { setIsMuted(true); isMutedRef.current = true; setShowSoundModal(false); }} style={{ flex:1, background:"rgba(255,255,255,0.08)", border:"1px solid #2e3244", borderRadius:12, padding:"12px", color:"#94a3b8", fontWeight:700, fontSize:14, cursor:"pointer" }}>🔇 Silenciar</button>
         <button onClick={() => { setIsMuted(false); isMutedRef.current = false; setShowSoundModal(false); }} style={{ flex:1, background:gc, border:"none", borderRadius:12, padding:"12px", color:getTextColor(gc), fontWeight:700, fontSize:14, cursor:"pointer" }}>🔊 Activar</button>
       </div>
+    </div>
+  </div>
+)}
+
+{showSoundTip && (
+  <div onClick={() => { setIsMuted(false); isMutedRef.current = false; setShowSoundTip(false); }} style={{ position:"fixed", top:70, right:16, background:"#1a1d2b", border:"1px solid #2e3244", borderRadius:12, padding:"10px 14px", display:"flex", alignItems:"center", gap:10, cursor:"pointer", zIndex:500, boxShadow:"0 4px 20px rgba(0,0,0,0.4)", animation:"slideIn 0.3s ease" }}>
+    <span style={{ fontSize:20 }}>🔇</span>
+    <div>
+      <div style={{ fontSize:13, fontWeight:700, color:"#fff", lineHeight:1.3 }}>Sonido desactivado</div>
+      <div style={{ fontSize:11, color:"#94a3b8" }}>Toca para activar</div>
     </div>
   </div>
 )}
