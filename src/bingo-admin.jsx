@@ -157,7 +157,7 @@ const handleDragEnd = (e) => {
 };
 
   const speakNumber = (num) => {
-    if (isMuted || !num) return;
+  if (isMutedRef.current || !num) return;
     window.speechSynthesis.cancel();
     const doSpeak = () => {
       const u = new SpeechSynthesisUtterance(`${getLetterForNum(num)}, ${num}`);
