@@ -1,5 +1,4 @@
-import React from "react";
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { db, PIN } from "./firebase.js";
 import { ref, onValue, set, remove, update, runTransaction } from "firebase/database";
 
@@ -106,6 +105,14 @@ function CardGrid({ card, drawn, pattern }) {
     </div>
   );
 }
+
+const CardGridMemo = React.memo(CardGrid, (prev, next) => {
+  return (
+    prev.card.id === next.card.id &&
+    prev.drawn.length === next.drawn.length &&
+    prev.pattern?.id === next.pattern?.id
+  );
+});
 
 function PatternModal({ activePattern, activeGame, onSelect, onClose }) {
   return (
@@ -633,11 +640,28 @@ useEffect(() => {
     printWindow.document.write(html); printWindow.document.close();
   };
 
-  const filteredCards    = cards.filter(c=>c.gameId===activeGame.id&&(c.cardNum.includes(search)||(c.owner&&c.owner.toLowerCase().includes(search.toLowerCase()))));
-  const filteredSold     = filteredCards.filter(c=>c.paid);
-  const visibleCards     = search ? filteredCards : filteredSold.slice(-10).reverse();
-  const totalRecaudado   = cards.filter(c=>c.paid).length*PRICE;
-  const jugadoresActuales = cards.filter(c=>c.paid&&c.gameId===activeGame.id).length;
+  const filteredCards = useMemo(() =>
+  cards.filter(c =>
+    c.gameId === activeGame.id &&
+    (c.cardNum.includes(search) ||
+    (c.owner && c.owner.toLowerCase().includes(search.toLowerCase())))
+  ), [cards, activeGame.id, search]);
+
+const filteredSold = useMemo(() =>
+  filteredCards.filter(c => c.paid),
+  [filteredCards]);
+
+const visibleCards = useMemo(() =>
+  search ? filteredCards : filteredSold.slice(-10).reverse(),
+  [search, filteredCards, filteredSold]);
+
+const totalRecaudado = useMemo(() =>
+  cards.filter(c => c.paid).length * PRICE,
+  [cards]);
+
+const jugadoresActuales = useMemo(() =>
+  cards.filter(c => c.paid && c.gameId === activeGame.id).length,
+  [cards, activeGame.id]);
   const gc = activeGame.color;
   const gameNum = activeGame.id.replace("j","");
 
@@ -869,7 +893,7 @@ useEffect(() => {
                   </div>
                   {selectedCard?.id===c.id&&c.grid&&(<div style={{ background:"#ffffff", borderRadius:"0 0 12px 12px", padding:16, border:"1px solid #e2e8f0", borderTop:"none", boxShadow:"0 4px 6px -1px rgba(0,0,0,0.1)" }}>
                     <p style={{ fontSize:12, color:"#94a3b8", textAlign:"center", marginBottom:12 }}>Números marcados ya salieron</p>
-                    <CardGrid card={c} drawn={drawn} />
+                    <CardGridMemo card={c} drawn={drawn} />
                   </div>)}
                 </div>);
               })}
@@ -1139,7 +1163,7 @@ useEffect(() => {
                       <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:2, width:80, height:80, margin:"0 auto 12px" }}>
                         {winnerPattern.grid.flat().map((cell,i)=>(<div key={i} style={{ borderRadius:2, background:cell?"#f59e0b":"#f1f5f9", border:cell?"none":"1px solid #e2e8f0" }} />))}
                       </div>
-                      <CardGrid card={winnerCardData} drawn={Array.isArray(w.drawn)?w.drawn:w.drawn?Object.values(w.drawn):drawn} pattern={winnerPattern} />
+                      <CardGridMemo card={winnerCardData} drawn={Array.isArray(w.drawn)?w.drawn:w.drawn?Object.values(w.drawn):drawn} pattern={winnerPattern} />
                     </div>
                   )}
                   {isExpanded&&!winnerCardData&&(
