@@ -36,6 +36,7 @@ export default function BingoAdmin() {
   const [isMuted, setIsMuted] = useState(true);
 const isMutedRef = useRef(true);
   const [isAdmin, setIsAdmin]           = useState(false);
+  const isAdminRef = useRef(false);
   const [showLogin, setShowLogin]       = useState(false);
   const [pwInput, setPwInput]           = useState("");
   const [pwError, setPwError]           = useState(false);
@@ -49,7 +50,7 @@ const arrowTimeout = useRef(null);
   const [selectedWinner, setSelectedWinner] = useState(null);
   const [confirmAssign, setConfirmAssign] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
-const [showSoundModal, setShowSoundModal] = useState(true);
+const [showSoundModal, setShowSoundModal] = useState(false);
 const [showSoundTip, setShowSoundTip] = useState(false);
   const [countdownEndsAt, setCountdownEndsAt] = useState(null);
   const [countdownDisplay, setCountdownDisplay] = useState(0);
@@ -113,6 +114,7 @@ const [showSoundTip, setShowSoundTip] = useState(false);
       const { token } = await res.json();
       sessionStorage.setItem("admin_token", token);
       setIsAdmin(true);
+      isAdminRef.current = true;
       setShowLogin(false);
       setPwInput("");
       setPwError(false);
@@ -126,6 +128,7 @@ const [showSoundTip, setShowSoundTip] = useState(false);
   const handleLogout = () => {
     sessionStorage.removeItem("admin_token");
     setIsAdmin(false);
+    isAdminRef.current = false;
   };
 
   const showToast = (msg, type="ok") => { setToast({msg, type}); setTimeout(() => setToast(null), 2500); };
@@ -248,7 +251,7 @@ if (preferred) u.voice = preferred;
       if (v.countdownEndsAt !== undefined) {
         setCountdownEndsAt(v.countdownEndsAt > Date.now() ? v.countdownEndsAt : null);
       }
-      if (v.lastSpoken && v.lastSpokenAt && Date.now() - v.lastSpokenAt < 4000 && !isAdmin) {
+      if (v.lastSpoken && v.lastSpokenAt && Date.now() - v.lastSpokenAt < 4000&& !isAdminRef.current) {
   if (!isMutedRef.current) speakNumber(v.lastSpoken);
 }
       if (v.currentWinner && v.currentWinner.ts && Date.now() - v.currentWinner.ts < 8000) {
