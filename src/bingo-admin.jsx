@@ -1,44 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { db, PIN } from "./firebase.js";
 import { ref, onValue, set, remove, update, runTransaction } from "firebase/database";
-
-const COLS = { B: [1,15], I: [16,30], N: [31,45], G: [46,60], O: [61,75] };
-const TOTAL = 75; const PRICE = 1000;
-const DB_CARDS   = "bingo_cards";
-const DB_DRAWN   = "bingo_drawn";
-const DB_WINNERS = "bingo_winners";
-const DB_STATE   = "bingo_state";
-
-const GAMES = [
-  { id: "j1",  name: "Juego 1",  color: "#FF0000" },
-  { id: "j2",  name: "Juego 2",  color: "#00FFFF" },
-  { id: "j3",  name: "Juego 3",  color: "#FFFF00" },
-  { id: "j4",  name: "Juego 4",  color: "#7F00FF" },
-  { id: "j5",  name: "Juego 5",  color: "#00FF00" },
-  { id: "j6",  name: "Juego 6",  color: "#FF00FF" },
-  { id: "j7",  name: "Juego 7",  color: "#FF7F00" },
-  { id: "j8",  name: "Juego 8",  color: "#007FFF" },
-  { id: "j9",  name: "Juego 9",  color: "#7FFF00" },
-  { id: "j10", name: "Juego 10", color: "#FF007F" },
-  { id: "j11", name: "Juego 11", color: "#0000FF" },
-  { id: "j12", name: "Juego 12", color: "#00FF7F" },
-];
-
-const PATTERNS = [
-  { id: 'line_h',   name: 'Línea Horizontal', grid: [[1,1,1,1,1],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]] },
-  { id: 'line_v',   name: 'Línea Vertical',   grid: [[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0]] },
-  { id: 'diagonal', name: 'Diagonal',          grid: [[1,0,0,0,0],[0,1,0,0,0],[0,0,1,0,0],[0,0,0,1,0],[0,0,0,0,1]] },
-  { id: 'corners',  name: '4 Esquinas',        grid: [[1,0,0,0,1],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[1,0,0,0,1]] },
-  { id: 'letter_x', name: 'Letra X',           grid: [[1,0,0,0,1],[0,1,0,1,0],[0,0,1,0,0],[0,1,0,1,0],[1,0,0,0,1]] },
-  { id: 'letter_t', name: 'Letra T',           grid: [[1,1,1,1,1],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0]] },
-  { id: 'letter_l', name: 'Letra L',           grid: [[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,1]] },
-  { id: 'letter_c', name: 'Letra C',           grid: [[1,1,1,1,1],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,1]] },
-  { id: 'cross',    name: 'Cruz (+)',           grid: [[0,0,1,0,0],[0,0,1,0,0],[1,1,1,1,1],[0,0,1,0,0],[0,0,1,0,0]] },
-  { id: 'blackout', name: 'Cartón Lleno',      grid: [[1,1,1,1,1],[1,1,1,1,1],[1,1,1,1,1],[1,1,1,1,1],[1,1,1,1,1]] },
-];
-
-const BINGO_LETTER_COLORS = ['#ef4444','#3b82f6','#f59e0b','#22c55e','#a855f7'];
-
+import { COLS, TOTAL, PRICE, DB_CARDS, DB_DRAWN, DB_WINNERS, DB_STATE, GAMES, PATTERNS, BINGO_LETTER_COLORS, TABS } from "./constants/index.js";
+const inpS = { background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:"10px 12px", color:"#334155", fontSize:14, outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"sans-serif" };
+const btnS = (color, extra={}) => ({ background:color, border:"none", borderRadius:8, padding:"9px 15px", fontWeight:700, fontSize:14, cursor:"pointer", color:"#fff", fontFamily:"sans-serif", whiteSpace:"nowrap", ...extra });
 function pad(n) { return String(n).padStart(3, "0"); }
 function getTextColor(hexColor) {
   const hex = hexColor.replace("#","");
@@ -58,17 +23,11 @@ function generateCardGrid() {
   });
   grid[2][2] = "FREE"; return grid;
 }
-
-// NOTA: La grilla se almacena como grid[col][row] (columna primero).
-// PATTERNS usan grid[row][col] (fila primero).
-// checkPattern transpone correctamente accediendo card.grid[col][row].
 function checkPattern(card, drawn, pattern) {
   for (let row = 0; row < 5; row++) {
     for (let col = 0; col < 5; col++) {
       if (!pattern.grid[row][col]) continue;
-      // card.grid es [col][row], por eso accedemos [col][row]
       const col_arr = card.grid[col];
-      // FIX: verificar que la columna existe y tiene 5 elementos antes de acceder
       if (!col_arr || col_arr.length < 5) return false;
       const val = col_arr[row];
       if (val === "FREE") continue;
@@ -77,11 +36,6 @@ function checkPattern(card, drawn, pattern) {
   }
   return true;
 }
-
-const TABS = ["🎟️ Cartones","📋 Información","🎱 Sorteo","🏆 Ganadores"];
-const inpS = { background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:"10px 12px", color:"#334155", fontSize:14, outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"sans-serif" };
-const btnS = (color, extra={}) => ({ background:color, border:"none", borderRadius:8, padding:"9px 15px", fontWeight:700, fontSize:14, cursor:"pointer", color:"#fff", fontFamily:"sans-serif", whiteSpace:"nowrap", ...extra });
-
 function CardGrid({ card, drawn, pattern }) {
   const gameColor = GAMES.find(g=>g.id===card.gameId)?.color||"#64748b";
   return (
