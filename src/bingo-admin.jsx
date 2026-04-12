@@ -1,3 +1,4 @@
+import { pad, getTextColor, getLetterForNum, generateCardGrid, checkPattern } from "./utils.js";
 import ResetModal from "./components/ResetModal.jsx";
 import LoginModal from "./components/LoginModal.jsx";
 import React, { useState, useEffect, useRef, useMemo } from "react";
@@ -6,38 +7,6 @@ import { ref, onValue, set, remove, update, runTransaction } from "firebase/data
 import { COLS, TOTAL, PRICE, DB_CARDS, DB_DRAWN, DB_WINNERS, DB_STATE, GAMES, PATTERNS, BINGO_LETTER_COLORS, TABS } from "./constants/index.js";
 const inpS = { background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:"10px 12px", color:"#334155", fontSize:14, outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"sans-serif" };
 const btnS = (color, extra={}) => ({ background:color, border:"none", borderRadius:8, padding:"9px 15px", fontWeight:700, fontSize:14, cursor:"pointer", color:"#fff", fontFamily:"sans-serif", whiteSpace:"nowrap", ...extra });
-function pad(n) { return String(n).padStart(3, "0"); }
-function getTextColor(hexColor) {
-  const hex = hexColor.replace("#","");
-  const r = parseInt(hex.substring(0,2),16);
-  const g = parseInt(hex.substring(2,4),16);
-  const b = parseInt(hex.substring(4,6),16);
-  const brightness = (r*299 + g*587 + b*114) / 1000;
-  return brightness > 128 ? "#000" : "#fff";
-}
-function getLetterForNum(n) { for (const [l,[min,max]] of Object.entries(COLS)) if (n>=min&&n<=max) return l; return ""; }
-function generateCardGrid() {
-  const grid = Object.entries(COLS).map(([,[min,max]]) => {
-    const pool = Array.from({length:max-min+1},(_,i)=>i+min);
-    const picked = [];
-    while (picked.length<5) { const idx=Math.floor(Math.random()*pool.length); picked.push(pool.splice(idx,1)[0]); }
-    return picked;
-  });
-  grid[2][2] = "FREE"; return grid;
-}
-function checkPattern(card, drawn, pattern) {
-  for (let row = 0; row < 5; row++) {
-    for (let col = 0; col < 5; col++) {
-      if (!pattern.grid[row][col]) continue;
-      const col_arr = card.grid[col];
-      if (!col_arr || col_arr.length < 5) return false;
-      const val = col_arr[row];
-      if (val === "FREE") continue;
-      if (!drawn.includes(val)) return false;
-    }
-  }
-  return true;
-}
 function CardGrid({ card, drawn, pattern }) {
   const gameColor = GAMES.find(g=>g.id===card.gameId)?.color||"#64748b";
   return (
