@@ -1045,7 +1045,7 @@ const handleDragEnd = (e) => {
         </div>
       )}
 
-      {isFullscreen && showArrows && (
+      {isFullscreen && showArrows && window.innerWidth > 768 && (
   <>
     <div onClick={() => setTab(prev => Math.max(prev - 1, 0))} style={{ position:"fixed", left:0, top:0, bottom:0, width:80, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", zIndex:200, background:"linear-gradient(to right, rgba(0,0,0,0.35), transparent)", transition:"opacity 0.3s" }}>
       <div style={{ fontSize:48, color:"#fff", opacity:0.85, userSelect:"none" }}>‹</div>
