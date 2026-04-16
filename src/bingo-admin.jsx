@@ -739,7 +739,7 @@ if (preferred) u.voice = preferred;
                 </div>
               </div>
             ) : (
-              <div className="viz-grid" style={{ background:"linear-gradient(135deg,#0f1221 0%,#1a1d2b 100%)", height:"auto", padding:"12px 16px 60px 16px", display:"grid", gridTemplateColumns:"264px 1fr", gridTemplateRows:"auto", minHeight:"100vh", gap:10, boxSizing:"border-box", width:"100%", overflow:"visible" }}>
+              <div className="viz-grid" style={{ background:"linear-gradient(135deg,#0f1221 0%,#1a1d2b 100%)", height:"auto", padding:"12px 16px 60px 16px", display:"grid", gridTemplateColumns:"264px 1fr", gridTemplateRows:"auto", height:"100vh", maxHeight:"100vh", overflow:"hidden", gap:10, boxSizing:"border-box", width:"100%", overflow:"visible" }}>
                 <style>{`
                   @keyframes slideIn { from{transform:translateY(-10px);opacity:0} to{transform:translateY(0);opacity:1} }
                   @keyframes pulseViz { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
@@ -816,8 +816,8 @@ if (preferred) u.voice = preferred;
                 )}
 
                 {/* Columna izquierda */}
-                <div className="viz-col-left" style={{ display:"flex", flexDirection:"column", gap:10, overflow:"visible", minHeight:"auto", paddingBottom:12 }}>
-                  <div style={{ background:"#1a1d2b", borderRadius:12, height:180, padding:"12px 14px", border:`1px solid ${gc}44`, flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8 }}>
+                <div className="viz-col-left" style={{ display:"flex", flexDirection:"column", gap:10, overflow:"hidden", minHeight:"auto", paddingBottom:12 }}>
+                  <div style={{ background:"#1a1d2b", borderRadius:12, height:"22vh", minHeight:120, padding:"12px 14px", border:`1px solid ${gc}44`, flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8 }}>
                     <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:8, letterSpacing:2, textAlign:"center" }}>PATRÓN ACTIVO</div>
                     <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
                       <div className="viz-patron-grid" style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:2, width:150, flexShrink:0 }}>
@@ -835,7 +835,7 @@ if (preferred) u.voice = preferred;
                     <div style={{ fontSize:28, fontWeight:900, color:gc, fontFamily:"'Poller One',cursive" }}>${PRICE.toLocaleString("es-CL")}</div>
                   </div>
 
-                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"12px 14px", border:`1px solid ${gc}44`, height:375, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"12px 14px", border:`1px solid ${gc}44`, height:"30vh", minHeight:180, overflow:"hidden", display:"flex", flexDirection:"column" }}>
                     <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:10, letterSpacing:2 }}>ÚLTIMOS COMPRADORES</div>
                     <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column", gap:1 }}>
                       {cards.filter(c => c.paid && c.gameId === activeGame.id).sort((a, b) => (b.soldAt||0) - (a.soldAt||0)).slice(0, 12).map((c, i, arr) => (
@@ -872,7 +872,7 @@ if (preferred) u.voice = preferred;
                     </div>
                   </div>
 
-                  <div style={{ borderRadius:12, overflow:"hidden", border:`2px solid ${gc}33`, background:"#000", height:300, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <div style={{ borderRadius:12, overflow:"hidden", border:`2px solid ${gc}33`, background:"#000", height:"28vh", minHeight:160, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
                     <img
                       key={activeGame.id}
                       src={window.innerWidth < 768 ? premioSrcMobile(activeGame.id) : premioSrc(activeGame.id)}
