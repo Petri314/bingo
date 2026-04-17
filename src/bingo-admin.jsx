@@ -292,8 +292,7 @@ setIsAdmin(true);
     if (!newOwner.trim()) return showToast("Ingresa el nombre", "err");
     const available = cards.filter(c => !c.paid && c.gameId === activeGame.id);
     if (available.length < qty) return showToast(`Solo quedan ${available.length} cartones en ${activeGame.name}`, "err");
-    const nums = available.slice(0, qty).map(c => c.cardNum);
-    setConfirmAssign({ owner:newOwner.trim(), qty, nums, available, selected:available.slice(0, qty).map(c => c.id) });
+    setConfirmAssign({ owner:newOwner.trim(), qty, nums:[], available, selected:[] });
   };
 
   const confirmAssignCard = async () => {
@@ -1103,26 +1102,21 @@ setIsAdmin(true);
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
                 <span style={{ color:"#64748b", fontSize:14 }}>Buscar y agregar</span>
                 <input placeholder="Ej: 045" style={{ background:"#f1f5f9", border:"1px solid #e2e8f0", borderRadius:8, padding:"6px 10px", fontSize:13, width:"60%", outline:"none", fontFamily:"sans-serif" }}
-                  onChange={e => {
+                  onKeyDown={e => {
+                    if (e.key !== "Enter") return;
                     const val = e.target.value.trim();
                     if (!val) return;
-                    const found = confirmAssign.available.filter(c => !c.paid && c.cardNum.includes(val.padStart(3, "0")));
-                    if (found.length === 1) {
-                      const alreadySel = confirmAssign.selected.includes(found[0].id);
-                      if (!alreadySel && confirmAssign.selected.length < confirmAssign.qty) {
-                        setConfirmAssign(p => {
-                          const newSelected = [...p.selected, found[0].id];
-                          return {...p, selected:newSelected, nums:p.available.filter(x => newSelected.includes(x.id)).map(x => x.cardNum)};
-                        });
-                      } else if (!alreadySel && confirmAssign.selected.length >= confirmAssign.qty) {
-                        showToast(`Máximo ${confirmAssign.qty} cartón${confirmAssign.qty > 1 ? "es" : ""}`, "err");
-                      }
-                      e.target.value = "";
-                      setTimeout(() => {
-                        const el = document.getElementById(`carton-${found[0].id}`);
-                        if (el) el.scrollIntoView({behavior:"smooth", block:"center"});
-                      }, 100);
-                    }
+                    const padded = val.padStart(3, "0");
+                    const found = confirmAssign.available.filter(c => !c.paid && c.cardNum === padded);
+                    if (found.length === 0) { showToast(`Cartón ${padded} no encontrado`, "err"); return; }
+                    const alreadySel = confirmAssign.selected.includes(found[0].id);
+                    if (alreadySel) { showToast(`Cartón ${padded} ya seleccionado`, "err"); return; }
+                    if (confirmAssign.selected.length >= confirmAssign.qty) { showToast(`Máximo ${confirmAssign.qty} cartón${confirmAssign.qty > 1 ? "es" : ""}`, "err"); return; }
+                    setConfirmAssign(p => {
+                      const newSelected = [...p.selected, found[0].id];
+                      return {...p, selected:newSelected, nums:p.available.filter(x => newSelected.includes(x.id)).map(x => x.cardNum)};
+                    });
+                    e.target.value = "";
                   }}
                 />
               </div>
@@ -1164,7 +1158,7 @@ setIsAdmin(true);
             )}
             <div style={{ display:"flex", gap:12 }}>
               <button onClick={() => setConfirmAssign(null)} style={{ flex:1, background:"#f1f5f9", border:"none", borderRadius:10, padding:"12px", color:"#64748b", fontWeight:700, fontSize:14, cursor:"pointer" }}>Cancelar</button>
-              <button onClick={confirmAssignCard} style={{ flex:1, background:activeGame.color, border:"none", borderRadius:10, padding:"12px", color:getTextColor(activeGame.color), fontWeight:700, fontSize:14, cursor:"pointer" }}>Confirmar</button>
+              <button onClick={confirmAssignCard} disabled={confirmAssign.selected.length !== confirmAssign.qty} style={{ flex:1, background:confirmAssign.selected.length !== confirmAssign.qty ? "#94a3b8" : activeGame.color, border:"none", borderRadius:10, padding:"12px", color:getTextColor(activeGame.color), fontWeight:700, fontSize:14, cursor:"pointer" }}>Confirmar</button>
             </div>
           </div>
         </div>
