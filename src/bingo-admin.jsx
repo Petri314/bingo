@@ -473,7 +473,7 @@ if (preferred) u.voice = preferred;
   const gc = activeGame.color;
   const gameNum = activeGame.id.replace("j", "");
   return (
-    <div onMouseDown={handleDragStart} onMouseUp={handleDragEnd} onClick={handleShowArrows} onTouchStart={handleDragStart} onTouchEnd={handleDragEnd} style={{ minHeight:"100vh", fontFamily:"sans-serif", color:"#1e293b" }}>
+    <div style={{ minHeight:"100vh", fontFamily:"sans-serif", color:"#1e293b" }}>
 
       {/* ── HEADER ── */}
       <div style={{ background:"#0f1221", borderBottom:"1px solid rgba(255,255,255,0.08)", padding:"10px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", gap:10 }}>
