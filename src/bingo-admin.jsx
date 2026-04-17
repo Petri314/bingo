@@ -541,24 +541,18 @@ if (preferred) u.voice = preferred;
   }
 }
             @media (max-width: 768px) {
-              .bingo-board-mobile { display: flex !important; flex-direction: row !important; gap: 4px !important; }
-              .bingo-board-mobile .bingo-row { display: flex !important; flex-direction: column !important; flex: 1 !important; gap: 4px !important; }
-              .bingo-board-mobile .bingo-letter { display: none !important; }
-              .bingo-board-mobile .bingo-number { flex: unset !important; width: 100% !important; aspect-ratio: 1/1 !important; }
-              .panel-inferior-pc {
-                display: grid !important;
-                grid-template-columns: 1fr 1fr !important;
-                grid-template-rows: auto auto !important;
-                gap: 12px !important;
-              }
-              .zona-patron { grid-column: 1 !important; grid-row: 1 !important; }
-              .zona-ultimo { grid-column: 2 !important; grid-row: 1 !important; }
-              .zona-premio { grid-column: 1 / -1 !important; grid-row: 2 !important; min-height:220px !important; }
-              .zona-jugadores { grid-column: 1 / -1 !important; grid-row: 3 !important; }
-              .btn-flotantes-mobile { bottom: 80px !important; gap: 8px !important; }
-              .btn-flotantes-mobile button { padding: 8px 12px !important; font-size: 12px !important; }
-              .mobile-bingo-letters { display: flex !important; }
-            }
+  .bingo-board-mobile { display: flex !important; flex-direction: row !important; gap: 4px !important; }
+  .bingo-board-mobile .bingo-row { display: flex !important; flex-direction: column !important; flex: 1 !important; gap: 4px !important; }
+  .bingo-board-mobile .bingo-letter { display: none !important; }
+  .bingo-board-mobile .bingo-number { flex: unset !important; width: 100% !important; aspect-ratio: 1/1 !important; }
+  .panel-inferior-pc { display: flex !important; flex-direction: column !important; min-height: unset !important; height: auto !important; gap: 10px !important; }
+  .zona-patron { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; background: rgba(255,255,255,0.07) !important; border-radius: 14px !important; padding: 12px 10px !important; gap: 8px !important; }
+  .zona-ultimo { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; border-radius: 14px !important; padding: 12px !important; min-height: 160px !important; }
+  .zona-jugadores { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; background: rgba(255,255,255,0.07) !important; border-radius: 14px !important; padding: 12px 10px !important; gap: 8px !important; margin-bottom: 16px !important; }
+  .btn-flotantes-mobile { bottom: 80px !important; gap: 8px !important; }
+  .btn-flotantes-mobile button { padding: 8px 12px !important; font-size: 12px !important; }
+  .mobile-bingo-letters { display: flex !important; }
+}
             @media (max-width: 768px) {
               .btn-flotantes-mobile { position: relative !important; bottom: auto !important; top: auto !important; margin-bottom: 10px !important; border-top: none !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important; }
             }
