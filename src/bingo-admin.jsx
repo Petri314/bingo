@@ -472,13 +472,8 @@ if (preferred) u.voice = preferred;
 
   const gc = activeGame.color;
   const gameNum = activeGame.id.replace("j", "");
-  const premioSrc = (gameId) => `/premios/${gameId}.png`;
-  const premioSrcMobile = (gameId) => `/premios/${gameId}-mobile.png`;
-
   return (
-
-    
-    <div onMouseDown={handleDragStart} onMouseUp={handleDragEnd} onClick={handleShowArrows} onTouchStart={handleDragStart} onTouchEnd={handleDragEnd} style={{ minHeight:"100vh", background:"linear-gradient(135deg,#172441 0%,#285289 50%,#0a101f 100%)", fontFamily:"sans-serif", color:"#1e293b", paddingBottom:60 }}>
+    <div onMouseDown={handleDragStart} onMouseUp={handleDragEnd} onClick={handleShowArrows} onTouchStart={handleDragStart} onTouchEnd={handleDragEnd} style={{ minHeight:"100vh", fontFamily:"sans-serif", color:"#1e293b" }}>
 
       {/* ── HEADER ── */}
       <div style={{ background:"#0f1221", borderBottom:"1px solid rgba(255,255,255,0.08)", padding:"10px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", gap:10 }}>
@@ -532,19 +527,19 @@ if (preferred) u.voice = preferred;
 
       {/* ══ TAB SORTEO ══ */}
       {tab === 2 && (
-        <div style={{ padding:"16px 20px", width:"100%", boxSizing:"border-box", minHeight:"calc(100vh - 112px)", display:"flex", flexDirection:"column", gap:14, paddingBottom: isAdmin ? 90 : 60 }}>
+        <div style={{ padding:"16px 20px", width:"100%", boxSizing:"border-box", height:"calc(100vh - 112px)", display:"flex", flexDirection:"column", gap:14, paddingBottom: isAdmin ? 90 : 60 }}>
           <style>{`
             @import url('https://fonts.googleapis.com/css2?family=Poller+One&family=Nunito:wght@700&family=Bebas+Neue&family=Righteous&display=swap');
             @keyframes numPop { 0%{transform:scale(0.3) rotate(-8deg);opacity:0} 60%{transform:scale(1.4) rotate(3deg);opacity:1} 100%{transform:scale(1) rotate(0deg);opacity:1} }
             .num-pop { animation: numPop 0.9s cubic-bezier(0.34,1.56,0.64,1) forwards; }
             @media (min-width: 769px) {
-              .panel-inferior-pc {
-                display: grid;
-                grid-template-columns: 140px 160px 1fr 140px;
-                gap: 12px;
-                min-height: 170px;
-              }
-            }
+  .panel-inferior-pc {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    min-height: calc(100vh - 545px);
+  }
+}
             @media (max-width: 768px) {
               .bingo-board-mobile { display: flex !important; flex-direction: row !important; gap: 4px !important; }
               .bingo-board-mobile .bingo-row { display: flex !important; flex-direction: column !important; flex: 1 !important; gap: 4px !important; }
@@ -603,19 +598,22 @@ if (preferred) u.voice = preferred;
           <div className="panel-inferior-pc">
 
             {/* ZONA 1 — Patrón activo */}
-            <div className="zona-patron" style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:"12px 10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, border:`1px solid ${gc}44` }}>
+            <div className="zona-patron" style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:"12px 10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, border:`1px solid ${gc}44`,
+flex: 1,
+minHeight: 0, }}>
               <div style={{ background:gc, borderRadius:8, padding:"3px 14px", fontSize:13, fontWeight:800, color:getTextColor(gc), letterSpacing:1 }}>JUEGO {gameNum}</div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:2, width:100 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:3, width:200 }}>
                 {Object.keys(COLS).map((l, i) => (<div key={l} style={{ height:15, borderRadius:3, background:BINGO_LETTER_COLORS[i], display:"flex", alignItems:"center", justifyContent:"center", fontSize:8, fontWeight:800, color:"#fff" }}>{l}</div>))}
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:2, width:100 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:3, width:200 }}>
                 {activePattern.grid.flat().map((cell, i) => (<div key={i} style={{ height:15, borderRadius:3, background:cell ? gc : "rgba(255,255,255,0.07)", border:cell ? "none" : "1px solid rgba(255,255,255,0.1)" }} />))}
               </div>
-              <div style={{ fontSize:11, fontWeight:700, color:"#e2e8f0", textAlign:"center", lineHeight:1.3 }}>{activePattern.name}</div>
+              <div style={{ fontSize:15, fontWeight:700, color:"#e2e8f0", textAlign:"center", lineHeight:1.3 }}>{activePattern.name}</div>
             </div>
 
             {/* ZONA 2 — Último número */}
-            <div className="zona-ultimo" style={{ background:gc, borderRadius:14, padding:12, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", border:`4px solid #fff`, boxShadow:`0 0 30px ${gc}, 0 0 60px ${gc}88, inset 0 0 20px rgba(255,255,255,0.15)`, transform:lastDrawn ? "scale(1.04)" : "scale(1)", transition:"all 0.3s ease" }}>
+            <div className="zona-ultimo" style={{ background:gc, borderRadius:14, padding:12, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", border:`4px solid #fff`, boxShadow:`0 0 30px ${gc}, 0 0 60px ${gc}88, inset 0 0 20px rgba(255,255,255,0.15)`, transform:lastDrawn ? "scale(1.04)" : "scale(1)", transition:"all 0.3s ease",flex: 1,
+minHeight: 0 }}>
               {lastDrawn ? (
                 <>
                   <div style={{ fontSize:50, fontWeight:800, color:getTextColor(gc), marginBottom:2, fontFamily:"'Poller One',cursive" }}>{getLetterForNum(lastDrawn)}</div>
@@ -626,23 +624,9 @@ if (preferred) u.voice = preferred;
               )}
             </div>
 
-            {/* ZONA 3 — Premio */}
-            <div className="zona-premio" style={{ borderRadius:14, overflow:"hidden", border:`1px solid ${gc}33`, background:`linear-gradient(135deg,${gc}11,${gc}22)`, display:"flex", alignItems:"center", justifyContent:"center", maxHeight:300 }}>
-              <img
-                key={activeGame.id}
-                src={window.innerWidth < 768 ? premioSrcMobile(activeGame.id) : premioSrc(activeGame.id)}
-                alt="Premio"
-                style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
-                onError={e => {
-                  e.target.onerror = null;
-                  const isMobile = e.target.src.includes("-mobile");
-                  e.target.src = isMobile ? "/premios/placeholder-mobile.png" : "/premios/placeholder.png";
-                }}
-              />
-            </div>
-
             {/* ZONA 4 — Nº Jugadores */}
-            <div className="zona-jugadores" style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:"12px 10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, border:`1px solid ${gc}44` }}>
+            <div className="zona-jugadores" style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:"12px 10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, border:`1px solid ${gc}44`, flex: 1,
+minHeight: 0 }}>
               <div style={{ fontSize:10, fontWeight:700, color:"#94a3b8", letterSpacing:2, textTransform:"uppercase" }}>Jugadores</div>
               <div style={{ fontSize:54, fontWeight:900, color:"#ffffff", lineHeight:1, fontFamily:"'Poller One',cursive", textShadow:`0 0 20px ${gc}88` }}>{jugadoresActuales}</div>
               <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
@@ -869,21 +853,6 @@ if (preferred) u.voice = preferred;
       <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:99, height:14, overflow:"hidden" }}>
         <div style={{ background:gc, height:"100%", borderRadius:99, width:`${cards.filter(c => c.gameId === activeGame.id).length > 0 ? (cards.filter(c => c.paid && c.gameId === activeGame.id).length / cards.filter(c => c.gameId === activeGame.id).length) * 100 : 0}%`, transition:"width 0.8s ease", animation:"barGlow 2s ease-in-out infinite", boxShadow:`0 0 12px ${gc}99` }} />
       </div>
-    </div>
-
-    {/* Imagen premio — ocupa el espacio restante */}
-    <div style={{ borderRadius:12, overflow:"hidden", border:`2px solid ${gc}33`, background:"#000", flex:1, minHeight:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <img
-        key={activeGame.id}
-        src={window.innerWidth < 768 ? premioSrcMobile(activeGame.id) : premioSrc(activeGame.id)}
-        alt="Premio"
-        style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}
-        onError={e => {
-          e.target.onerror = null;
-          const isMobile = e.target.src.includes("-mobile");
-          e.target.src = isMobile ? "/premios/placeholder-mobile.png" : "/premios/placeholder.png";
-        }}
-      />
     </div>
 
     {/* Juegos */}
