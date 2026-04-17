@@ -9,8 +9,6 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { db } from "./firebase.js";
 import { ref, onValue, set, remove, update, runTransaction } from "firebase/database";
 import { COLS, TOTAL, PRICE, DB_CARDS, DB_DRAWN, DB_WINNERS, DB_STATE, GAMES, PATTERNS, BINGO_LETTER_COLORS, TABS } from "./constants/index.js";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 
 const DB_BINGUITOS = "bingo_binguitos";
 
@@ -395,65 +393,47 @@ setIsAdmin(true);
 
   const deleteWinner = async (id) => await remove(ref(db, `${DB_WINNERS}/${id}`));
 
-  const handlePrintCards = async (downloadPdf = false) => {
-    const cardsToPrint = cards.filter(c => c.grid && c.gameId === activeGame.id);
-    if (!cardsToPrint.length) return showToast("No hay cartones para imprimir", "err");
-    const printWindow = window.open('', '_blank');
-    let html = `<!DOCTYPE html><html><head><title>Imprimir Cartones</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poller+One&display=swap" rel="stylesheet">
-    <style>
-      *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
-      body{font-family:sans-serif;margin:0;padding:3mm 3mm 3mm 8mm;box-sizing:border-box;}
-      .grid-container{display:grid;grid-template-columns:1fr 1fr;gap:0;}
-      .card-box{width:110mm;height:130mm;border:2px solid #000;padding:3mm;border-radius:8px;text-align:center;page-break-inside:avoid;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;background:#fff;}
-      .color-strip{height:5mm;width:100%;position:absolute;top:0;left:0;}
-      .game-info{font-family:'Poller One',cursive;font-size:13px;font-weight:900;margin-top:2mm;margin-bottom:2mm;color:#000;border-top:1px dashed #aaa;border-bottom:1px dashed #aaa;padding:2mm 0;}
-      .bingo-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:0;height:100mm;margin-top:2mm;}
-      .bingo-cell{display:flex;align-items:center;justify-content:center;border-radius:2px;font-family:'Poller One',cursive;font-size:45px;font-weight:400;border:1px solid #bbb;height:85%;width:85%;margin:auto;}
-      .footer-info{font-size:8px;color:#000;margin-top:3mm;border-top:1px dashed #000;padding-top:2mm;font-family:sans-serif;line-height:1.3;font-weight:600;}
-      .no-print{text-align:center;margin-bottom:20px;}
-      @media print{body{padding:5mm;}.no-print{display:none;}}
-    </style></head><body>
-    <div class="no-print"><h2>Cartones (${cardsToPrint.length})</h2><button onclick="window.print()" style="padding:10px 20px;font-size:16px;cursor:pointer;background:#4caf50;color:white;border:none;border-radius:5px;">🖨️ IMPRIMIR</button></div>
-    <div class="grid-container">`;
-    cardsToPrint.forEach(c => {
-      const gc2 = c.gameId ? (GAMES.find(g => g.id === c.gameId)?.color || "#000") : "#000";
-      const gn = c.gameId ? c.gameId.replace('j', '') : '?';
-      html += `<div class="card-box"><div class="color-strip" style="background:${gc2};"></div>
-      <div class="game-info">JUEGO ${gn} | CARTÓN ${c.cardNum}</div>
-      <div class="bingo-grid">
-        ${Object.keys(COLS).map((l, i) => `<div class="bingo-cell" style="background:${['#ef4444','#3b82f6','#f59e0b','#22c55e','#a855f7'][i]};color:white;border:none;font-size:20px;font-family:'Poller One',cursive;">${l}</div>`).join('')}
-        ${Array.isArray(c.grid) && c.grid[0] ? c.grid[0].map((_, row) => c.grid.map((col, ci) => { const val = col[row]; const isFree = val === "FREE"; return `<div class="bingo-cell" style="background:${isFree ? "#facc15" : "#f8fafc"};color:${isFree ? "#000" : "#222"};padding:2px;">${isFree ? '<img src="/qr-code.png" style="width:100%;height:100%;object-fit:contain;">' : val}</div>`; }).join('')).join('') : ''}
-      </div>
-      <div class="footer-info">BINGO SOLIDARIO CRISTIAN HIDALGO<br>ESCANEA EL QR DEL CENTRO PARA VER INFO DEL JUEGO</div></div>`;
-    });
-    html += `</div></body></html>`;
-    printWindow.document.write(html);
-    printWindow.document.close();
-    if (downloadPdf) {
-      printWindow.onload = () => {
-        setTimeout(async () => {
-          const pdf = new jsPDF({ orientation:"portrait", unit:"mm", format:"a4" });
-          const pageWidth = pdf.internal.pageSize.getWidth();
-          const pageHeight = pdf.internal.pageSize.getHeight();
-          const canvas = await html2canvas(printWindow.document.body, { scale:2, useCORS:true, backgroundColor:"#ffffff" });
-          const imgData = canvas.toDataURL("image/jpeg", 0.95);
-          const imgWidth = pageWidth;
-          const imgHeight = (canvas.height * pageWidth) / canvas.width;
-          let y = 0;
-          while (y < imgHeight) {
-            if (y > 0) pdf.addPage();
-            pdf.addImage(imgData, "JPEG", 0, -y, imgWidth, imgHeight);
-            y += pageHeight;
-          }
-          pdf.save(`cartones-${activeGame.name}.pdf`);
-          printWindow.close();
-        }, 1000);
-      };
-    }
-  };
+  const handlePrintCards = async () => {
+  const cardsToPrint = cards.filter(c => c.grid && c.gameId === activeGame.id);
+  if (!cardsToPrint.length) return showToast("No hay cartones para imprimir", "err");
+
+  const printWindow = window.open('', '_blank');
+  let html = `<!DOCTYPE html><html><head><title>Imprimir Cartones</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poller+One&display=swap" rel="stylesheet">
+  <style>
+    *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+    body{font-family:sans-serif;margin:0;padding:3mm 3mm 3mm 8mm;box-sizing:border-box;}
+    .grid-container{display:grid;grid-template-columns:1fr 1fr;gap:0;}
+    .card-box{width:110mm;height:130mm;border:2px solid #000;padding:3mm;border-radius:8px;text-align:center;page-break-inside:avoid;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;background:#fff;}
+    .color-strip{height:5mm;width:100%;position:absolute;top:0;left:0;}
+    .game-info{font-family:'Poller One',cursive;font-size:13px;font-weight:900;margin-top:2mm;margin-bottom:2mm;color:#000;border-top:1px dashed #aaa;border-bottom:1px dashed #aaa;padding:2mm 0;}
+    .bingo-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:0;height:100mm;margin-top:2mm;}
+    .bingo-cell{display:flex;align-items:center;justify-content:center;border-radius:2px;font-family:'Poller One',cursive;font-size:45px;font-weight:400;border:1px solid #bbb;height:85%;width:85%;margin:auto;}
+    .footer-info{font-size:8px;color:#000;margin-top:3mm;border-top:1px dashed #000;padding-top:2mm;font-family:sans-serif;line-height:1.3;font-weight:600;}
+    .no-print{text-align:center;margin-bottom:20px;}
+    @media print{body{padding:5mm;}.no-print{display:none;}}
+  </style></head><body>
+  <div class="no-print"><h2>Cartones (${cardsToPrint.length})</h2><button onclick="window.print()" style="padding:10px 20px;font-size:16px;cursor:pointer;background:#4caf50;color:white;border:none;border-radius:5px;">🖨️ IMPRIMIR</button></div>
+  <div class="grid-container">`;
+
+  cardsToPrint.forEach(c => {
+    const gc2 = c.gameId ? (GAMES.find(g => g.id === c.gameId)?.color || "#000") : "#000";
+    const gn = c.gameId ? c.gameId.replace('j', '') : '?';
+    html += `<div class="card-box"><div class="color-strip" style="background:${gc2};"></div>
+    <div class="game-info">JUEGO ${gn} | CARTÓN ${c.cardNum}</div>
+    <div class="bingo-grid">
+      ${Object.keys(COLS).map((l, i) => `<div class="bingo-cell" style="background:${['#ef4444','#3b82f6','#f59e0b','#22c55e','#a855f7'][i]};color:white;border:none;font-size:20px;font-family:'Poller One',cursive;">${l}</div>`).join('')}
+      ${Array.isArray(c.grid) && c.grid[0] ? c.grid[0].map((_, rowI) => c.grid.map((col2, ci) => { const val = col2[rowI]; const isFree = val === "FREE"; return `<div class="bingo-cell" style="background:${isFree ? "#facc15" : "#f8fafc"};color:${isFree ? "#000" : "#222"};padding:2px;">${isFree ? '<img src="/qr-code.png" style="width:100%;height:100%;object-fit:contain;">' : val}</div>`; }).join('')).join('') : ''}
+    </div>
+    <div class="footer-info">BINGO SOLIDARIO CRISTIAN HIDALGO<br>ESCANEA EL QR DEL CENTRO PARA VER INFO DEL JUEGO</div></div>`;
+  });
+
+  html += `</div></body></html>`;
+  printWindow.document.write(html);
+  printWindow.document.close();
+};
 
   const filteredCards = useMemo(() =>
     cards.filter(c =>
@@ -525,19 +505,20 @@ setIsAdmin(true);
 
       {/* ══ TAB SORTEO ══ */}
       {tab === 2 && (
-        <div style={{ padding:"16px 20px", width:"100%", boxSizing:"border-box", height:"calc(100vh - 112px)", display:"flex", flexDirection:"column", gap:14, paddingBottom: isAdmin ? 90 : 60 }}>
-          <style>{`
+        <div style={{ padding:"10px 14px", width:"100%", boxSizing:"border-box", height:"calc(100vh - 112px)", display:"flex", flexDirection:"column", gap:8, paddingBottom: isAdmin ? 80 : 10, overflow:"hidden" }}>          <style>{`
             @import url('https://fonts.googleapis.com/css2?family=Poller+One&family=Nunito:wght@700&family=Bebas+Neue&family=Righteous&display=swap');
             @keyframes numPop { 0%{transform:scale(0.3) rotate(-8deg);opacity:0} 60%{transform:scale(1.4) rotate(3deg);opacity:1} 100%{transform:scale(1) rotate(0deg);opacity:1} }
             .num-pop { animation: numPop 0.9s cubic-bezier(0.34,1.56,0.64,1) forwards; }
             @media (min-width: 769px) {
-              .panel-inferior-pc {
-                display: grid;
-                grid-template-columns: 1fr 1fr 1fr;
-                gap: 12px;
-                min-height: calc(100vh - 545px);
-              }
-            }
+  .panel-inferior-pc {
+    display: grid;
+    grid-template-columns: 220px 1fr 220px;
+    gap: 10px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+}
             @media (max-width: 768px) {
               .bingo-board-mobile { display: flex !important; flex-direction: row !important; gap: 4px !important; }
               .bingo-board-mobile .bingo-row { display: flex !important; flex-direction: column !important; flex: 1 !important; gap: 4px !important; }
@@ -572,10 +553,10 @@ setIsAdmin(true);
           </div>
 
           {/* Tablero */}
-          <div className="bingo-board-mobile" style={{ background:"rgba(255,255,255,0.06)", borderRadius:18, padding:"14px 16px", border:`1px solid ${gc}33`, display:"flex", flexDirection:"column" }}>
-            {Object.entries(COLS).map(([letter, [min, max]], rowIdx) => (
-              <div key={letter} className="bingo-row" style={{ display:"flex", gap:5, marginBottom:rowIdx < 4 ? 6 : 0, alignItems:"center" }}>
-                <div className="bingo-letter" style={{ width:44, height:44, borderRadius:10, flexShrink:0, background:BINGO_LETTER_COLORS[rowIdx], display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Poller One',cursive", fontWeight:900, fontSize:22, color:"#fff", boxShadow:`0 0 12px ${BINGO_LETTER_COLORS[rowIdx]}99` }}>{letter}</div>
+          <div className="bingo-board-mobile" style={{ background:"rgba(255,255,255,0.06)", borderRadius:14, padding:"8px 10px", border:`1px solid ${gc}33`, display:"flex", flexDirection:"column", flexShrink:0 }}>
+  {Object.entries(COLS).map(([letter, [min, max]], rowIdx) => (
+    <div key={letter} className="bingo-row" style={{ display:"flex", gap:3, marginBottom:rowIdx < 4 ? 3 : 0, alignItems:"center" }}>
+      <div className="bingo-letter" style={{ width:34, height:34, borderRadius:8, flexShrink:0, background:BINGO_LETTER_COLORS[rowIdx], display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Poller One',cursive", fontWeight:900, fontSize:17, color:"#fff", boxShadow:`0 0 10px ${BINGO_LETTER_COLORS[rowIdx]}99` }}>{letter}</div>
                 {Array.from({length:15}, (_, i) => i + min).map(n => {
                   const isLast = n === lastDrawn;
                   const isDrawn = drawn.includes(n);
@@ -591,17 +572,15 @@ setIsAdmin(true);
           <div className="panel-inferior-pc">
 
             {/* ZONA 1 — Patrón activo (binguito + bingo) */}
-            <div className="zona-patron" style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:"12px 10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, border:`1px solid ${gc}44`, flex:1, minHeight:0 }}>
-              <div style={{ background:gc, borderRadius:8, padding:"3px 14px", fontSize:13, fontWeight:800, color:getTextColor(gc), letterSpacing:1 }}>JUEGO {gameNum}</div>
+            <div className="zona-patron" style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:"12px 10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, border:`1px solid ${binguitoColor}44`, flex:1, minHeight:0 }}>
+              <div style={{ background:binguitoColor, borderRadius:8, padding:"3px 14px", fontSize:13, fontWeight:800, color:"#000", letterSpacing:1 }}>BINGUITO</div>
 
-              {/* Encabezados */}
               <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:3, width:160 }}>
                 {Object.keys(COLS).map((l, i) => (
                   <div key={l} style={{ height:12, borderRadius:2, background:BINGO_LETTER_COLORS[i], display:"flex", alignItems:"center", justifyContent:"center", fontSize:7, fontWeight:800, color:"#fff" }}>{l}</div>
                 ))}
               </div>
 
-              {/* Grid binguito (amarillo) con etiqueta */}
               {activePattern.binguito && (
                 <>
                   <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:3, width:160 }}>
@@ -617,23 +596,9 @@ setIsAdmin(true);
                   </div>
                 </>
               )}
-
-              {/* Separador */}
-              <div style={{ width:"80%", height:1, background:"rgba(255,255,255,0.1)" }} />
-
-              {/* Grid bingo completo (color del juego) */}
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:3, width:160 }}>
-                {activePattern.grid.flat().map((cell, i) => (
-                  <div key={i} style={{ height:12, borderRadius:2, background:cell ? gc : "rgba(255,255,255,0.07)", border:cell ? "none" : "1px solid rgba(255,255,255,0.1)" }} />
-                ))}
-              </div>
-              <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-                <div style={{ width:8, height:8, borderRadius:1, background:gc }} />
-                <div style={{ fontSize:10, fontWeight:700, color:"#e2e8f0", textAlign:"center", lineHeight:1.3 }}>
-                  {activePattern.name}
-                </div>
-              </div>
-
+              {!activePattern.binguito && (
+                <div style={{ fontSize:11, color:"#64748b", textAlign:"center" }}>Sin binguito en este patrón</div>
+              )}
             </div>
 
             {/* ZONA 2 — Último número */}
@@ -650,21 +615,26 @@ setIsAdmin(true);
 
             {/* ZONA 3 — Nº Jugadores */}
             <div className="zona-jugadores" style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:"12px 10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, border:`1px solid ${gc}44`, flex:1, minHeight:0 }}>
-              <div style={{ fontSize:10, fontWeight:700, color:"#94a3b8", letterSpacing:2, textTransform:"uppercase" }}>Jugadores</div>
-              <div style={{ fontSize:54, fontWeight:900, color:"#ffffff", lineHeight:1, fontFamily:"'Poller One',cursive", textShadow:`0 0 20px ${gc}88` }}>{jugadoresActuales}</div>
-              <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
-                <div style={{ background:gc, borderRadius:6, padding:"2px 12px", fontSize:11, fontWeight:800, color:getTextColor(gc) }}>{activeGame.name}</div>
-                <div style={{ fontSize:10, color:"#64748b" }}>cartones vendidos</div>
+              <div style={{ background:gc, borderRadius:8, padding:"3px 14px", fontSize:13, fontWeight:800, color:getTextColor(gc), letterSpacing:1 }}>BINGO</div>
+
+              {/* Encabezados letras */}
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:4, width:"85%" }}>
+                {Object.keys(COLS).map((l, i) => (
+                  <div key={l} style={{ aspectRatio:"1/1", borderRadius:6, background:BINGO_LETTER_COLORS[i], display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:800, color:"#fff" }}>{l}</div>
+                ))}
               </div>
-              {/* Estado binguito/bingo */}
-              <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, marginTop:4 }}>
-                <div style={{ display:"flex", alignItems:"center", gap:6, background:alreadyBinguito ? "#f59e0b22" : "rgba(255,255,255,0.05)", borderRadius:8, padding:"4px 10px", border:`1px solid ${alreadyBinguito ? "#f59e0b" : "rgba(255,255,255,0.1)"}` }}>
-                  <div style={{ width:8, height:8, borderRadius:"50%", background:alreadyBinguito ? "#f59e0b" : "#374151" }} />
-                  <span style={{ fontSize:10, fontWeight:700, color:alreadyBinguito ? "#f59e0b" : "#4b5563" }}>Binguito {alreadyBinguito ? "✓" : "—"}</span>
-                </div>
-                <div style={{ display:"flex", alignItems:"center", gap:6, background:alreadyWon ? `${gc}22` : "rgba(255,255,255,0.05)", borderRadius:8, padding:"4px 10px", border:`1px solid ${alreadyWon ? gc : "rgba(255,255,255,0.1)"}` }}>
-                  <div style={{ width:8, height:8, borderRadius:"50%", background:alreadyWon ? gc : "#374151" }} />
-                  <span style={{ fontSize:10, fontWeight:700, color:alreadyWon ? gc : "#4b5563" }}>Bingo {alreadyWon ? "✓" : "—"}</span>
+
+              {/* Grid bingo grande */}
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:4, width:"85%", flex:1 }}>
+                {activePattern.grid.flat().map((cell, i) => (
+                  <div key={i} style={{ aspectRatio:"1/1", borderRadius:6, background:cell ? gc : "rgba(255,255,255,0.07)", border:cell ? "none" : "1px solid rgba(255,255,255,0.1)", boxShadow:cell ? `0 0 8px ${gc}88` : "none" }} />
+                ))}
+              </div>
+
+              <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+                <div style={{ width:8, height:8, borderRadius:1, background:gc }} />
+                <div style={{ fontSize:11, fontWeight:700, color:"#e2e8f0", textAlign:"center" }}>
+                  {activePattern.name}
                 </div>
               </div>
             </div>
@@ -838,7 +808,6 @@ setIsAdmin(true);
 {cards.length > 0 && (
   <div style={{ display:"flex", gap:10, marginBottom:12 }}>
   <button onClick={() => handlePrintCards(false)} style={{...btnS("#6366f1"), flex:1, padding:"12px", fontSize:15, display:"flex", alignItems:"center", justifyContent:"center", gap:8}}>🖨️ Imprimir {activeGame.name} ({cards.filter(c => c.grid && c.gameId === activeGame.id).length})</button>
-  <button onClick={() => handlePrintCards(true)} style={{...btnS("#0f172a"), flex:1, padding:"12px", fontSize:15, display:"flex", alignItems:"center", justifyContent:"center", gap:8, border:"2px solid #6366f1"}}>📄 PDF</button>
 </div>
 )}
                 <div style={{ background:"#ffffff", borderRadius:13, padding:16, marginBottom:16, border:"1px solid #e2e8f0" }}>
