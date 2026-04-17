@@ -10,7 +10,6 @@ export function getTextColor(hexColor) {
   return brightness > 128 ? "#000" : "#fff";
 }
 
-
 export function getLetterForNum(n) {
   for (const [l,[min,max]] of Object.entries(COLS)) if (n>=min&&n<=max) return l;
   return "";
@@ -26,10 +25,13 @@ export function generateCardGrid() {
   grid[2][2] = "FREE"; return grid;
 }
 
-export function checkPattern(card, drawn, pattern) {
+// Verifica si un cartón cumple un patrón dado (bingo o binguito).
+// patternGrid es un grid[row][col] con 1 en las celdas requeridas.
+// card.grid es grid[col][row] (orientación del cartón).
+function _checkGrid(card, drawn, patternGrid) {
   for (let row = 0; row < 5; row++) {
     for (let col = 0; col < 5; col++) {
-      if (!pattern.grid[row][col]) continue;
+      if (!patternGrid[row][col]) continue;
       const col_arr = card.grid[col];
       if (!col_arr || col_arr.length < 5) return false;
       const val = col_arr[row];
@@ -40,3 +42,13 @@ export function checkPattern(card, drawn, pattern) {
   return true;
 }
 
+export function checkPattern(card, drawn, pattern) {
+  return _checkGrid(card, drawn, pattern.grid);
+}
+
+// Verifica si el cartón cumple el subpatrón "binguito" del patrón activo.
+// Devuelve false si el patrón no tiene binguito definido.
+export function checkBinguito(card, drawn, pattern) {
+  if (!pattern.binguito) return false;
+  return _checkGrid(card, drawn, pattern.binguito.grid);
+}

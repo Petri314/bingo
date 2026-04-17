@@ -1,4 +1,4 @@
-import { pad, getTextColor, getLetterForNum, generateCardGrid, checkPattern } from "./utils.js";
+import { pad, getTextColor, getLetterForNum, generateCardGrid, checkPattern, checkBinguito } from "./utils.js";
 import ResetModal from "./components/ResetModal.jsx";
 import LoginModal from "./components/LoginModal.jsx";
 import GameModal from "./components/GameModal.jsx";
@@ -9,6 +9,8 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { db } from "./firebase.js";
 import { ref, onValue, set, remove, update, runTransaction } from "firebase/database";
 import { COLS, TOTAL, PRICE, DB_CARDS, DB_DRAWN, DB_WINNERS, DB_STATE, GAMES, PATTERNS, BINGO_LETTER_COLORS, TABS } from "./constants/index.js";
+
+const DB_BINGUITOS = "bingo_binguitos";
 
 const inpS = { background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:"10px 12px", color:"#334155", fontSize:14, outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"sans-serif" };
 const btnS = (color, extra={}) => ({ background:color, border:"none", borderRadius:8, padding:"9px 15px", fontWeight:700, fontSize:14, cursor:"pointer", color:"#fff", fontFamily:"sans-serif", whiteSpace:"nowrap", ...extra });
@@ -25,6 +27,7 @@ export default function BingoAdmin() {
   const [activePattern, setActivePattern] = useState(PATTERNS[0]);
   const [activeGame, setActiveGame]     = useState(GAMES[0]);
   const [alreadyWon, setAlreadyWon]     = useState(false);
+  const [alreadyBinguito, setAlreadyBinguito] = useState(false);
   const [genQty, setGenQty]             = useState("");
   const [newOwner, setNewOwner]         = useState("");
   const [newQty, setNewQty]             = useState("1");
@@ -34,7 +37,7 @@ export default function BingoAdmin() {
   const [winnerCard, setWinnerCard]     = useState("");
   const [toast, setToast]               = useState(null);
   const [isMuted, setIsMuted] = useState(true);
-const isMutedRef = useRef(true);
+  const isMutedRef = useRef(true);
   const [isAdmin, setIsAdmin]           = useState(false);
   const isAdminRef = useRef(false);
   const [showLogin, setShowLogin]       = useState(false);
@@ -45,14 +48,15 @@ const isMutedRef = useRef(true);
   const [showResetModal, setShowResetModal]     = useState(false);
   const [isFullscreen, setIsFullscreen]         = useState(false);
   const [showArrows, setShowArrows] = useState(false);
-const arrowTimeout = useRef(null);
+  const arrowTimeout = useRef(null);
   const [winnerPopup, setWinnerPopup]   = useState(null);
+  const [binguitoPopup, setBinguitoPopup] = useState(null);
   const [selectedWinner, setSelectedWinner] = useState(null);
   const [confirmAssign, setConfirmAssign] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
-const [showSoundModal, setShowSoundModal] = useState(false);
-const [showSoundTip, setShowSoundTip] = useState(false);
-const [showFullscreenTip, setShowFullscreenTip] = useState(false);
+  const [showSoundModal, setShowSoundModal] = useState(false);
+  const [showSoundTip, setShowSoundTip] = useState(false);
+  const [showFullscreenTip, setShowFullscreenTip] = useState(false);
   const [countdownEndsAt, setCountdownEndsAt] = useState(null);
   const [countdownDisplay, setCountdownDisplay] = useState(0);
   const [countdownInput, setCountdownInput] = useState("5");
@@ -62,10 +66,7 @@ const [showFullscreenTip, setShowFullscreenTip] = useState(false);
   const prevSoldIds = useRef(new Set());
 
   useEffect(() => {
-    if (!countdownEndsAt) {
-      setCountdownDisplay(0);
-      return;
-    }
+    if (!countdownEndsAt) { setCountdownDisplay(0); return; }
     const tick = () => {
       const remaining = Math.max(0, Math.ceil((countdownEndsAt - Date.now()) / 1000));
       setCountdownDisplay(remaining);
@@ -80,34 +81,23 @@ const [showFullscreenTip, setShowFullscreenTip] = useState(false);
     if (!token) return;
     try {
       const payload = JSON.parse(atob(token.split(".")[1]));
-      if (payload.exp * 1000 > Date.now()) {
-        setIsAdmin(true);
-      } else {
-        sessionStorage.removeItem("admin_token");
-      }
-    } catch {
-      sessionStorage.removeItem("admin_token");
-    }
+      if (payload.exp * 1000 > Date.now()) { setIsAdmin(true); } else { sessionStorage.removeItem("admin_token"); }
+    } catch { sessionStorage.removeItem("admin_token"); }
   }, []);
 
   useEffect(() => {
-  const timer = setTimeout(() => {
-    if (isMutedRef.current) {
-      setShowSoundTip(true);
-      setTimeout(() => setShowSoundTip(false), 5000);
-    }
-  }, 20000);
-  return () => clearTimeout(timer);
-}, []);
-useEffect(() => {
-  const timer = setTimeout(() => {
-    if (!document.fullscreenElement) {
-      setShowFullscreenTip(true);
-      setTimeout(() => setShowFullscreenTip(false), 5000);
-    }
-  }, 60000);
-  return () => clearTimeout(timer);
-}, []);
+    const timer = setTimeout(() => {
+      if (isMutedRef.current) { setShowSoundTip(true); setTimeout(() => setShowSoundTip(false), 5000); }
+    }, 20000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!document.fullscreenElement) { setShowFullscreenTip(true); setTimeout(() => setShowFullscreenTip(false), 5000); }
+    }, 60000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleLogin = async () => {
     try {
@@ -116,85 +106,58 @@ useEffect(() => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pin: pwInput }),
       });
-      if (!res.ok) {
-        setPwError(true);
-        setTimeout(() => setPwError(false), 1500);
-        return;
-      }
+      if (!res.ok) { setPwError(true); setTimeout(() => setPwError(false), 1500); return; }
       const { token } = await res.json();
       sessionStorage.setItem("admin_token", token);
-      setIsAdmin(true);
-      isAdminRef.current = true;
-      setShowLogin(false);
-      setPwInput("");
-      setPwError(false);
-    } catch (err) {
-      console.error("Error de login:", err);
-      setPwError(true);
-      setTimeout(() => setPwError(false), 1500);
-    }
+      setIsAdmin(true); isAdminRef.current = true;
+      setShowLogin(false); setPwInput(""); setPwError(false);
+    } catch (err) { console.error("Error de login:", err); setPwError(true); setTimeout(() => setPwError(false), 1500); }
   };
 
-  const handleLogout = () => {
-    sessionStorage.removeItem("admin_token");
-    setIsAdmin(false);
-    isAdminRef.current = false;
-  };
+  const handleLogout = () => { sessionStorage.removeItem("admin_token"); setIsAdmin(false); isAdminRef.current = false; };
 
   const showToast = (msg, type="ok") => { setToast({msg, type}); setTimeout(() => setToast(null), 2500); };
-  const handleDragStart = (e) => {
-  touchStartX.current = e.clientX ?? e.touches?.[0]?.clientX;
-};
-const handleShowArrows = () => {
-  if (!isFullscreen) return;
-  setShowArrows(true);
-  clearTimeout(arrowTimeout.current);
-  arrowTimeout.current = setTimeout(() => setShowArrows(false), 2000);
-};
 
-const handleDragEnd = (e) => {
-  if (touchStartX.current === null) return;
-  const endX = e.clientX ?? e.changedTouches?.[0]?.clientX;
-  const diff = touchStartX.current - endX;
-  if (Math.abs(diff) > 50) {
-    if (diff > 0) {
-      setTab(prev => Math.min(prev + 1, TABS.length - 1));
-    } else {
-      setTab(prev => Math.max(prev - 1, 0));
+  const handleDragStart = (e) => { touchStartX.current = e.clientX ?? e.touches?.[0]?.clientX; };
+
+  const handleShowArrows = () => {
+    if (!isFullscreen) return;
+    setShowArrows(true);
+    clearTimeout(arrowTimeout.current);
+    arrowTimeout.current = setTimeout(() => setShowArrows(false), 2000);
+  };
+
+  const handleDragEnd = (e) => {
+    if (touchStartX.current === null) return;
+    const endX = e.clientX ?? e.changedTouches?.[0]?.clientX;
+    const diff = touchStartX.current - endX;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) { setTab(prev => Math.min(prev + 1, TABS.length - 1)); }
+      else { setTab(prev => Math.max(prev - 1, 0)); }
     }
-  }
-  touchStartX.current = null;
-};
+    touchStartX.current = null;
+  };
 
   const speakNumber = (num) => {
-  if (isMutedRef.current || !num) return;
+    if (isMutedRef.current || !num) return;
     window.speechSynthesis.cancel();
     const doSpeak = () => {
       const u = new SpeechSynthesisUtterance(`${getLetterForNum(num)}, ${num}`);
-      u.lang = "es-ES";
-      u.rate = 0.75;
-      u.pitch = 1.1;
-      u.volume = 1;
+      u.lang = "es-ES"; u.rate = 0.75; u.pitch = 1.1; u.volume = 1;
       const voices = window.speechSynthesis.getVoices();
-const preferred =
-  voices.find(v => v.name === "Google español") ||
-  voices.find(v => v.name === "Microsoft Laura - Spanish (Spain)") ||
-  voices.find(v => v.lang === "es-ES" && !v.localService) ||
-  voices.find(v => v.lang === "es-ES") ||
-  voices.find(v => v.lang?.startsWith("es")) ||
-  voices.find(v => v.lang?.startsWith("es-"));
-if (preferred) u.voice = preferred;
+      const preferred =
+        voices.find(v => v.name === "Google español") ||
+        voices.find(v => v.name === "Microsoft Laura - Spanish (Spain)") ||
+        voices.find(v => v.lang === "es-ES" && !v.localService) ||
+        voices.find(v => v.lang === "es-ES") ||
+        voices.find(v => v.lang?.startsWith("es")) ||
+        voices.find(v => v.lang?.startsWith("es-"));
+      if (preferred) u.voice = preferred;
       window.speechSynthesis.speak(u);
     };
     if (window.speechSynthesis.getVoices().length === 0) {
-      const handleVoicesChanged = () => {
-        window.speechSynthesis.onvoiceschanged = null;
-        doSpeak();
-      };
-      window.speechSynthesis.onvoiceschanged = handleVoicesChanged;
-    } else {
-      doSpeak();
-    }
+      window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.onvoiceschanged = null; doSpeak(); };
+    } else { doSpeak(); }
   };
 
   useEffect(() => {
@@ -229,14 +192,8 @@ if (preferred) u.voice = preferred;
 
     const uD = onValue(ref(db, DB_DRAWN), s => {
       const v = s.val();
-      if (v) {
-        const n = Object.values(v);
-        setDrawn(n);
-        setLastDrawn(n.at(-1) ?? null);
-      } else {
-        setDrawn([]);
-        setLastDrawn(null);
-      }
+      if (v) { const n = Object.values(v); setDrawn(n); setLastDrawn(n.at(-1) ?? null); }
+      else { setDrawn([]); setLastDrawn(null); }
     });
 
     const uW = onValue(ref(db, DB_WINNERS), s => {
@@ -258,16 +215,24 @@ if (preferred) u.voice = preferred;
       if (v.gameId)    { const g = GAMES.find(g => g.id === v.gameId);       if (g) setActiveGame(g); }
       if (v.patternId) { const p = PATTERNS.find(p => p.id === v.patternId); if (p) setActivePattern(p); }
       if (typeof v.alreadyWon === "boolean") setAlreadyWon(v.alreadyWon);
+      if (typeof v.alreadyBinguito === "boolean") setAlreadyBinguito(v.alreadyBinguito);
       if (v.countdownEndsAt !== undefined) {
         setCountdownEndsAt(v.countdownEndsAt > Date.now() ? v.countdownEndsAt : null);
       }
-      if (v.lastSpoken && v.lastSpokenAt && Date.now() - v.lastSpokenAt < 4000&& !isAdminRef.current) {
-  if (!isMutedRef.current) speakNumber(v.lastSpoken);
-}
+      if (v.lastSpoken && v.lastSpokenAt && Date.now() - v.lastSpokenAt < 4000 && !isAdminRef.current) {
+        if (!isMutedRef.current) speakNumber(v.lastSpoken);
+      }
+      // Popup bingo
       if (v.currentWinner && v.currentWinner.ts && Date.now() - v.currentWinner.ts < 8000) {
         setWinnerPopup(v.currentWinner);
       } else {
         setWinnerPopup(null);
+      }
+      // Popup binguito
+      if (v.currentBinguito && v.currentBinguito.ts && Date.now() - v.currentBinguito.ts < 8000) {
+        setBinguitoPopup(v.currentBinguito);
+      } else {
+        setBinguitoPopup(null);
       }
     });
 
@@ -275,12 +240,13 @@ if (preferred) u.voice = preferred;
   }, []);
 
   const handleSelectGame = async (game) => {
-    await update(ref(db, DB_STATE), { gameId:game.id, alreadyWon:false, currentWinner:null });
-    setWinnerPopup(null);
+    await update(ref(db, DB_STATE), { gameId:game.id, alreadyWon:false, alreadyBinguito:false, currentWinner:null, currentBinguito:null });
+    setWinnerPopup(null); setBinguitoPopup(null);
   };
 
   const handleSelectPattern = async (pattern) => {
-    await update(ref(db, DB_STATE), { patternId:pattern.id, alreadyWon:false, currentWinner:null });
+    await update(ref(db, DB_STATE), { patternId:pattern.id, alreadyWon:false, alreadyBinguito:false, currentWinner:null, currentBinguito:null });
+    setBinguitoPopup(null);
   };
 
   const generatePool = async () => {
@@ -322,30 +288,18 @@ if (preferred) u.voice = preferred;
 
   const confirmAssignCard = async () => {
     if (!confirmAssign) return;
-    const freshSnap = await new Promise(res =>
-      onValue(ref(db, DB_CARDS), res, { onlyOnce: true })
-    );
+    const freshSnap = await new Promise(res => onValue(ref(db, DB_CARDS), res, { onlyOnce: true }));
     const freshData = freshSnap.val() || {};
-    const alreadySold = confirmAssign.selected.filter(id => {
-      const fresh = freshData[id];
-      return fresh && fresh.paid;
-    });
+    const alreadySold = confirmAssign.selected.filter(id => { const fresh = freshData[id]; return fresh && fresh.paid; });
     if (alreadySold.length > 0) {
-      const soldNums = confirmAssign.available
-        .filter(c => alreadySold.includes(c.id))
-        .map(c => c.cardNum)
-        .join(", ");
+      const soldNums = confirmAssign.available.filter(c => alreadySold.includes(c.id)).map(c => c.cardNum).join(", ");
       showToast(`Cartón(es) ${soldNums} ya fueron vendidos`, "err");
-      setConfirmAssign(null);
-      return;
+      setConfirmAssign(null); return;
     }
     const updates = {};
     const toAssign = confirmAssign.available.filter(c => confirmAssign.selected.includes(c.id));
     toAssign.forEach(c => {
-      updates[`${DB_CARDS}/${c.id}`] = {
-        id:c.id, cardNum:c.cardNum, gameId:c.gameId, gameName:c.gameName,
-        grid:c.grid, owner:confirmAssign.owner, paid:true, soldAt:Date.now()
-      };
+      updates[`${DB_CARDS}/${c.id}`] = { id:c.id, cardNum:c.cardNum, gameId:c.gameId, gameName:c.gameName, grid:c.grid, owner:confirmAssign.owner, paid:true, soldAt:Date.now() };
     });
     await update(ref(db), updates);
     showToast(`✓ ${activeGame.name}: ${confirmAssign.nums.join(', ')}`);
@@ -364,27 +318,50 @@ if (preferred) u.voice = preferred;
     const isMarking = !drawn.includes(n);
     const next = isMarking ? [...drawn, n] : drawn.filter(x => x !== n);
     await set(ref(db, DB_DRAWN), next.length ? Object.fromEntries(next.map((v, i) => [i, v])) : null);
-    if (isMarking) {
-  if (!isMuted) speakNumber(n);
-  await update(ref(db, DB_STATE), { lastSpoken: n, lastSpokenAt: Date.now() });
-}
 
     if (isMarking) {
+      if (!isMuted) speakNumber(n);
+      await update(ref(db, DB_STATE), { lastSpoken: n, lastSpokenAt: Date.now() });
+
       const soldCards = cards.filter(c => c.paid && c.gameId === activeGame.id);
-      for (const card of soldCards) {
-        if (!card.grid) continue;
-        if (checkPattern(card, next, activePattern)) {
-          const winnerKey = `${activeGame.id}_${card.cardNum}`;
-          const winnerRef = ref(db, `${DB_WINNERS}/${winnerKey}`);
-          await runTransaction(winnerRef, (existing) => {
-            if (existing !== null) return;
-            return { id:winnerKey, name:card.owner, card:card.cardNum, game:activeGame.name, gameId:activeGame.id, patternId:activePattern.id, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now(), drawn:[...next] };
-          });
-          const snap = await new Promise(res => onValue(winnerRef, res, { onlyOnce: true }));
-          if (snap.val()) {
-            update(ref(db, DB_STATE), { alreadyWon:true, currentWinner:snap.val() });
+
+      // ── Detectar ganador BINGO ────────────────────────────────────────────
+      if (!alreadyWon) {
+        for (const card of soldCards) {
+          if (!card.grid) continue;
+          if (checkPattern(card, next, activePattern)) {
+            const winnerKey = `${activeGame.id}_${card.cardNum}`;
+            const winnerRef = ref(db, `${DB_WINNERS}/${winnerKey}`);
+            await runTransaction(winnerRef, (existing) => {
+              if (existing !== null) return;
+              return { id:winnerKey, name:card.owner, card:card.cardNum, game:activeGame.name, gameId:activeGame.id, patternId:activePattern.id, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now(), drawn:[...next] };
+            });
+            const snap = await new Promise(res => onValue(winnerRef, res, { onlyOnce: true }));
+            if (snap.val()) {
+              update(ref(db, DB_STATE), { alreadyWon:true, currentWinner:snap.val() });
+            }
+            break;
           }
-          break;
+        }
+      }
+
+      // ── Detectar ganador BINGUITO ─────────────────────────────────────────
+      if (!alreadyBinguito && activePattern.binguito) {
+        for (const card of soldCards) {
+          if (!card.grid) continue;
+          if (checkBinguito(card, next, activePattern)) {
+            const binguitoKey = `${activeGame.id}_${card.cardNum}`;
+            const binguitoRef = ref(db, `${DB_BINGUITOS}/${binguitoKey}`);
+            await runTransaction(binguitoRef, (existing) => {
+              if (existing !== null) return;
+              return { id:binguitoKey, name:card.owner, card:card.cardNum, game:activeGame.name, gameId:activeGame.id, patternId:activePattern.id, binguitoName: activePattern.binguito.name, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now(), drawn:[...next] };
+            });
+            const snap = await new Promise(res => onValue(binguitoRef, res, { onlyOnce: true }));
+            if (snap.val()) {
+              update(ref(db, DB_STATE), { alreadyBinguito:true, currentBinguito:snap.val() });
+            }
+            break;
+          }
         }
       }
     }
@@ -392,7 +369,7 @@ if (preferred) u.voice = preferred;
 
   const resetSort = async () => {
     await set(ref(db, DB_DRAWN), null);
-    await update(ref(db, DB_STATE), { alreadyWon:false, currentWinner:null });
+    await update(ref(db, DB_STATE), { alreadyWon:false, alreadyBinguito:false, currentWinner:null, currentBinguito:null });
     setShowResetModal(false);
     showToast("Sorteo reiniciado");
   };
@@ -402,8 +379,7 @@ if (preferred) u.voice = preferred;
     const winnerKey = `${activeGame.id}_${winnerCard.trim()}`;
     await set(ref(db, `${DB_WINNERS}/${winnerKey}`), { id:winnerKey, name:winnerName.trim(), card:winnerCard.trim(), game:activeGame.name, gameId:activeGame.id, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now(), drawn:[...drawn] });
     showToast("🏆 ¡Ganador registrado!");
-    setWinnerName("");
-    setWinnerCard("");
+    setWinnerName(""); setWinnerCard("");
   };
 
   const deleteWinner = async (id) => await remove(ref(db, `${DB_WINNERS}/${id}`));
@@ -454,24 +430,19 @@ if (preferred) u.voice = preferred;
       (c.owner && c.owner.toLowerCase().includes(search.toLowerCase())))
     ), [cards, activeGame.id, search]);
 
-  const filteredSold = useMemo(() =>
-    filteredCards.filter(c => c.paid),
-    [filteredCards]);
+  const filteredSold = useMemo(() => filteredCards.filter(c => c.paid), [filteredCards]);
 
   const visibleCards = useMemo(() =>
     search ? filteredCards : filteredSold.slice(-10).reverse(),
     [search, filteredCards, filteredSold]);
 
-  const totalRecaudado = useMemo(() =>
-    cards.filter(c => c.paid).length * PRICE,
-    [cards]);
-
-  const jugadoresActuales = useMemo(() =>
-    cards.filter(c => c.paid && c.gameId === activeGame.id).length,
-    [cards, activeGame.id]);
+  const totalRecaudado = useMemo(() => cards.filter(c => c.paid).length * PRICE, [cards]);
+  const jugadoresActuales = useMemo(() => cards.filter(c => c.paid && c.gameId === activeGame.id).length, [cards, activeGame.id]);
 
   const gc = activeGame.color;
   const gameNum = activeGame.id.replace("j", "");
+  const binguitoColor = "#f59e0b";
+
   return (
     <div style={{ minHeight:"100vh", fontFamily:"sans-serif", color:"#1e293b" }}>
 
@@ -485,17 +456,12 @@ if (preferred) u.voice = preferred;
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
           <button onClick={() => { const next = !isMuted; setIsMuted(next); isMutedRef.current = next; }} style={{ background:"rgba(255,255,255,0.07)", border:"none", borderRadius:8, padding:"6px 10px", fontSize:18, cursor:"pointer" }}>{isMuted ? "🔇" : "🔊"}</button>
-          <button onClick={()=>{ 
-  if (isFullscreen) {
-    if (window.innerWidth <= 768) {
-      showToast("Presiona el botón atrás de tu movil para salir del modo pantalla completa");
-    } else {
-      document.exitFullscreen();
-    }
-  } else {
-    document.documentElement.requestFullscreen();
-  }
-}} style={{ background:"rgba(255,255,255,0.07)", border:"none", borderRadius:8, padding:"6px 10px", fontSize:18, cursor:"pointer", color:"#fff" }}>⛶</button>
+          <button onClick={()=>{
+            if (isFullscreen) {
+              if (window.innerWidth <= 768) { showToast("Presiona el botón atrás de tu movil para salir del modo pantalla completa"); }
+              else { document.exitFullscreen(); }
+            } else { document.documentElement.requestFullscreen(); }
+          }} style={{ background:"rgba(255,255,255,0.07)", border:"none", borderRadius:8, padding:"6px 10px", fontSize:18, cursor:"pointer", color:"#fff" }}>⛶</button>
           {!isAdmin
             ? <button onClick={() => setShowLogin(true)} style={{ background:gc, border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, cursor:"pointer", color:getTextColor(gc) }}>🔐 Admin</button>
             : <button onClick={handleLogout} style={{ background:"#ef4444", border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, cursor:"pointer", color:"#fff" }}>Salir</button>
@@ -533,26 +499,26 @@ if (preferred) u.voice = preferred;
             @keyframes numPop { 0%{transform:scale(0.3) rotate(-8deg);opacity:0} 60%{transform:scale(1.4) rotate(3deg);opacity:1} 100%{transform:scale(1) rotate(0deg);opacity:1} }
             .num-pop { animation: numPop 0.9s cubic-bezier(0.34,1.56,0.64,1) forwards; }
             @media (min-width: 769px) {
-  .panel-inferior-pc {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 12px;
-    min-height: calc(100vh - 545px);
-  }
-}
+              .panel-inferior-pc {
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 12px;
+                min-height: calc(100vh - 545px);
+              }
+            }
             @media (max-width: 768px) {
-  .bingo-board-mobile { display: flex !important; flex-direction: row !important; gap: 4px !important; }
-  .bingo-board-mobile .bingo-row { display: flex !important; flex-direction: column !important; flex: 1 !important; gap: 4px !important; }
-  .bingo-board-mobile .bingo-letter { display: none !important; }
-  .bingo-board-mobile .bingo-number { flex: unset !important; width: 100% !important; aspect-ratio: 1/1 !important; }
-  .panel-inferior-pc { display: flex !important; flex-direction: column !important; min-height: unset !important; height: auto !important; gap: 10px !important; }
-  .zona-patron { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; background: rgba(255,255,255,0.07) !important; border-radius: 14px !important; padding: 12px 10px !important; gap: 8px !important; }
-  .zona-ultimo { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; border-radius: 14px !important; padding: 12px !important; min-height: 160px !important; }
-  .zona-jugadores { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; background: rgba(255,255,255,0.07) !important; border-radius: 14px !important; padding: 12px 10px !important; gap: 8px !important; margin-bottom: 16px !important; }
-  .btn-flotantes-mobile { bottom: 80px !important; gap: 8px !important; }
-  .btn-flotantes-mobile button { padding: 8px 12px !important; font-size: 12px !important; }
-  .mobile-bingo-letters { display: flex !important; }
-}
+              .bingo-board-mobile { display: flex !important; flex-direction: row !important; gap: 4px !important; }
+              .bingo-board-mobile .bingo-row { display: flex !important; flex-direction: column !important; flex: 1 !important; gap: 4px !important; }
+              .bingo-board-mobile .bingo-letter { display: none !important; }
+              .bingo-board-mobile .bingo-number { flex: unset !important; width: 100% !important; aspect-ratio: 1/1 !important; }
+              .panel-inferior-pc { display: flex !important; flex-direction: column !important; min-height: unset !important; height: auto !important; gap: 10px !important; }
+              .zona-patron { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; background: rgba(255,255,255,0.07) !important; border-radius: 14px !important; padding: 12px 10px !important; gap: 8px !important; }
+              .zona-ultimo { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; border-radius: 14px !important; padding: 12px !important; min-height: 160px !important; }
+              .zona-jugadores { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; background: rgba(255,255,255,0.07) !important; border-radius: 14px !important; padding: 12px 10px !important; gap: 8px !important; margin-bottom: 16px !important; }
+              .btn-flotantes-mobile { bottom: 80px !important; gap: 8px !important; }
+              .btn-flotantes-mobile button { padding: 8px 12px !important; font-size: 12px !important; }
+              .mobile-bingo-letters { display: flex !important; }
+            }
             @media (max-width: 768px) {
               .btn-flotantes-mobile { position: relative !important; bottom: auto !important; top: auto !important; margin-bottom: 10px !important; border-top: none !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important; }
             }
@@ -573,6 +539,7 @@ if (preferred) u.voice = preferred;
             ))}
           </div>
 
+          {/* Tablero */}
           <div className="bingo-board-mobile" style={{ background:"rgba(255,255,255,0.06)", borderRadius:18, padding:"14px 16px", border:`1px solid ${gc}33`, display:"flex", flexDirection:"column" }}>
             {Object.entries(COLS).map(([letter, [min, max]], rowIdx) => (
               <div key={letter} className="bingo-row" style={{ display:"flex", gap:5, marginBottom:rowIdx < 4 ? 6 : 0, alignItems:"center" }}>
@@ -588,26 +555,57 @@ if (preferred) u.voice = preferred;
             ))}
           </div>
 
-          {/* ── PANEL INFERIOR: 4 ZONAS ── */}
+          {/* ── PANEL INFERIOR: 3 ZONAS ── */}
           <div className="panel-inferior-pc">
 
-            {/* ZONA 1 — Patrón activo */}
-            <div className="zona-patron" style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:"12px 10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, border:`1px solid ${gc}44`,
-flex: 1,
-minHeight: 0, }}>
+            {/* ZONA 1 — Patrón activo (binguito + bingo) */}
+            <div className="zona-patron" style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:"12px 10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, border:`1px solid ${gc}44`, flex:1, minHeight:0 }}>
               <div style={{ background:gc, borderRadius:8, padding:"3px 14px", fontSize:13, fontWeight:800, color:getTextColor(gc), letterSpacing:1 }}>JUEGO {gameNum}</div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:3, width:200 }}>
-                {Object.keys(COLS).map((l, i) => (<div key={l} style={{ height:15, borderRadius:3, background:BINGO_LETTER_COLORS[i], display:"flex", alignItems:"center", justifyContent:"center", fontSize:8, fontWeight:800, color:"#fff" }}>{l}</div>))}
+
+              {/* Encabezados */}
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:3, width:160 }}>
+                {Object.keys(COLS).map((l, i) => (
+                  <div key={l} style={{ height:12, borderRadius:2, background:BINGO_LETTER_COLORS[i], display:"flex", alignItems:"center", justifyContent:"center", fontSize:7, fontWeight:800, color:"#fff" }}>{l}</div>
+                ))}
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:3, width:200 }}>
-                {activePattern.grid.flat().map((cell, i) => (<div key={i} style={{ height:15, borderRadius:3, background:cell ? gc : "rgba(255,255,255,0.07)", border:cell ? "none" : "1px solid rgba(255,255,255,0.1)" }} />))}
+
+              {/* Grid binguito (amarillo) con etiqueta */}
+              {activePattern.binguito && (
+                <>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:3, width:160 }}>
+                    {activePattern.binguito.grid.flat().map((cell, i) => (
+                      <div key={i} style={{ height:12, borderRadius:2, background:cell ? binguitoColor : "rgba(255,255,255,0.07)", border:cell ? "none" : "1px solid rgba(255,255,255,0.1)", boxShadow:cell ? `0 0 4px ${binguitoColor}88` : "none" }} />
+                    ))}
+                  </div>
+                  <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+                    <div style={{ width:8, height:8, borderRadius:1, background:binguitoColor }} />
+                    <div style={{ fontSize:10, fontWeight:700, color:binguitoColor, textAlign:"center", lineHeight:1.3 }}>
+                      {activePattern.binguito.name}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Separador */}
+              <div style={{ width:"80%", height:1, background:"rgba(255,255,255,0.1)" }} />
+
+              {/* Grid bingo completo (color del juego) */}
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:3, width:160 }}>
+                {activePattern.grid.flat().map((cell, i) => (
+                  <div key={i} style={{ height:12, borderRadius:2, background:cell ? gc : "rgba(255,255,255,0.07)", border:cell ? "none" : "1px solid rgba(255,255,255,0.1)" }} />
+                ))}
               </div>
-              <div style={{ fontSize:15, fontWeight:700, color:"#e2e8f0", textAlign:"center", lineHeight:1.3 }}>{activePattern.name}</div>
+              <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+                <div style={{ width:8, height:8, borderRadius:1, background:gc }} />
+                <div style={{ fontSize:10, fontWeight:700, color:"#e2e8f0", textAlign:"center", lineHeight:1.3 }}>
+                  {activePattern.name}
+                </div>
+              </div>
+
             </div>
 
             {/* ZONA 2 — Último número */}
-            <div className="zona-ultimo" style={{ background:gc, borderRadius:14, padding:12, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", border:`4px solid #fff`, boxShadow:`0 0 30px ${gc}, 0 0 60px ${gc}88, inset 0 0 20px rgba(255,255,255,0.15)`, transform:lastDrawn ? "scale(1.04)" : "scale(1)", transition:"all 0.3s ease",flex: 1,
-minHeight: 0 }}>
+            <div className="zona-ultimo" style={{ background:gc, borderRadius:14, padding:12, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", border:`4px solid #fff`, boxShadow:`0 0 30px ${gc}, 0 0 60px ${gc}88, inset 0 0 20px rgba(255,255,255,0.15)`, transform:lastDrawn ? "scale(1.04)" : "scale(1)", transition:"all 0.3s ease", flex:1, minHeight:0 }}>
               {lastDrawn ? (
                 <>
                   <div style={{ fontSize:50, fontWeight:800, color:getTextColor(gc), marginBottom:2, fontFamily:"'Poller One',cursive" }}>{getLetterForNum(lastDrawn)}</div>
@@ -618,14 +616,24 @@ minHeight: 0 }}>
               )}
             </div>
 
-            {/* ZONA 4 — Nº Jugadores */}
-            <div className="zona-jugadores" style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:"12px 10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, border:`1px solid ${gc}44`, flex: 1,
-minHeight: 0 }}>
+            {/* ZONA 3 — Nº Jugadores */}
+            <div className="zona-jugadores" style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:"12px 10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, border:`1px solid ${gc}44`, flex:1, minHeight:0 }}>
               <div style={{ fontSize:10, fontWeight:700, color:"#94a3b8", letterSpacing:2, textTransform:"uppercase" }}>Jugadores</div>
               <div style={{ fontSize:54, fontWeight:900, color:"#ffffff", lineHeight:1, fontFamily:"'Poller One',cursive", textShadow:`0 0 20px ${gc}88` }}>{jugadoresActuales}</div>
               <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
                 <div style={{ background:gc, borderRadius:6, padding:"2px 12px", fontSize:11, fontWeight:800, color:getTextColor(gc) }}>{activeGame.name}</div>
                 <div style={{ fontSize:10, color:"#64748b" }}>cartones vendidos</div>
+              </div>
+              {/* Estado binguito/bingo */}
+              <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, marginTop:4 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:6, background:alreadyBinguito ? "#f59e0b22" : "rgba(255,255,255,0.05)", borderRadius:8, padding:"4px 10px", border:`1px solid ${alreadyBinguito ? "#f59e0b" : "rgba(255,255,255,0.1)"}` }}>
+                  <div style={{ width:8, height:8, borderRadius:"50%", background:alreadyBinguito ? "#f59e0b" : "#374151" }} />
+                  <span style={{ fontSize:10, fontWeight:700, color:alreadyBinguito ? "#f59e0b" : "#4b5563" }}>Binguito {alreadyBinguito ? "✓" : "—"}</span>
+                </div>
+                <div style={{ display:"flex", alignItems:"center", gap:6, background:alreadyWon ? `${gc}22` : "rgba(255,255,255,0.05)", borderRadius:8, padding:"4px 10px", border:`1px solid ${alreadyWon ? gc : "rgba(255,255,255,0.1)"}` }}>
+                  <div style={{ width:8, height:8, borderRadius:"50%", background:alreadyWon ? gc : "#374151" }} />
+                  <span style={{ fontSize:10, fontWeight:700, color:alreadyWon ? gc : "#4b5563" }}>Bingo {alreadyWon ? "✓" : "—"}</span>
+                </div>
               </div>
             </div>
 
@@ -707,198 +715,168 @@ minHeight: 0 }}>
                   <h3 style={{ margin:"0 0 12px", fontSize:14, color:"#334155" }}>⏱️ Countdown</h3>
                   <div style={{ display:"flex", gap:10, alignItems:"center" }}>
                     <input type="number" placeholder="Minutos" value={countdownInput} onChange={e => setCountdownInput(e.target.value)} style={{...inpS, maxWidth:120}} />
-                    <button onClick={() => {
-                      const mins = parseInt(countdownInput) || 5;
-                      const endsAt = Date.now() + mins * 60 * 1000;
-                      update(ref(db, DB_STATE), { countdownEndsAt: endsAt });
-                    }} style={{...btnS("#3b82f6"), flex:1}}>▶ Iniciar</button>
+                    <button onClick={() => { const mins = parseInt(countdownInput) || 5; const endsAt = Date.now() + mins * 60 * 1000; update(ref(db, DB_STATE), { countdownEndsAt: endsAt }); }} style={{...btnS("#3b82f6"), flex:1}}>▶ Iniciar</button>
                     <button onClick={() => update(ref(db, DB_STATE), { countdownEndsAt: 0 })} style={{...btnS("#ef4444")}}>■ Detener</button>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="viz-grid" style={{
-  background:"linear-gradient(135deg,#0f1221 0%,#1a1d2b 100%)",
-  display:"grid",
-  gridTemplateColumns:"264px 1fr",
-  gridTemplateRows:"auto auto 1fr",
-  gap:10,
-  padding:"10px 12px",
-  boxSizing:"border-box",
-  width:"100%",
-  height:"100vh",
-  overflow:"hidden"
-}}>
-  <style>{`
-    @keyframes slideIn { from{transform:translateY(-10px);opacity:0} to{transform:translateY(0);opacity:1} }
-    @keyframes pulseViz { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
-    @keyframes ticker { from{transform:translateX(100%)} to{transform:translateX(-100%)} }
-    @keyframes tickerCompradores { from{transform:translateX(0)} to{transform:translateX(-50%)} }
-    @keyframes salePopIn { 0%{transform:scale(0.5) translateY(20px);opacity:0} 60%{transform:scale(1.1) translateY(-5px);opacity:1} 100%{transform:scale(1) translateY(0);opacity:1} }
-    @keyframes barGlow { 0%,100%{opacity:1} 50%{opacity:0.7} }
-    @media (max-width: 768px) {
-      .viz-grid {
-        grid-template-columns: 1fr !important;
-        grid-template-rows: auto !important;
-        height: auto !important;
-        overflow: visible !important;
-        padding: 10px 10px 80px 10px !important;
-      }
-      .viz-grid > * { grid-column: 1 / -1 !important; }
-      .viz-col-left, .viz-col-right {
-        width: 100% !important;
-        min-width: 0 !important;
-        overflow: visible !important;
-        height: auto !important;
-      }
-      .viz-col-left *, .viz-col-right * { max-width: 100% !important; box-sizing: border-box !important; }
-      .viz-stats { grid-template-columns: 1fr 1fr !important; }
-      .viz-patron-grid { width: 120px !important; }
-    }
-  `}</style>
+              <div className="viz-grid" style={{ background:"linear-gradient(135deg,#0f1221 0%,#1a1d2b 100%)", display:"grid", gridTemplateColumns:"264px 1fr", gridTemplateRows:"auto auto 1fr", gap:10, padding:"10px 12px", boxSizing:"border-box", width:"100%", height:"100vh", overflow:"hidden" }}>
+                <style>{`
+                  @keyframes slideIn { from{transform:translateY(-10px);opacity:0} to{transform:translateY(0);opacity:1} }
+                  @keyframes pulseViz { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
+                  @keyframes ticker { from{transform:translateX(100%)} to{transform:translateX(-100%)} }
+                  @keyframes tickerCompradores { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+                  @keyframes salePopIn { 0%{transform:scale(0.5) translateY(20px);opacity:0} 60%{transform:scale(1.1) translateY(-5px);opacity:1} 100%{transform:scale(1) translateY(0);opacity:1} }
+                  @keyframes barGlow { 0%,100%{opacity:1} 50%{opacity:0.7} }
+                  @media (max-width: 768px) {
+                    .viz-grid { grid-template-columns: 1fr !important; grid-template-rows: auto !important; height: auto !important; overflow: visible !important; padding: 10px 10px 80px 10px !important; }
+                    .viz-grid > * { grid-column: 1 / -1 !important; }
+                    .viz-col-left, .viz-col-right { width: 100% !important; min-width: 0 !important; overflow: visible !important; height: auto !important; }
+                    .viz-col-left *, .viz-col-right * { max-width: 100% !important; box-sizing: border-box !important; }
+                    .viz-stats { grid-template-columns: 1fr 1fr !important; }
+                    .viz-patron-grid { width: 120px !important; }
+                  }
+                `}</style>
 
-  {/* --- animación nueva venta (sin cambios) --- */}
-  {newSaleAnim && (
-    <div style={{ position:"fixed", inset:0, zIndex:400, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.6)", backdropFilter:"blur(4px)" }}>
-      {/* ... todo el contenido de newSaleAnim sin cambios ... */}
-    </div>
-  )}
+                {newSaleAnim && (
+                  <div style={{ position:"fixed", inset:0, zIndex:400, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.6)", backdropFilter:"blur(4px)" }}>
+                  </div>
+                )}
 
-  {/* Fila 1: Juego activo */}
-  <div style={{ gridColumn:"1/-1", background:`linear-gradient(135deg,${gc}22,${gc}44)`, borderRadius:12, padding:"8px 18px", border:`2px solid ${gc}`, textAlign:"center" }}>
-    <div style={{ fontSize:10, fontWeight:700, color:gc, letterSpacing:3, textTransform:"uppercase" }}>Juego Activo</div>
-    <div style={{ fontSize:22, fontWeight:900, color:"#fff", lineHeight:1.1, textTransform:"uppercase", letterSpacing:2 }}>{activeGame.name}</div>
-  </div>
+                <div style={{ gridColumn:"1/-1", background:`linear-gradient(135deg,${gc}22,${gc}44)`, borderRadius:12, padding:"8px 18px", border:`2px solid ${gc}`, textAlign:"center" }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:gc, letterSpacing:3, textTransform:"uppercase" }}>Juego Activo</div>
+                  <div style={{ fontSize:22, fontWeight:900, color:"#fff", lineHeight:1.1, textTransform:"uppercase", letterSpacing:2 }}>{activeGame.name}</div>
+                </div>
 
-  {/* Fila 2: Countdown */}
-  {countdownDisplay > 0 ? (
-    <div style={{ gridColumn:"1/-1", background:"#1a1d2b", borderRadius:12, padding:"8px 20px", border:"2px solid #f59e0b", textAlign:"center", animation:"pulseViz 1s ease infinite", display:"flex", alignItems:"center", justifyContent:"center", gap:16, flexWrap:"wrap" }}>
-      <div style={{ fontSize:16, fontWeight:700, color:"#f59e0b", letterSpacing:3 }}>EL BINGO COMIENZA EN</div>
-      <div style={{ fontSize:36, fontWeight:900, color:"#f59e0b", lineHeight:1, fontFamily:"'Poller One',cursive" }}>
-        {String(Math.floor(countdownDisplay/60)).padStart(2,"0")}:{String(countdownDisplay%60).padStart(2,"0")}
-      </div>
-    </div>
-  ) : (
-    <div style={{ gridColumn:"1/-1", background:"#1a1d2b", borderRadius:12, padding:"8px 20px", border:`2px solid ${gc}`, textAlign:"center", display:"flex", alignItems:"center", justifyContent:"center", gap:16 }}>
-      <div style={{ fontSize:11, fontWeight:700, color:gc, letterSpacing:3 }}>EL BINGO COMIENZA EN</div>
-      <div style={{ fontSize:36, fontWeight:900, color:gc, lineHeight:1, fontFamily:"'Poller One',cursive" }}>¡YA!</div>
-    </div>
-  )}
+                {countdownDisplay > 0 ? (
+                  <div style={{ gridColumn:"1/-1", background:"#1a1d2b", borderRadius:12, padding:"8px 20px", border:"2px solid #f59e0b", textAlign:"center", animation:"pulseViz 1s ease infinite", display:"flex", alignItems:"center", justifyContent:"center", gap:16, flexWrap:"wrap" }}>
+                    <div style={{ fontSize:16, fontWeight:700, color:"#f59e0b", letterSpacing:3 }}>EL BINGO COMIENZA EN</div>
+                    <div style={{ fontSize:36, fontWeight:900, color:"#f59e0b", lineHeight:1, fontFamily:"'Poller One',cursive" }}>
+                      {String(Math.floor(countdownDisplay/60)).padStart(2,"0")}:{String(countdownDisplay%60).padStart(2,"0")}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ gridColumn:"1/-1", background:"#1a1d2b", borderRadius:12, padding:"8px 20px", border:`2px solid ${gc}`, textAlign:"center", display:"flex", alignItems:"center", justifyContent:"center", gap:16 }}>
+                    <div style={{ fontSize:11, fontWeight:700, color:gc, letterSpacing:3 }}>EL BINGO COMIENZA EN</div>
+                    <div style={{ fontSize:36, fontWeight:900, color:gc, lineHeight:1, fontFamily:"'Poller One',cursive" }}>¡YA!</div>
+                  </div>
+                )}
 
-  {/* Columna izquierda */}
-  <div className="viz-col-left" style={{ display:"flex", flexDirection:"column", gap:8, overflow:"hidden", minWidth:0 }}>
+                <div className="viz-col-left" style={{ display:"flex", flexDirection:"column", gap:8, overflow:"hidden", minWidth:0 }}>
+                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:6 }}>
+                    <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, letterSpacing:2, textAlign:"center" }}>PATRÓN ACTIVO</div>
+                    {/* Binguito */}
+                    {activePattern.binguito && (
+                      <>
+                        <div className="viz-patron-grid" style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:2, width:130, flexShrink:0 }}>
+                          {activePattern.binguito.grid.flat().map((cell, i) => (
+                            <div key={i} style={{ height:16, borderRadius:3, background:cell ? binguitoColor : "rgba(255,255,255,0.07)", boxShadow:cell ? `0 0 4px ${binguitoColor}88` : "none" }} />
+                          ))}
+                        </div>
+                        <div style={{ fontSize:10, fontWeight:700, color:binguitoColor, textAlign:"center" }}>{activePattern.binguito.name}</div>
+                        <div style={{ width:"70%", height:1, background:"rgba(255,255,255,0.1)" }} />
+                      </>
+                    )}
+                    {/* Bingo completo */}
+                    <div className="viz-patron-grid" style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:2, width:130, flexShrink:0 }}>
+                      {activePattern.grid.flat().map((cell, i) => (
+                        <div key={i} style={{ height:16, borderRadius:3, background:cell ? gc : "rgba(255,255,255,0.07)" }} />
+                      ))}
+                    </div>
+                    <div style={{ fontSize:13, fontWeight:800, color:"#fff", textAlign:"center" }}>{activePattern.name}</div>
+                    <div style={{ fontSize:10, color:gc, fontWeight:600, textAlign:"center" }}>{activeGame.name}</div>
+                  </div>
 
-    {/* Patrón activo */}
-    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:6 }}>
-      <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, letterSpacing:2, textAlign:"center" }}>PATRÓN ACTIVO</div>
-      <div className="viz-patron-grid" style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:2, width:130, flexShrink:0 }}>
-        {activePattern.grid.flat().map((cell, i) => (
-          <div key={i} style={{ height:16, borderRadius:3, background:cell ? gc : "rgba(255,255,255,0.07)" }} />
-        ))}
-      </div>
-      <div style={{ fontSize:13, fontWeight:800, color:"#fff", textAlign:"center" }}>{activePattern.name}</div>
-      <div style={{ fontSize:10, color:gc, fontWeight:600, textAlign:"center" }}>{activeGame.name}</div>
-    </div>
+                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"8px 14px", border:`1px solid ${gc}44`, flexShrink:0, textAlign:"center" }}>
+                    <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, letterSpacing:2, marginBottom:2 }}>PRECIO CARTÓN</div>
+                    <div style={{ fontSize:24, fontWeight:900, color:gc, fontFamily:"'Poller One',cursive" }}>${PRICE.toLocaleString("es-CL")}</div>
+                  </div>
 
-    {/* Precio */}
-    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"8px 14px", border:`1px solid ${gc}44`, flexShrink:0, textAlign:"center" }}>
-      <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, letterSpacing:2, marginBottom:2 }}>PRECIO CARTÓN</div>
-      <div style={{ fontSize:24, fontWeight:900, color:gc, fontFamily:"'Poller One',cursive" }}>${PRICE.toLocaleString("es-CL")}</div>
-    </div>
+                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, flex:1, overflow:"hidden", display:"flex", flexDirection:"column", minHeight:0 }}>
+                    <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:8, letterSpacing:2 }}>ÚLTIMOS COMPRADORES</div>
+                    <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column", gap:1 }}>
+                      {cards.filter(c => c.paid && c.gameId === activeGame.id).sort((a, b) => (b.soldAt||0) - (a.soldAt||0)).slice(0, 12).map((c, i, arr) => (
+                        <div key={c.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"5px 0", borderBottom:i < arr.length-1 ? "1px solid rgba(255,255,255,0.05)" : "none", animation:"slideIn 0.3s ease" }}>
+                          <span style={{ fontWeight:700, color:"#fff", fontSize:12, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"70%" }}>{c.owner}</span>
+                          <span style={{ background:gc, borderRadius:5, padding:"2px 7px", fontSize:10, fontWeight:700, color:getTextColor(GAMES.find(g => g.id === c.gameId)?.color || "#fff"), flexShrink:0 }}>#{c.cardNum}</span>
+                        </div>
+                      ))}
+                      {cards.filter(c => c.paid && c.gameId === activeGame.id).length === 0 && (
+                        <div style={{ textAlign:"center", color:"#64748b", fontSize:12 }}>Sin compradores aún</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
 
-    {/* Últimos compradores — ocupa el espacio restante */}
-    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, flex:1, overflow:"hidden", display:"flex", flexDirection:"column", minHeight:0 }}>
-      <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:8, letterSpacing:2 }}>ÚLTIMOS COMPRADORES</div>
-      <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column", gap:1 }}>
-        {cards.filter(c => c.paid && c.gameId === activeGame.id).sort((a, b) => (b.soldAt||0) - (a.soldAt||0)).slice(0, 12).map((c, i, arr) => (
-          <div key={c.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"5px 0", borderBottom:i < arr.length-1 ? "1px solid rgba(255,255,255,0.05)" : "none", animation:"slideIn 0.3s ease" }}>
-            <span style={{ fontWeight:700, color:"#fff", fontSize:12, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"70%" }}>{c.owner}</span>
-            <span style={{ background:gc, borderRadius:5, padding:"2px 7px", fontSize:10, fontWeight:700, color:getTextColor(GAMES.find(g => g.id === c.gameId)?.color || "#fff"), flexShrink:0 }}>#{c.cardNum}</span>
-          </div>
-        ))}
-        {cards.filter(c => c.paid && c.gameId === activeGame.id).length === 0 && (
-          <div style={{ textAlign:"center", color:"#64748b", fontSize:12 }}>Sin compradores aún</div>
-        )}
-      </div>
-    </div>
-  </div>
+                <div className="viz-col-right" style={{ display:"flex", flexDirection:"column", gap:8, overflow:"hidden", minWidth:0 }}>
+                  <div className="viz-stats" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, flexShrink:0 }}>
+                    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"8px 14px", border:`1px solid ${gc}44`, textAlign:"center" }}>
+                      <div style={{ fontSize:36, fontWeight:900, color:gc, lineHeight:1, fontFamily:"'Poller One',cursive" }}>{cards.filter(c => c.paid && c.gameId === activeGame.id).length}</div>
+                      <div style={{ fontSize:10, color:"#94a3b8", marginTop:2, fontWeight:600, letterSpacing:1 }}>JUGADORES</div>
+                    </div>
+                    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"8px 14px", border:"1px solid #16a34a44", textAlign:"center" }}>
+                      <div style={{ fontSize:30, fontWeight:900, color:"#16a34a", lineHeight:1.2 }}>${Math.floor(totalRecaudado/1000)}K</div>
+                      <div style={{ fontSize:10, color:"#94a3b8", marginTop:2, fontWeight:600, letterSpacing:1 }}>RECAUDADO</div>
+                    </div>
+                  </div>
 
-  {/* Columna derecha */}
-  <div className="viz-col-right" style={{ display:"flex", flexDirection:"column", gap:8, overflow:"hidden", minWidth:0 }}>
+                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 16px", border:`1px solid ${gc}44`, flexShrink:0 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
+                      <span style={{ fontSize:13, color:"#94a3b8", fontWeight:700, letterSpacing:1 }}>CARTONES VENDIDOS</span>
+                      <span style={{ fontSize:16, color:gc, fontWeight:800 }}>{cards.filter(c => c.paid && c.gameId === activeGame.id).length} / {cards.filter(c => c.gameId === activeGame.id).length}</span>
+                    </div>
+                    <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:99, height:14, overflow:"hidden" }}>
+                      <div style={{ background:gc, height:"100%", borderRadius:99, width:`${cards.filter(c => c.gameId === activeGame.id).length > 0 ? (cards.filter(c => c.paid && c.gameId === activeGame.id).length / cards.filter(c => c.gameId === activeGame.id).length) * 100 : 0}%`, transition:"width 0.8s ease", animation:"barGlow 2s ease-in-out infinite", boxShadow:`0 0 12px ${gc}99` }} />
+                    </div>
+                  </div>
 
-    {/* Stats */}
-    <div className="viz-stats" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, flexShrink:0 }}>
-      <div style={{ background:"#1a1d2b", borderRadius:12, padding:"8px 14px", border:`1px solid ${gc}44`, textAlign:"center" }}>
-        <div style={{ fontSize:36, fontWeight:900, color:gc, lineHeight:1, fontFamily:"'Poller One',cursive" }}>{cards.filter(c => c.paid && c.gameId === activeGame.id).length}</div>
-        <div style={{ fontSize:10, color:"#94a3b8", marginTop:2, fontWeight:600, letterSpacing:1 }}>JUGADORES</div>
-      </div>
-      <div style={{ background:"#1a1d2b", borderRadius:12, padding:"8px 14px", border:"1px solid #16a34a44", textAlign:"center" }}>
-        <div style={{ fontSize:30, fontWeight:900, color:"#16a34a", lineHeight:1.2 }}>${Math.floor(totalRecaudado/1000)}K</div>
-        <div style={{ fontSize:10, color:"#94a3b8", marginTop:2, fontWeight:600, letterSpacing:1 }}>RECAUDADO</div>
-      </div>
-    </div>
+                  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"8px 14px", border:`1px solid ${gc}44`, flexShrink:0 }}>
+                    <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:6, letterSpacing:2 }}>JUEGOS</div>
+                    <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+                      {GAMES.map(g => (
+                        <div key={g.id} style={{ background:g.id === activeGame.id ? g.color : "rgba(255,255,255,0.05)", borderRadius:8, padding:"3px 8px", border:`1px solid ${g.color}44`, display:"flex", alignItems:"center", gap:4 }}>
+                          <div style={{ width:6, height:6, borderRadius:"50%", background:g.color, flexShrink:0 }} />
+                          <span style={{ fontSize:10, fontWeight:700, color:g.id === activeGame.id ? getTextColor(g.color) : "#94a3b8" }}>{g.name}</span>
+                          <span style={{ fontSize:9, color:g.id === activeGame.id ? (getTextColor(g.color) === "#000" ? "#00000088" : "rgba(255,255,255,0.6)") : "#64748b" }}>({cards.filter(c => c.paid && c.gameId === g.id).length})</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
 
-    {/* Barra cartones */}
-    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 16px", border:`1px solid ${gc}44`, flexShrink:0 }}>
-      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
-        <span style={{ fontSize:13, color:"#94a3b8", fontWeight:700, letterSpacing:1 }}>CARTONES VENDIDOS</span>
-        <span style={{ fontSize:16, color:gc, fontWeight:800 }}>{cards.filter(c => c.paid && c.gameId === activeGame.id).length} / {cards.filter(c => c.gameId === activeGame.id).length}</span>
-      </div>
-      <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:99, height:14, overflow:"hidden" }}>
-        <div style={{ background:gc, height:"100%", borderRadius:99, width:`${cards.filter(c => c.gameId === activeGame.id).length > 0 ? (cards.filter(c => c.paid && c.gameId === activeGame.id).length / cards.filter(c => c.gameId === activeGame.id).length) * 100 : 0}%`, transition:"width 0.8s ease", animation:"barGlow 2s ease-in-out infinite", boxShadow:`0 0 12px ${gc}99` }} />
-      </div>
-    </div>
+                  {cards.filter(c => c.paid && c.gameId === activeGame.id).length > 0 && (
+                    <div style={{ background:"#1a1d2b", borderRadius:10, padding:"6px 0", border:`1px solid ${gc}44`, overflow:"hidden", flexShrink:0 }}>
+                      <div style={{ display:"flex", animation:"tickerCompradores 40s linear infinite", whiteSpace:"nowrap", width:"max-content" }}>
+                        {[...cards.filter(c => c.paid && c.gameId === activeGame.id), ...cards.filter(c => c.paid && c.gameId === activeGame.id)].map((c, i) => (
+                          <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:6, marginRight:32, fontSize:11, fontWeight:700, color:"#fff" }}>
+                            <span style={{ background:gc, borderRadius:5, padding:"2px 6px", fontSize:10, color:getTextColor(GAMES.find(g => g.id === c.gameId)?.color || "#fff"), fontWeight:700 }}>#{c.cardNum}</span>
+                            {c.owner}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-    {/* Juegos */}
-    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"8px 14px", border:`1px solid ${gc}44`, flexShrink:0 }}>
-      <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginBottom:6, letterSpacing:2 }}>JUEGOS</div>
-      <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
-        {GAMES.map(g => (
-          <div key={g.id} style={{ background:g.id === activeGame.id ? g.color : "rgba(255,255,255,0.05)", borderRadius:8, padding:"3px 8px", border:`1px solid ${g.color}44`, display:"flex", alignItems:"center", gap:4 }}>
-            <div style={{ width:6, height:6, borderRadius:"50%", background:g.color, flexShrink:0 }} />
-            <span style={{ fontSize:10, fontWeight:700, color:g.id === activeGame.id ? getTextColor(g.color) : "#94a3b8" }}>{g.name}</span>
-            <span style={{ fontSize:9, color:g.id === activeGame.id ? (getTextColor(g.color) === "#000" ? "#00000088" : "rgba(255,255,255,0.6)") : "#64748b" }}>({cards.filter(c => c.paid && c.gameId === g.id).length})</span>
-          </div>
-        ))}
-      </div>
-    </div>
-
-    {/* Ticker compradores */}
-    {cards.filter(c => c.paid && c.gameId === activeGame.id).length > 0 && (
-      <div style={{ background:"#1a1d2b", borderRadius:10, padding:"6px 0", border:`1px solid ${gc}44`, overflow:"hidden", flexShrink:0 }}>
-        <div style={{ display:"flex", animation:"tickerCompradores 40s linear infinite", whiteSpace:"nowrap", width:"max-content" }}>
-          {[...cards.filter(c => c.paid && c.gameId === activeGame.id), ...cards.filter(c => c.paid && c.gameId === activeGame.id)].map((c, i) => (
-            <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:6, marginRight:32, fontSize:11, fontWeight:700, color:"#fff" }}>
-              <span style={{ background:gc, borderRadius:5, padding:"2px 6px", fontSize:10, color:getTextColor(GAMES.find(g => g.id === c.gameId)?.color || "#fff"), fontWeight:700 }}>#{c.cardNum}</span>
-              {c.owner}
-            </span>
-          ))}
-        </div>
-      </div>
-    )}
-
-    {/* Ticker ganadores */}
-    {winners.length > 0 && (
-      <div style={{ background:"#1a1d2b", borderRadius:10, padding:"6px 0", border:"1px solid #f59e0b44", overflow:"hidden", flexShrink:0 }}>
-        <div style={{ display:"flex", animation:"ticker 10s linear infinite", whiteSpace:"nowrap" }}>
-          {winners.map((w, i) => {
-            const wColor = GAMES.find(g => g.id === w.gameId)?.color || "#f59e0b";
-            return (
-              <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:6, marginRight:32, fontSize:11, fontWeight:700, color:"#fff" }}>
-                <span style={{ fontSize:10, color:"#f59e0b" }}>🏆</span>
-                <span style={{ background:wColor, borderRadius:5, padding:"2px 6px", fontSize:10, color:getTextColor(GAMES.find(g => g.id === w.gameId)?.color || "#fff"), fontWeight:700 }}>{w.game}</span>
-                {w.name} · #{w.card}
-              </span>
-            );
-          })}
-        </div>
-      </div>
-    )}
-
-  </div>   
-          </div>    
-            )}      
-          </div>)}   
+                  {winners.length > 0 && (
+                    <div style={{ background:"#1a1d2b", borderRadius:10, padding:"6px 0", border:"1px solid #f59e0b44", overflow:"hidden", flexShrink:0 }}>
+                      <div style={{ display:"flex", animation:"ticker 10s linear infinite", whiteSpace:"nowrap" }}>
+                        {winners.map((w, i) => {
+                          const wColor = GAMES.find(g => g.id === w.gameId)?.color || "#f59e0b";
+                          return (
+                            <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:6, marginRight:32, fontSize:11, fontWeight:700, color:"#fff" }}>
+                              <span style={{ fontSize:10, color:"#f59e0b" }}>🏆</span>
+                              <span style={{ background:wColor, borderRadius:5, padding:"2px 6px", fontSize:10, color:getTextColor(GAMES.find(g => g.id === w.gameId)?.color || "#fff"), fontWeight:700 }}>{w.game}</span>
+                              {w.name} · #{w.card}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>)}
 
           {/* ══ TAB GANADORES ══ */}
           {tab === 3 && (
@@ -913,40 +891,41 @@ minHeight: 0 }}>
                   <button onClick={addWinner} style={{...btnS("#f59e0b"), width:"100%", padding:"11px"}}>🏆 Registrar</button>
                 </div>
               )}
-            {winners.length === 0
-              ? <div style={{ textAlign:"center", color:"#94a3b8", padding:40 }}>Sin ganadores</div>
-              : winners.map(w => {
-                const isExpanded = selectedWinner === (w.id || w.ts);
-                const winnerCardData = cards.find(c => c.cardNum === w.card && c.gameId === w.gameId);
-                const winnerPattern = PATTERNS.find(p => p.id === w.patternId) || activePattern;
-                return (<div key={w.id || w.ts}>
-                  <div onClick={() => setSelectedWinner(isExpanded ? null : (w.id || w.ts))} style={{ background:"#ffffff", borderRadius:isExpanded ? "12px 12px 0 0" : 12, padding:"14px 16px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", border:"1px solid #fde68a", boxShadow:"0 1px 3px rgba(0,0,0,0.05)" }}>
-                    <div style={{ fontSize:26 }}>🏆</div>
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontWeight:700, fontSize:15, color:"#92400e" }}>{w.name}</div>
-                      <div style={{ fontSize:12, color:"#64748b" }}>Cartón #{w.card} · <span style={{ color:GAMES.find(g => g.id === w.gameId)?.color || "#64748b", fontWeight:700 }}>{w.game || ""}</span> · {w.time}</div>
-                    </div>
-                    {isAdmin && <button onClick={e => { e.stopPropagation(); deleteWinner(w.id || w.ts); setSelectedWinner(null); }} style={{ background:"none", border:"none", color:"#94a3b8", cursor:"pointer", fontSize:16 }}>✕</button>}
-                    <span style={{ color:"#94a3b8", fontSize:12 }}>{isExpanded ? "▲" : "▼"}</span>
-                  </div>
-                  {isExpanded && winnerCardData && winnerCardData.grid && (
-                    <div style={{ background:"#ffffff", borderRadius:"0 0 12px 12px", padding:16, border:"1px solid #fde68a", borderTop:"none", boxShadow:"0 4px 6px -1px rgba(0,0,0,0.1)" }}>
-                      <p style={{ fontSize:12, color:"#92400e", textAlign:"center", marginBottom:4, fontWeight:700 }}>Patrón ganador</p>
-                      <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:2, width:80, height:80, margin:"0 auto 12px" }}>
-                        {winnerPattern.grid.flat().map((cell, i) => (<div key={i} style={{ borderRadius:2, background:cell ? "#f59e0b" : "#f1f5f9", border:cell ? "none" : "1px solid #e2e8f0" }} />))}
+              {winners.length === 0
+                ? <div style={{ textAlign:"center", color:"#94a3b8", padding:40 }}>Sin ganadores</div>
+                : winners.map(w => {
+                  const isExpanded = selectedWinner === (w.id || w.ts);
+                  const winnerCardData = cards.find(c => c.cardNum === w.card && c.gameId === w.gameId);
+                  const winnerPattern = PATTERNS.find(p => p.id === w.patternId) || activePattern;
+                  return (<div key={w.id || w.ts}>
+                    <div onClick={() => setSelectedWinner(isExpanded ? null : (w.id || w.ts))} style={{ background:"#ffffff", borderRadius:isExpanded ? "12px 12px 0 0" : 12, padding:"14px 16px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", border:"1px solid #fde68a", boxShadow:"0 1px 3px rgba(0,0,0,0.05)" }}>
+                      <div style={{ fontSize:26 }}>🏆</div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontWeight:700, fontSize:15, color:"#92400e" }}>{w.name}</div>
+                        <div style={{ fontSize:12, color:"#64748b" }}>Cartón #{w.card} · <span style={{ color:GAMES.find(g => g.id === w.gameId)?.color || "#64748b", fontWeight:700 }}>{w.game || ""}</span> · {w.time}</div>
                       </div>
-                      <CardGridMemo card={winnerCardData} drawn={Array.isArray(w.drawn) ? w.drawn : w.drawn ? Object.values(w.drawn) : drawn} pattern={winnerPattern} />
+                      {isAdmin && <button onClick={e => { e.stopPropagation(); deleteWinner(w.id || w.ts); setSelectedWinner(null); }} style={{ background:"none", border:"none", color:"#94a3b8", cursor:"pointer", fontSize:16 }}>✕</button>}
+                      <span style={{ color:"#94a3b8", fontSize:12 }}>{isExpanded ? "▲" : "▼"}</span>
                     </div>
-                  )}
-                  {isExpanded && !winnerCardData && (
-                    <div style={{ background:"#ffffff", borderRadius:"0 0 12px 12px", padding:16, border:"1px solid #fde68a", borderTop:"none", textAlign:"center", color:"#94a3b8", fontSize:13 }}>
-                      Cartón #{w.card} no encontrado en los datos actuales
-                    </div>
-                  )}
-                </div>);
-              })
-            }
-          </div>)}
+                    {isExpanded && winnerCardData && winnerCardData.grid && (
+                      <div style={{ background:"#ffffff", borderRadius:"0 0 12px 12px", padding:16, border:"1px solid #fde68a", borderTop:"none", boxShadow:"0 4px 6px -1px rgba(0,0,0,0.1)" }}>
+                        <p style={{ fontSize:12, color:"#92400e", textAlign:"center", marginBottom:4, fontWeight:700 }}>Patrón ganador</p>
+                        <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:2, width:80, height:80, margin:"0 auto 12px" }}>
+                          {winnerPattern.grid.flat().map((cell, i) => (<div key={i} style={{ borderRadius:2, background:cell ? "#f59e0b" : "#f1f5f9", border:cell ? "none" : "1px solid #e2e8f0" }} />))}
+                        </div>
+                        <CardGridMemo card={winnerCardData} drawn={Array.isArray(w.drawn) ? w.drawn : w.drawn ? Object.values(w.drawn) : drawn} pattern={winnerPattern} />
+                      </div>
+                    )}
+                    {isExpanded && !winnerCardData && (
+                      <div style={{ background:"#ffffff", borderRadius:"0 0 12px 12px", padding:16, border:"1px solid #fde68a", borderTop:"none", textAlign:"center", color:"#94a3b8", fontSize:13 }}>
+                        Cartón #{w.card} no encontrado en los datos actuales
+                      </div>
+                    )}
+                  </div>);
+                })
+              }
+            </div>
+          )}
 
         </div>
       )}
@@ -1052,54 +1031,47 @@ minHeight: 0 }}>
       )}
 
       {isFullscreen && showArrows && window.innerWidth > 768 && (
-  <>
-    <div onClick={() => setTab(prev => Math.max(prev - 1, 0))} style={{ position:"fixed", left:0, top:0, bottom:0, width:80, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", zIndex:200, background:"linear-gradient(to right, rgba(0,0,0,0.35), transparent)", transition:"opacity 0.3s" }}>
-      <div style={{ fontSize:48, color:"#fff", opacity:0.85, userSelect:"none" }}>‹</div>
-    </div>
-    <div onClick={() => setTab(prev => Math.min(prev + 1, TABS.length - 1))} style={{ position:"fixed", right:0, top:0, bottom:0, width:80, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", zIndex:200, background:"linear-gradient(to left, rgba(0,0,0,0.35), transparent)", transition:"opacity 0.3s" }}>
-      <div style={{ fontSize:48, color:"#fff", opacity:0.85, userSelect:"none" }}>›</div>
-    </div>
-  </>
-)}
+        <>
+          <div onClick={() => setTab(prev => Math.max(prev - 1, 0))} style={{ position:"fixed", left:0, top:0, bottom:0, width:80, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", zIndex:200, background:"linear-gradient(to right, rgba(0,0,0,0.35), transparent)", transition:"opacity 0.3s" }}>
+            <div style={{ fontSize:48, color:"#fff", opacity:0.85, userSelect:"none" }}>‹</div>
+          </div>
+          <div onClick={() => setTab(prev => Math.min(prev + 1, TABS.length - 1))} style={{ position:"fixed", right:0, top:0, bottom:0, width:80, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", zIndex:200, background:"linear-gradient(to left, rgba(0,0,0,0.35), transparent)", transition:"opacity 0.3s" }}>
+            <div style={{ fontSize:48, color:"#fff", opacity:0.85, userSelect:"none" }}>›</div>
+          </div>
+        </>
+      )}
 
-{showSoundModal && (
-  <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:600, backdropFilter:"blur(4px)" }}>
-    <div style={{ background:"#1a1d2b", border:"1px solid #2e3244", borderRadius:20, padding:"32px 40px", textAlign:"center", maxWidth:340, width:"90vw" }}>
-      <div style={{ fontSize:48, marginBottom:12 }}>🔊</div>
-      <div style={{ fontSize:18, fontWeight:700, color:"#fff", marginBottom:8 }}>Sonido</div>
-      <div style={{ fontSize:14, color:"#94a3b8", marginBottom:24, lineHeight:1.6 }}>Esta app anuncia los números en voz alta. ¿Querés activar el sonido?</div>
-      <div style={{ display:"flex", gap:12 }}>
-        <button onClick={() => { setIsMuted(true); isMutedRef.current = true; setShowSoundModal(false); }} style={{ flex:1, background:"rgba(255,255,255,0.08)", border:"1px solid #2e3244", borderRadius:12, padding:"12px", color:"#94a3b8", fontWeight:700, fontSize:14, cursor:"pointer" }}>🔇 Silenciar</button>
-        <button onClick={() => { setIsMuted(false); isMutedRef.current = false; setShowSoundModal(false); }} style={{ flex:1, background:gc, border:"none", borderRadius:12, padding:"12px", color:getTextColor(gc), fontWeight:700, fontSize:14, cursor:"pointer" }}>🔊 Activar</button>
-      </div>
-    </div>
-  </div>
-)}
+      {showSoundTip && (
+        <div onClick={() => { setIsMuted(false); isMutedRef.current = false; setShowSoundTip(false); }} style={{ position:"fixed", top:70, right:16, background:"#1a1d2b", border:"1px solid #2e3244", borderRadius:12, padding:"10px 14px", display:"flex", alignItems:"center", gap:10, cursor:"pointer", zIndex:500, boxShadow:"0 4px 20px rgba(0,0,0,0.4)", animation:"slideIn 0.3s ease" }}>
+          <span style={{ fontSize:20 }}>🔇</span>
+          <div>
+            <div style={{ fontSize:13, fontWeight:700, color:"#fff", lineHeight:1.3 }}>Sonido desactivado</div>
+            <div style={{ fontSize:11, color:"#94a3b8" }}>Toca para activar</div>
+          </div>
+        </div>
+      )}
 
-{showSoundTip && (
-  <div onClick={() => { setIsMuted(false); isMutedRef.current = false; setShowSoundTip(false); }} style={{ position:"fixed", top:70, right:16, background:"#1a1d2b", border:"1px solid #2e3244", borderRadius:12, padding:"10px 14px", display:"flex", alignItems:"center", gap:10, cursor:"pointer", zIndex:500, boxShadow:"0 4px 20px rgba(0,0,0,0.4)", animation:"slideIn 0.3s ease" }}>
-    <span style={{ fontSize:20 }}>🔇</span>
-    <div>
-      <div style={{ fontSize:13, fontWeight:700, color:"#fff", lineHeight:1.3 }}>Sonido desactivado</div>
-      <div style={{ fontSize:11, color:"#94a3b8" }}>Toca para activar</div>
-    </div>
-  </div>
-)}
-{showFullscreenTip && !isFullscreen && (
-  <div onClick={() => { document.documentElement.requestFullscreen(); setShowFullscreenTip(false); }} style={{ position:"fixed", top:70, right:16, background:"#1a1d2b", border:"1px solid #2e3244", borderRadius:12, padding:"10px 14px", display:"flex", alignItems:"center", gap:10, cursor:"pointer", zIndex:500, boxShadow:"0 4px 20px rgba(0,0,0,0.4)", animation:"slideIn 0.3s ease" }}>
-    <span style={{ fontSize:20 }}>⛶</span>
-    <div>
-      <div style={{ fontSize:13, fontWeight:700, color:"#fff", lineHeight:1.3 }}>Pantalla completa</div>
-      <div style={{ fontSize:11, color:"#94a3b8" }}>Toca para activar</div>
-    </div>
-  </div>
-)}
+      {showFullscreenTip && !isFullscreen && (
+        <div onClick={() => { document.documentElement.requestFullscreen(); setShowFullscreenTip(false); }} style={{ position:"fixed", top:70, right:16, background:"#1a1d2b", border:"1px solid #2e3244", borderRadius:12, padding:"10px 14px", display:"flex", alignItems:"center", gap:10, cursor:"pointer", zIndex:500, boxShadow:"0 4px 20px rgba(0,0,0,0.4)", animation:"slideIn 0.3s ease" }}>
+          <span style={{ fontSize:20 }}>⛶</span>
+          <div>
+            <div style={{ fontSize:13, fontWeight:700, color:"#fff", lineHeight:1.3 }}>Pantalla completa</div>
+            <div style={{ fontSize:11, color:"#94a3b8" }}>Toca para activar</div>
+          </div>
+        </div>
+      )}
+
       {toast && <div style={{ position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", background:toast.type === "err" ? "#ef4444" : "#10b981", color:"#fff", padding:"12px 24px", borderRadius:12, fontWeight:700, fontSize:14, zIndex:999, boxShadow:"0 10px 15px -3px rgba(0,0,0,0.1)", whiteSpace:"nowrap", fontFamily:"sans-serif" }}>{toast.msg}</div>}
+
       {showLogin && <LoginModal pwInput={pwInput} setPwInput={setPwInput} pwError={pwError} onLogin={handleLogin} onClose={() => { setShowLogin(false); setPwInput(""); setPwError(false); }} />}
       {showPatternModal && <PatternModal activePattern={activePattern} activeGame={activeGame} onSelect={handleSelectPattern} onClose={() => setShowPatternModal(false)} />}
       {showGameModal && <GameModal activeGame={activeGame} onSelect={handleSelectGame} onClose={() => setShowGameModal(false)} />}
       {showResetModal && <ResetModal onConfirm={resetSort} onClose={() => setShowResetModal(false)} />}
-      {winnerPopup && <WinnerPopup winner={winnerPopup} onClose={() => setWinnerPopup(null)} />}
+
+      {/* Popup binguito — tiene prioridad visual menor que el bingo */}
+      {binguitoPopup && !winnerPopup && <WinnerPopup winner={binguitoPopup} onClose={() => setBinguitoPopup(null)} isBinguito={true} />}
+      {/* Popup bingo */}
+      {winnerPopup && <WinnerPopup winner={winnerPopup} onClose={() => setWinnerPopup(null)} isBinguito={false} />}
     </div>
   );
 }
