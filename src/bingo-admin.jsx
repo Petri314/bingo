@@ -872,9 +872,16 @@ setIsAdmin(true);
                 `}</style>
 
                 {newSaleAnim && (
-                  <div style={{ position:"fixed", inset:0, zIndex:400, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.6)", backdropFilter:"blur(4px)" }}>
-                  </div>
-                )}
+  <div style={{ position:"fixed", inset:0, zIndex:400, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.6)", backdropFilter:"blur(4px)" }}>
+    <div style={{ background:"#1a1d2b", borderRadius:24, padding:"32px 40px", textAlign:"center", border:`3px solid ${gc}`, boxShadow:`0 0 60px ${gc}88`, animation:"salePopIn 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards" }}>
+      <div style={{ fontSize:52, marginBottom:8 }}>🎟️</div>
+      <div style={{ fontSize:14, fontWeight:700, color:"#94a3b8", letterSpacing:3, textTransform:"uppercase", marginBottom:4 }}>¡Cartón vendido!</div>
+      <div style={{ fontSize:48, fontWeight:900, color:gc, fontFamily:"'Poller One',cursive", lineHeight:1, marginBottom:8 }}>#{newSaleAnim.cardNum}</div>
+      <div style={{ fontSize:22, fontWeight:800, color:"#fff", marginBottom:4 }}>{newSaleAnim.owner}</div>
+      <div style={{ fontSize:13, color:"#64748b", fontWeight:600 }}>{newSaleAnim.gameName}</div>
+    </div>
+  </div>
+)}
 
                 <div style={{ gridColumn:"1/-1", background:`linear-gradient(135deg,${gc}22,${gc}44)`, borderRadius:12, padding:"8px 18px", border:`2px solid ${gc}`, textAlign:"center" }}>
                   <div style={{ fontSize:10, fontWeight:700, color:gc, letterSpacing:3, textTransform:"uppercase" }}>Juego Activo</div>
