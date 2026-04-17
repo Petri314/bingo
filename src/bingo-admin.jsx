@@ -9,6 +9,8 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { db } from "./firebase.js";
 import { ref, onValue, set, remove, update, runTransaction } from "firebase/database";
 import { COLS, TOTAL, PRICE, DB_CARDS, DB_DRAWN, DB_WINNERS, DB_STATE, GAMES, PATTERNS, BINGO_LETTER_COLORS, TABS } from "./constants/index.js";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 const DB_BINGUITOS = "bingo_binguitos";
 
@@ -393,8 +395,8 @@ setIsAdmin(true);
 
   const deleteWinner = async (id) => await remove(ref(db, `${DB_WINNERS}/${id}`));
 
-  const handlePrintCards = () => {
-    const cardsToPrint = cards.filter(c => c.grid);
+  const handlePrintCards = async (downloadPdf = false) => {
+    const cardsToPrint = cards.filter(c => c.grid && c.gameId === activeGame.id);
     if (!cardsToPrint.length) return showToast("No hay cartones para imprimir", "err");
     const printWindow = window.open('', '_blank');
     let html = `<!DOCTYPE html><html><head><title>Imprimir Cartones</title>
@@ -430,6 +432,27 @@ setIsAdmin(true);
     html += `</div></body></html>`;
     printWindow.document.write(html);
     printWindow.document.close();
+    if (downloadPdf) {
+      printWindow.onload = () => {
+        setTimeout(async () => {
+          const pdf = new jsPDF({ orientation:"portrait", unit:"mm", format:"a4" });
+          const pageWidth = pdf.internal.pageSize.getWidth();
+          const pageHeight = pdf.internal.pageSize.getHeight();
+          const canvas = await html2canvas(printWindow.document.body, { scale:2, useCORS:true, backgroundColor:"#ffffff" });
+          const imgData = canvas.toDataURL("image/jpeg", 0.95);
+          const imgWidth = pageWidth;
+          const imgHeight = (canvas.height * pageWidth) / canvas.width;
+          let y = 0;
+          while (y < imgHeight) {
+            if (y > 0) pdf.addPage();
+            pdf.addImage(imgData, "JPEG", 0, -y, imgWidth, imgHeight);
+            y += pageHeight;
+          }
+          pdf.save(`cartones-${activeGame.name}.pdf`);
+          printWindow.close();
+        }, 1000);
+      };
+    }
   };
 
   const filteredCards = useMemo(() =>
@@ -813,7 +836,10 @@ setIsAdmin(true);
       </div>
 
 {cards.length > 0 && (
-  <button onClick={handlePrintCards} style={{...btnS("#6366f1"), width:"100%", padding:"12px", marginBottom:12, fontSize:15, display:"flex", alignItems:"center", justifyContent:"center", gap:8}}>🖨️ Imprimir Cartones ({cards.length})</button>
+  <div style={{ display:"flex", gap:10, marginBottom:12 }}>
+  <button onClick={() => handlePrintCards(false)} style={{...btnS("#6366f1"), flex:1, padding:"12px", fontSize:15, display:"flex", alignItems:"center", justifyContent:"center", gap:8}}>🖨️ Imprimir {activeGame.name} ({cards.filter(c => c.grid && c.gameId === activeGame.id).length})</button>
+  <button onClick={() => handlePrintCards(true)} style={{...btnS("#0f172a"), flex:1, padding:"12px", fontSize:15, display:"flex", alignItems:"center", justifyContent:"center", gap:8, border:"2px solid #6366f1"}}>📄 PDF</button>
+</div>
 )}
                 <div style={{ background:"#ffffff", borderRadius:13, padding:16, marginBottom:16, border:"1px solid #e2e8f0" }}>
   <h3 style={{ margin:"0 0 12px", fontSize:14, color:"#334155" }}>⏱️ Countdown</h3>
@@ -1064,7 +1090,7 @@ setIsAdmin(true);
         </div>
       )}
 
-      {newSaleAnim && (
+      {newSaleAnim && !(isAdmin && tab === 0) && (
   <div style={{ position:"fixed", inset:0, zIndex:400, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.6)", backdropFilter:"blur(4px)" }}>
     <div style={{ background:"#1a1d2b", borderRadius:24, padding:"32px 40px", textAlign:"center", border:`3px solid ${gc}`, boxShadow:`0 0 60px ${gc}88`, animation:"salePopIn 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards" }}>
       <div style={{ fontSize:52, marginBottom:8 }}>🎟️</div>
