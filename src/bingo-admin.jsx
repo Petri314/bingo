@@ -505,7 +505,7 @@ setIsAdmin(true);
 
       {/* ══ TAB SORTEO ══ */}
       {tab === 2 && (
-        <div style={{ padding:"10px 14px", width:"100%", boxSizing:"border-box", height:"calc(100vh - 112px)", display:"flex", flexDirection:"column", gap:8, paddingBottom: isAdmin ? 80 : 10, overflow:"hidden" }}>          <style>{`
+        <div style={{ padding:"10px 14px", width:"100%", boxSizing:"border-box", height:"calc(100vh - 112px)", display:"flex", flexDirection:"column", gap:8, paddingBottom: isAdmin ? 80 : 10, overflowY:"auto" }}>          <style>{`
             @import url('https://fonts.googleapis.com/css2?family=Poller+One&family=Nunito:wght@700&family=Bebas+Neue&family=Righteous&display=swap');
             @keyframes numPop { 0%{transform:scale(0.3) rotate(-8deg);opacity:0} 60%{transform:scale(1.4) rotate(3deg);opacity:1} 100%{transform:scale(1) rotate(0deg);opacity:1} }
             .num-pop { animation: numPop 0.9s cubic-bezier(0.34,1.56,0.64,1) forwards; }
@@ -515,7 +515,7 @@ setIsAdmin(true);
     grid-template-columns: 1fr 1fr 1fr;
     gap: 10px;
     flex: 1;
-    min-height: 0;
+    min-height: 280;
     overflow: visible;
   }
 }
