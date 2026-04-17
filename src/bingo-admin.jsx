@@ -588,7 +588,7 @@ setIsAdmin(true);
           <div className="panel-inferior-pc">
 
             {/* ZONA 1 — Patrón activo (binguito + bingo) */}
-            <div className="zona-patron" style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:"12px 10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, border:`1px solid ${binguitoColor}44`, flex:1, minHeight:0 }}>
+            <div className="zona-patron" style={{ background: alreadyBinguito ? "rgba(100,116,139,0.15)" : "rgba(255,255,255,0.07)", borderRadius:14, padding:"12px 10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, border: alreadyBinguito ? "1px solid rgba(100,116,139,0.3)" : `1px solid ${binguitoColor}44`, flex:1, minHeight:0 }}>
               <div style={{ background:binguitoColor, borderRadius:8, padding:"3px 14px", fontSize:13, fontWeight:800, color:"#000", letterSpacing:1 }}>BINGUITO</div>
 
               <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:4, width:160, maxWidth:"95%" }}>
