@@ -96,11 +96,27 @@ const [currentPrice, setCurrentPrice] = useState(PRICE);
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!document.fullscreenElement) { setShowFullscreenTip(true); setTimeout(() => setShowFullscreenTip(false), 5000); }
-    }, 60000);
-    return () => clearTimeout(timer);
-  }, []);
+  const timer = setTimeout(() => {
+    if (!document.fullscreenElement) { setShowFullscreenTip(true); setTimeout(() => setShowFullscreenTip(false), 5000); }
+  }, 60000);
+  return () => clearTimeout(timer);
+}, []);
+
+useEffect(() => {
+  const handler = () => setIsFullscreen(!!document.fullscreenElement || window.innerHeight === screen.height);
+  document.addEventListener("fullscreenchange", handler);
+  window.addEventListener("resize", handler);
+  return () => {
+    document.removeEventListener("fullscreenchange", handler);
+    window.removeEventListener("resize", handler);
+  };
+}, []);
+
+  useEffect(() => {
+  const handler = () => setIsFullscreen(!!document.fullscreenElement);
+  document.addEventListener("fullscreenchange", handler);
+  return () => document.removeEventListener("fullscreenchange", handler);
+}, []);
 
   const handleLogin = async () => {
     try {
@@ -459,7 +475,7 @@ setIsAdmin(true);
     <div style={{ minHeight:"100vh", fontFamily:"sans-serif", color:"#1e293b" }}>
 
       {/* ── HEADER ── */}
-      <div style={{ background:"#0f1221", borderBottom:"1px solid rgba(255,255,255,0.08)", padding:"10px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", gap:10 }}>
+<div style={{ background:"#0f1221", borderBottom:"1px solid rgba(255,255,255,0.08)", padding:"10px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", gap:10 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <div>
             <div style={{ fontSize:16, fontWeight:800, color:"#fff", lineHeight:1.1 }}>Bingo Solidario</div>
@@ -469,11 +485,12 @@ setIsAdmin(true);
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
           <button onClick={() => { const next = !isMuted; setIsMuted(next); isMutedRef.current = next; }} style={{ background:"rgba(255,255,255,0.07)", border:"none", borderRadius:8, padding:"6px 10px", fontSize:18, cursor:"pointer" }}>{isMuted ? "🔇" : "🔊"}</button>
           <button onClick={()=>{
-            if (isFullscreen) {
-              if (window.innerWidth <= 768) { showToast("Presiona el botón atrás de tu movil para salir del modo pantalla completa"); }
-              else { document.exitFullscreen(); }
-            } else { document.documentElement.requestFullscreen(); }
-          }} style={{ background:"rgba(255,255,255,0.07)", border:"none", borderRadius:8, padding:"6px 10px", fontSize:18, cursor:"pointer", color:"#fff" }}>⛶</button>
+  if (document.fullscreenElement) {
+    document.exitFullscreen();
+  } else {
+    document.documentElement.requestFullscreen();
+  }
+}} style={{ background:"rgba(255,255,255,0.07)", border:"none", borderRadius:8, padding:"6px 10px", fontSize:18, cursor:"pointer", color:"#fff" }}>⛶</button>
           {!isAdmin
             ? <button onClick={() => setShowLogin(true)} style={{ background:gc, border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, cursor:"pointer", color:getTextColor(gc) }}>🔐 Admin</button>
             : <button onClick={handleLogout} style={{ background:"#ef4444", border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, cursor:"pointer", color:"#fff" }}>Salir</button>
@@ -505,7 +522,7 @@ setIsAdmin(true);
 
       {/* ══ TAB SORTEO ══ */}
       {tab === 2 && (
-        <div style={{ padding:"10px 14px", width:"100%", boxSizing:"border-box", height:"calc(100vh - 112px)", display:"flex", flexDirection:"column", gap:8, paddingBottom: isAdmin ? 80 : 10, overflowY:"auto" }}>          <style>{`
+        <div style={{ padding:"10px 14px", width:"100%", boxSizing:"border-box", height:"calc(100vh - 112px)", minHeight:"calc(100vh - 112px)", display:"flex", flexDirection:"column", gap:8, paddingBottom: isAdmin ? 80 : 10, overflowY:"auto", ...(isFullscreen && { position:"fixed", top:0, left:0, right:0, bottom:0, height:"100vh", zIndex:50, background:"#0f1221" }) }}>          <style>{`
             @import url('https://fonts.googleapis.com/css2?family=Poller+One&family=Nunito:wght@700&family=Bebas+Neue&family=Righteous&display=swap');
             @keyframes numPop { 0%{transform:scale(0.3) rotate(-8deg);opacity:0} 60%{transform:scale(1.4) rotate(3deg);opacity:1} 100%{transform:scale(1) rotate(0deg);opacity:1} }
             .num-pop { animation: numPop 0.9s cubic-bezier(0.34,1.56,0.64,1) forwards; }
@@ -532,9 +549,8 @@ setIsAdmin(true);
               .btn-flotantes-mobile button { padding: 8px 12px !important; font-size: 12px !important; }
               .mobile-bingo-letters { display: flex !important; }
             }
-            @media (max-width: 768px) {
-              .btn-flotantes-mobile { position: relative !important; bottom: auto !important; top: auto !important; margin-bottom: 10px !important; border-top: none !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important; }
-            }
+            :fullscreen .hide-on-fullscreen { display: none !important; }
+            :-webkit-full-screen .hide-on-fullscreen { display: none !important; }
           `}</style>
 
           {/* ── BOTONES FLOTANTES ADMIN ── */}
@@ -575,19 +591,19 @@ setIsAdmin(true);
             <div className="zona-patron" style={{ background:"rgba(255,255,255,0.07)", borderRadius:14, padding:"12px 10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, border:`1px solid ${binguitoColor}44`, flex:1, minHeight:0 }}>
               <div style={{ background:binguitoColor, borderRadius:8, padding:"3px 14px", fontSize:13, fontWeight:800, color:"#000", letterSpacing:1 }}>BINGUITO</div>
 
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:3, width:160 }}>
-                {Object.keys(COLS).map((l, i) => (
-                  <div key={l} style={{ height:12, borderRadius:2, background:BINGO_LETTER_COLORS[i], display:"flex", alignItems:"center", justifyContent:"center", fontSize:7, fontWeight:800, color:"#fff" }}>{l}</div>
-                ))}
-              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:4, width:160, maxWidth:"95%" }}>
+  {activePattern.binguito.grid.flat().map((cell, i) => (
+    <div key={i} style={{ height:24, borderRadius:6, background:cell ? binguitoColor : "rgba(255,255,255,0.07)", border:cell ? "none" : "1px solid rgba(255,255,255,0.1)", boxShadow:cell ? `0 0 8px ${binguitoColor}88` : "none" }} />
+  ))}
+</div>
 
               {activePattern.binguito && (
                 <>
-                  <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:3, width:160 }}>
-                    {activePattern.binguito.grid.flat().map((cell, i) => (
-                      <div key={i} style={{ height:12, borderRadius:2, background:cell ? binguitoColor : "rgba(255,255,255,0.07)", border:cell ? "none" : "1px solid rgba(255,255,255,0.1)", boxShadow:cell ? `0 0 4px ${binguitoColor}88` : "none" }} />
-                    ))}
-                  </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:4, width:160, maxWidth:"85%" }}>
+                {Object.keys(COLS).map((l, i) => (
+                  <div key={l} style={{ aspectRatio:"1/1", borderRadius:6, background:BINGO_LETTER_COLORS[i], display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:800, color:"#fff" }}>{l}</div>
+                ))}
+              </div>
                   <div style={{ display:"flex", alignItems:"center", gap:5 }}>
                     <div style={{ width:8, height:8, borderRadius:1, background:binguitoColor }} />
                     <div style={{ fontSize:10, fontWeight:700, color:binguitoColor, textAlign:"center", lineHeight:1.3 }}>
@@ -625,7 +641,7 @@ setIsAdmin(true);
               </div>
 
               {/* Grid bingo grande */}
-<div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:4, width:160, maxWidth:"85%" }}>
+<div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:4, width:160, maxWidth:"100%" }}>
                 {activePattern.grid.flat().map((cell, i) => (
                   <div key={i} style={{ height:24, borderRadius:6, background:cell ? gc : "rgba(255,255,255,0.07)", border:cell ? "none" : "1px solid rgba(255,255,255,0.1)", boxShadow:cell ? `0 0 8px ${gc}88` : "none" }} />
                 ))}
