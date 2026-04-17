@@ -8,17 +8,25 @@ export const DB_STATE   = "bingo_state";
 
 export const GAMES = [
   { id: "j1",  name: "Juego 1",  color: "#FF0000" },
-  { id: "j2",  name: "Juego 2",  color: "#00FFFF" },
-  { id: "j3",  name: "Juego 3",  color: "#FFFF00" },
+  { id: "j2",  name: "Juego 2",  color: "#00CFCF" },
+  { id: "j3",  name: "Juego 3",  color: "#FFD700" },
   { id: "j4",  name: "Juego 4",  color: "#7F00FF" },
-  { id: "j5",  name: "Juego 5",  color: "#00FF00" },
+  { id: "j5",  name: "Juego 5",  color: "#00CC00" },
   { id: "j6",  name: "Juego 6",  color: "#FF00FF" },
   { id: "j7",  name: "Juego 7",  color: "#FF7F00" },
   { id: "j8",  name: "Juego 8",  color: "#007FFF" },
   { id: "j9",  name: "Juego 9",  color: "#7FFF00" },
   { id: "j10", name: "Juego 10", color: "#FF007F" },
-  { id: "j11", name: "Juego 11", color: "#0000FF" },
+  { id: "j11", name: "Juego 11", color: "#4444FF" },
   { id: "j12", name: "Juego 12", color: "#00FF7F" },
+  { id: "j13", name: "Juego 13", color: "#FF4444" },
+  { id: "j14", name: "Juego 14", color: "#AA00FF" },
+  { id: "j15", name: "Juego 15", color: "#00AAFF" },
+  { id: "j16", name: "Juego 16", color: "#FF6600" },
+  { id: "j17", name: "Juego 17", color: "#00FF99" },
+  { id: "j18", name: "Juego 18", color: "#FF0099" },
+  { id: "j19", name: "Juego 19", color: "#AAFF00" },
+  { id: "j20", name: "Juego 20", color: "#00CCFF" },
 ];
 
 // Orientación: grid[row][col]

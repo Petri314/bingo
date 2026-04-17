@@ -60,6 +60,8 @@ export default function BingoAdmin() {
   const [countdownEndsAt, setCountdownEndsAt] = useState(null);
   const [countdownDisplay, setCountdownDisplay] = useState(0);
   const [countdownInput, setCountdownInput] = useState("5");
+  const [priceInput, setPriceInput] = useState(String(PRICE));
+const [currentPrice, setCurrentPrice] = useState(PRICE);
 
   const [newSaleAnim, setNewSaleAnim] = useState(null);
   const prevSoldCount = useRef(0);
@@ -215,6 +217,7 @@ export default function BingoAdmin() {
       if (v.gameId)    { const g = GAMES.find(g => g.id === v.gameId);       if (g) setActiveGame(g); }
       if (v.patternId) { const p = PATTERNS.find(p => p.id === v.patternId); if (p) setActivePattern(p); }
       if (typeof v.alreadyWon === "boolean") setAlreadyWon(v.alreadyWon);
+      if (typeof v.price === "number") setCurrentPrice(v.price);
       if (typeof v.alreadyBinguito === "boolean") setAlreadyBinguito(v.alreadyBinguito);
       if (v.countdownEndsAt !== undefined) {
         setCountdownEndsAt(v.countdownEndsAt > Date.now() ? v.countdownEndsAt : null);
@@ -299,7 +302,7 @@ export default function BingoAdmin() {
     const updates = {};
     const toAssign = confirmAssign.available.filter(c => confirmAssign.selected.includes(c.id));
     toAssign.forEach(c => {
-      updates[`${DB_CARDS}/${c.id}`] = { id:c.id, cardNum:c.cardNum, gameId:c.gameId, gameName:c.gameName, grid:c.grid, owner:confirmAssign.owner, paid:true, soldAt:Date.now() };
+      updates[`${DB_CARDS}/${c.id}`] = { id:c.id, cardNum:c.cardNum, gameId:c.gameId, gameName:c.gameName, grid:c.grid, owner:confirmAssign.owner, paid:true, soldAt:Date.now(), price:currentPrice };
     });
     await update(ref(db), updates);
     showToast(`✓ ${activeGame.name}: ${confirmAssign.nums.join(', ')}`);
@@ -436,7 +439,7 @@ export default function BingoAdmin() {
     search ? filteredCards : filteredSold.slice(-10).reverse(),
     [search, filteredCards, filteredSold]);
 
-  const totalRecaudado = useMemo(() => cards.filter(c => c.paid).length * PRICE, [cards]);
+  const totalRecaudado = useMemo(() => cards.filter(c => c.paid).reduce((acc, c) => acc + (c.price || currentPrice), 0), [cards, currentPrice]);
   const jugadoresActuales = useMemo(() => cards.filter(c => c.paid && c.gameId === activeGame.id).length, [cards, activeGame.id]);
 
   const gc = activeGame.color;
@@ -648,32 +651,49 @@ export default function BingoAdmin() {
           {/* ══ TAB CARTONES ══ */}
           {tab === 0 && (<div style={{ marginTop:10 }}>
             {isAdmin && (<>
-              <div style={{ marginBottom:15 }}>
-                <button onClick={() => setShowGameModal(true)} style={{ background:activeGame.color, border:"none", borderRadius:10, padding:"10px 20px", fontSize:14, fontWeight:700, cursor:"pointer", color:getTextColor(activeGame.color), display:"flex", alignItems:"center", gap:8 }}>🎮 {activeGame.name} ▼</button>
-              </div>
-              <div style={{ background:activeGame.color+"15", borderRadius:13, padding:16, marginBottom:12, border:`1px solid ${activeGame.color}40` }}>
-                <h3 style={{ margin:"0 0 12px", fontSize:14, color:activeGame.color }}>1. Generar cartones — {activeGame.name}</h3>
-                <div style={{ display:"flex", gap:10 }}>
-                  <input type="number" placeholder="Cantidad (ej: 50)" value={genQty} onChange={e => setGenQty(e.target.value)} style={{...inpS, maxWidth:"60%"}} />
-                  <button onClick={generatePool} style={{...btnS(activeGame.color), flex:1, color:getTextColor(activeGame.color)}}>Generar</button>
-                </div>
-                {cards.filter(c => !c.paid && c.gameId === activeGame.id).length > 0 && (
-                  <button onClick={deleteUnsoldPool} style={{...btnS("#64748b"), width:"100%", marginTop:10}}>🗑️ Borrar disponibles de {activeGame.name} ({cards.filter(c => !c.paid && c.gameId === activeGame.id).length})</button>
-                )}
-              </div>
-              {cards.length > 0 && (
-                <button onClick={handlePrintCards} style={{...btnS("#6366f1"), width:"100%", padding:"12px", marginBottom:12, fontSize:15, display:"flex", alignItems:"center", justifyContent:"center", gap:8}}>🖨️ Imprimir Cartones ({cards.length})</button>
-              )}
+              <div style={{ marginBottom:15, display:"flex", alignItems:"center", gap:10 }}>
+  <button onClick={() => setShowGameModal(true)} style={{ background:activeGame.color, border:"none", borderRadius:10, padding:"10px 20px", fontSize:14, fontWeight:700, cursor:"pointer", color:getTextColor(activeGame.color), display:"flex", alignItems:"center", gap:8 }}>🎮 {activeGame.name} ▼</button>
+  <div style={{ background:"#f0fdf4", border:"2px solid #16a34a", borderRadius:10, padding:"8px 16px", display:"flex", flexDirection:"column", alignItems:"center", lineHeight:1.2 }}>
+    <span style={{ fontSize:10, fontWeight:700, color:"#16a34a", letterSpacing:1, textTransform:"uppercase" }}>Precio activo</span>
+    <span style={{ fontSize:18, fontWeight:900, color:"#16a34a" }}>${currentPrice.toLocaleString("es-CL")}</span>
+  </div>
+</div>
               <div style={{ background:"#ffffff", borderRadius:13, padding:16, marginBottom:18, border:"1px solid #e2e8f0", boxShadow:"0 4px 6px -1px rgba(0,0,0,0.1)" }}>
-                <h3 style={{ margin:"0 0 12px", fontSize:14, color:"#334155" }}>2. Asignar — {activeGame.name} <span style={{ fontSize:11, color:"#94a3b8", fontWeight:400 }}>(Quedan {cards.filter(c => !c.paid && c.gameId === activeGame.id).length})</span></h3>
+                <h3 style={{ margin:"0 0 12px", fontSize:14, color:"#334155" }}>{activeGame.name} <span style={{ fontSize:11, color:"#94a3b8", fontWeight:400 }}></span></h3>
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 100px", gap:10, marginBottom:10 }}>
-                  <input placeholder="Nombre completo *" value={newOwner} onChange={e => setNewOwner(e.target.value)} style={inpS} />
+                  <input placeholder="Nombre*" value={newOwner} onChange={e => setNewOwner(e.target.value)} style={inpS} />
                   <input type="number" placeholder="Cant." value={newQty} onChange={e => setNewQty(e.target.value)} onKeyDown={e => e.key === "Enter" && assignCard()} style={{...inpS, textAlign:"center"}} />
                 </div>
                 <button onClick={assignCard} style={{...btnS(activeGame.color), width:"100%", padding:"11px", color:getTextColor(activeGame.color)}}>Asignar</button>
               </div>
             </>)}
-            <input placeholder="🔍 Buscar por N° cartón o nombre..." value={search} onChange={e => setSearch(e.target.value)} style={{...inpS, width:"100%", marginBottom:12}} />
+            {/* Barra de progreso */}
+{cards.filter(c => c.gameId === activeGame.id).length > 0 && (
+  <div style={{ background:"#ffffff", borderRadius:13, padding:"12px 16px", marginBottom:12, border:`1px solid ${activeGame.color}40`, boxShadow:"0 1px 3px rgba(0,0,0,0.05)" }}>
+    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+      <span style={{ fontSize:12, fontWeight:700, color:"#64748b", letterSpacing:1 }}>CARTONES — {activeGame.name}</span>
+      <span style={{ fontSize:13, fontWeight:800, color:activeGame.color }}>
+        {cards.filter(c => c.paid && c.gameId === activeGame.id).length} / {cards.filter(c => c.gameId === activeGame.id).length}
+      </span>
+    </div>
+    <div style={{ background:"#f1f5f9", borderRadius:99, height:14, overflow:"hidden", marginBottom:6 }}>
+      <div style={{
+        background:activeGame.color,
+        height:"100%",
+        borderRadius:99,
+        width:`${(cards.filter(c => c.paid && c.gameId === activeGame.id).length / cards.filter(c => c.gameId === activeGame.id).length) * 100}%`,
+        transition:"width 0.8s ease",
+        boxShadow:`0 0 8px ${activeGame.color}99`
+      }} />
+    </div>
+    <div style={{ display:"flex", justifyContent:"space-between" }}>
+      <span style={{ fontSize:11, color:"#16a34a", fontWeight:700 }}>✓ Vendidos: {cards.filter(c => c.paid && c.gameId === activeGame.id).length}</span>
+      <span style={{ fontSize:11, color:"#94a3b8", fontWeight:700 }}>⏳ Disponibles: {cards.filter(c => !c.paid && c.gameId === activeGame.id).length}</span>
+    </div>
+  </div>
+)}
+
+<input placeholder="🔍 Buscar por N° cartón o nombre..." value={search} onChange={e => setSearch(e.target.value)} style={{...inpS, width:"100%", marginBottom:12}} />
             {filteredCards.length > 0 && (<div style={{ display:"flex", alignItems:"center", gap:12, padding:"0 16px 8px", fontSize:11, fontWeight:800, color:"#94a3b8", letterSpacing:"0.05em", borderBottom:"2px solid #e2e8f0", marginBottom:8 }}>
               <span style={{ minWidth:45 }}>CARTÓN</span><span style={{ flex:1 }}>ASISTENTE</span><span style={{ minWidth:70, textAlign:"center" }}>JUEGO</span><span style={{ textAlign:"right" }}>ESTADO</span>
             </div>)}
@@ -697,28 +717,134 @@ export default function BingoAdmin() {
                   </div>
                   {selectedCard?.id === c.id && c.grid && (<div style={{ background:"#ffffff", borderRadius:"0 0 12px 12px", padding:16, border:"1px solid #e2e8f0", borderTop:"none", boxShadow:"0 4px 6px -1px rgba(0,0,0,0.1)" }}>
                     <p style={{ fontSize:12, color:"#94a3b8", textAlign:"center", marginBottom:12 }}>Números marcados ya salieron</p>
-                    <CardGridMemo card={c} drawn={drawn} />
+                    <CardGridMemo card={c} drawn={isAdmin ? drawn : []} />
                   </div>)}
                 </div>);
               })}
             </div>
           </div>)}
 
-          {/* ══ TAB INFORMACIÓN ══ */}
-          {tab === 1 && (<div style={{ minHeight:"calc(100vh - 160px)" }}>
-            {isAdmin ? (
-              <div>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
-                  {[{label:"Vendidos", val:cards.filter(c => c.paid).length, color:"#3b82f6"},{label:"Recaudado", val:`$${totalRecaudado.toLocaleString("es-CL")}`, color:"#16a34a"}].map(s => (<div key={s.label} style={{ background:"#ffffff", borderRadius:12, padding:"14px 18px", border:"1px solid #e2e8f0" }}><div style={{ fontSize:26, fontWeight:800, color:s.color }}>{s.val}</div><div style={{ fontSize:13, color:"#64748b" }}>{s.label}</div></div>))}
+{/* ══ TAB INFORMACIÓN ══ */}
+{tab === 1 && (<div style={{ minHeight:"calc(100vh - 160px)" }}>
+  {isAdmin ? (
+    <div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
+  {[{label:"Vendidos", val:cards.filter(c => c.paid).length, color:"#3b82f6"},{label:"Recaudado", val:`$${totalRecaudado.toLocaleString("es-CL")}`, color:"#16a34a"}].map(s => (<div key={s.label} style={{ background:"#ffffff", borderRadius:12, padding:"14px 18px", border:"1px solid #e2e8f0" }}><div style={{ fontSize:26, fontWeight:800, color:s.color }}>{s.val}</div><div style={{ fontSize:13, color:"#64748b" }}>{s.label}</div></div>))}
+</div>
+
+{/* Tabla de ventas por juego */}
+<div style={{ background:"#ffffff", borderRadius:13, padding:16, marginBottom:16, border:"1px solid #e2e8f0", boxShadow:"0 1px 3px rgba(0,0,0,0.05)" }}>
+  <h3 style={{ margin:"0 0 12px", fontSize:14, color:"#334155" }}>📊 Ventas por juego</h3>
+  <div style={{ overflowX:"auto" }}>
+    <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+      <thead>
+        <tr style={{ background:"#f8fafc", borderBottom:"2px solid #e2e8f0" }}>
+          <th style={{ padding:"8px 12px", textAlign:"left", fontWeight:700, color:"#64748b", letterSpacing:1, fontSize:11 }}>JUEGO</th>
+          <th style={{ padding:"8px 12px", textAlign:"center", fontWeight:700, color:"#64748b", letterSpacing:1, fontSize:11 }}>VENDIDOS</th>
+          <th style={{ padding:"8px 12px", textAlign:"center", fontWeight:700, color:"#64748b", letterSpacing:1, fontSize:11 }}>P. CARTÓN</th>
+          <th style={{ padding:"8px 12px", textAlign:"right", fontWeight:700, color:"#64748b", letterSpacing:1, fontSize:11 }}>RECAUDADO</th>
+        </tr>
+      </thead>
+      <tbody>
+        {GAMES.map((g, i) => {
+          const vendidos = cards.filter(c => c.paid && c.gameId === g.id);
+          if (vendidos.length === 0) return null;
+          const recaudadoJuego = vendidos.reduce((acc, c) => acc + (c.price || currentPrice), 0);
+          const precioPromedio = Math.round(recaudadoJuego / vendidos.length);
+          return (
+            <tr key={g.id} style={{ borderBottom:"1px solid #f1f5f9", background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
+              <td style={{ padding:"10px 12px" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                  <div style={{ width:10, height:10, borderRadius:"50%", background:g.color, flexShrink:0 }} />
+                  <span style={{ fontWeight:700, color:"#1e293b" }}>{g.name}</span>
                 </div>
+              </td>
+              <td style={{ padding:"10px 12px", textAlign:"center" }}>
+                <span style={{ background:g.color+"22", color:g.color, borderRadius:6, padding:"2px 10px", fontWeight:700 }}>{vendidos.length}</span>
+              </td>
+              <td style={{ padding:"10px 12px", textAlign:"center", color:"#64748b", fontWeight:600 }}>
+                ${precioPromedio.toLocaleString("es-CL")}
+              </td>
+              <td style={{ padding:"10px 12px", textAlign:"right", fontWeight:800, color:"#16a34a" }}>
+                ${recaudadoJuego.toLocaleString("es-CL")}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+      <tfoot>
+        <tr style={{ borderTop:"2px solid #e2e8f0", background:"#f8fafc" }}>
+          <td style={{ padding:"10px 12px", fontWeight:800, color:"#334155" }}>TOTAL</td>
+          <td style={{ padding:"10px 12px", textAlign:"center", fontWeight:800, color:"#3b82f6" }}>
+            {cards.filter(c => c.paid).length}
+          </td>
+          <td style={{ padding:"10px 12px" }} />
+          <td style={{ padding:"10px 12px", textAlign:"right", fontWeight:900, color:"#16a34a", fontSize:15 }}>
+            ${totalRecaudado.toLocaleString("es-CL")}
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  {GAMES.every(g => cards.filter(c => c.paid && c.gameId === g.id).length === 0) && (
+    <div style={{ textAlign:"center", color:"#94a3b8", padding:"20px 0", fontSize:13 }}>Sin ventas registradas aún</div>
+  )}
+</div>
+
+      <div style={{ marginBottom:12 }}>
+        <button onClick={() => setShowGameModal(true)} style={{ background:activeGame.color, border:"none", borderRadius:10, padding:"10px 20px", fontSize:14, fontWeight:700, cursor:"pointer", color:getTextColor(activeGame.color), display:"flex", alignItems:"center", gap:8 }}>🎮 {activeGame.name} ▼</button>
+      </div>
+
+      <div style={{ background:activeGame.color+"15", borderRadius:13, padding:16, marginBottom:12, border:`1px solid ${activeGame.color}40` }}>
+        <h3 style={{ margin:"0 0 12px", fontSize:14, color:activeGame.color }}>Generar cartones — {activeGame.name}</h3>
+        <div style={{ display:"flex", gap:10 }}>
+          <input type="number" placeholder="Cantidad (ej: 50)" value={genQty} onChange={e => setGenQty(e.target.value)} style={{...inpS, maxWidth:"60%"}} />
+          <button onClick={generatePool} style={{...btnS(activeGame.color), flex:1, color:getTextColor(activeGame.color)}}>Generar</button>
+        </div>
+        {cards.filter(c => !c.paid && c.gameId === activeGame.id).length > 0 && (
+          <button onClick={deleteUnsoldPool} style={{...btnS("#64748b"), width:"100%", marginTop:10}}>🗑️ Borrar disponibles de {activeGame.name} ({cards.filter(c => !c.paid && c.gameId === activeGame.id).length})</button>
+        )}
+      </div>
+
+{cards.length > 0 && (
+  <button onClick={handlePrintCards} style={{...btnS("#6366f1"), width:"100%", padding:"12px", marginBottom:12, fontSize:15, display:"flex", alignItems:"center", justifyContent:"center", gap:8}}>🖨️ Imprimir Cartones ({cards.length})</button>
+)}
                 <div style={{ background:"#ffffff", borderRadius:13, padding:16, marginBottom:16, border:"1px solid #e2e8f0" }}>
-                  <h3 style={{ margin:"0 0 12px", fontSize:14, color:"#334155" }}>⏱️ Countdown</h3>
-                  <div style={{ display:"flex", gap:10, alignItems:"center" }}>
-                    <input type="number" placeholder="Minutos" value={countdownInput} onChange={e => setCountdownInput(e.target.value)} style={{...inpS, maxWidth:120}} />
-                    <button onClick={() => { const mins = parseInt(countdownInput) || 5; const endsAt = Date.now() + mins * 60 * 1000; update(ref(db, DB_STATE), { countdownEndsAt: endsAt }); }} style={{...btnS("#3b82f6"), flex:1}}>▶ Iniciar</button>
-                    <button onClick={() => update(ref(db, DB_STATE), { countdownEndsAt: 0 })} style={{...btnS("#ef4444")}}>■ Detener</button>
-                  </div>
-                </div>
+  <h3 style={{ margin:"0 0 12px", fontSize:14, color:"#334155" }}>⏱️ Countdown</h3>
+  <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+    <input type="number" placeholder="Minutos" value={countdownInput} onChange={e => setCountdownInput(e.target.value)} style={{...inpS, maxWidth:120}} />
+    <button onClick={() => { const mins = parseInt(countdownInput) || 5; const endsAt = Date.now() + mins * 60 * 1000; update(ref(db, DB_STATE), { countdownEndsAt: endsAt }); }} style={{...btnS("#3b82f6"), flex:1}}>▶ Iniciar</button>
+    <button onClick={() => update(ref(db, DB_STATE), { countdownEndsAt: 0 })} style={{...btnS("#ef4444")}}>■ Detener</button>
+  </div>
+</div>
+
+<div style={{ background:"#ffffff", borderRadius:13, padding:16, marginBottom:16, border:"1px solid #e2e8f0" }}>
+  <h3 style={{ margin:"0 0 12px", fontSize:14, color:"#334155" }}>💵 Precio del cartón</h3>
+  <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+    <input
+      type="number"
+      placeholder="Precio"
+      value={priceInput}
+      onChange={e => setPriceInput(e.target.value)}
+      style={{...inpS, maxWidth:140}}
+    />
+    <button
+      onClick={() => {
+        const p = parseInt(priceInput);
+        if (!p || p < 1) return showToast("Precio inválido", "err");
+        update(ref(db, DB_STATE), { price: p });
+        setCurrentPrice(p);
+        showToast(`✓ Precio actualizado a $${p.toLocaleString("es-CL")}`);
+      }}
+      style={{...btnS("#16a34a"), flex:1}}
+    >
+      Guardar
+    </button>
+  </div>
+  <div style={{ marginTop:8, fontSize:13, color:"#64748b" }}>
+    Precio actual: <strong style={{ color:"#16a34a" }}>${currentPrice.toLocaleString("es-CL")}</strong>
+  </div>
+</div>
               </div>
             ) : (
               <div className="viz-grid" style={{ background:"linear-gradient(135deg,#0f1221 0%,#1a1d2b 100%)", display:"grid", gridTemplateColumns:"264px 1fr", gridTemplateRows:"auto auto 1fr", gap:10, padding:"10px 12px", boxSizing:"border-box", width:"100%", height:"100vh", overflow:"hidden" }}>
@@ -790,7 +916,7 @@ export default function BingoAdmin() {
 
                   <div style={{ background:"#1a1d2b", borderRadius:12, padding:"8px 14px", border:`1px solid ${gc}44`, flexShrink:0, textAlign:"center" }}>
                     <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, letterSpacing:2, marginBottom:2 }}>PRECIO CARTÓN</div>
-                    <div style={{ fontSize:24, fontWeight:900, color:gc, fontFamily:"'Poller One',cursive" }}>${PRICE.toLocaleString("es-CL")}</div>
+                    <div style={{ fontSize:24, fontWeight:900, color:gc, fontFamily:"'Poller One',cursive" }}>${currentPrice.toLocaleString("es-CL")}</div>
                   </div>
 
                   <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 14px", border:`1px solid ${gc}44`, flex:1, overflow:"hidden", display:"flex", flexDirection:"column", minHeight:0 }}>
@@ -810,16 +936,12 @@ export default function BingoAdmin() {
                 </div>
 
                 <div className="viz-col-right" style={{ display:"flex", flexDirection:"column", gap:8, overflow:"hidden", minWidth:0 }}>
-                  <div className="viz-stats" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, flexShrink:0 }}>
-                    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"8px 14px", border:`1px solid ${gc}44`, textAlign:"center" }}>
-                      <div style={{ fontSize:36, fontWeight:900, color:gc, lineHeight:1, fontFamily:"'Poller One',cursive" }}>{cards.filter(c => c.paid && c.gameId === activeGame.id).length}</div>
-                      <div style={{ fontSize:10, color:"#94a3b8", marginTop:2, fontWeight:600, letterSpacing:1 }}>JUGADORES</div>
-                    </div>
-                    <div style={{ background:"#1a1d2b", borderRadius:12, padding:"8px 14px", border:"1px solid #16a34a44", textAlign:"center" }}>
-                      <div style={{ fontSize:30, fontWeight:900, color:"#16a34a", lineHeight:1.2 }}>${Math.floor(totalRecaudado/1000)}K</div>
-                      <div style={{ fontSize:10, color:"#94a3b8", marginTop:2, fontWeight:600, letterSpacing:1 }}>RECAUDADO</div>
-                    </div>
-                  </div>
+                  <div className="viz-stats" style={{ display:"grid", gridTemplateColumns:"1fr", gap:8, flexShrink:0 }}>
+  <div style={{ background:"#1a1d2b", borderRadius:12, padding:"8px 14px", border:`1px solid ${gc}44`, textAlign:"center" }}>
+    <div style={{ fontSize:36, fontWeight:900, color:gc, lineHeight:1, fontFamily:"'Poller One',cursive" }}>{cards.filter(c => c.paid && c.gameId === activeGame.id).length}</div>
+    <div style={{ fontSize:10, color:"#94a3b8", marginTop:2, fontWeight:600, letterSpacing:1 }}>JUGADORES</div>
+  </div>
+</div>
 
                   <div style={{ background:"#1a1d2b", borderRadius:12, padding:"10px 16px", border:`1px solid ${gc}44`, flexShrink:0 }}>
                     <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
