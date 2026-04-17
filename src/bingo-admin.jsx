@@ -512,11 +512,11 @@ setIsAdmin(true);
             @media (min-width: 769px) {
   .panel-inferior-pc {
     display: grid;
-    grid-template-columns: 220px 1fr 220px;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 10px;
     flex: 1;
     min-height: 0;
-    overflow: hidden;
+    overflow: visible;
   }
 }
             @media (max-width: 768px) {
@@ -602,7 +602,7 @@ setIsAdmin(true);
             </div>
 
             {/* ZONA 2 — Último número */}
-            <div className="zona-ultimo" style={{ background:gc, borderRadius:14, padding:12, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", border:`4px solid #fff`, boxShadow:`0 0 30px ${gc}, 0 0 60px ${gc}88, inset 0 0 20px rgba(255,255,255,0.15)`, transform:lastDrawn ? "scale(1.04)" : "scale(1)", transition:"all 0.3s ease", flex:1, minHeight:0 }}>
+            <div className="zona-ultimo" style={{ background:gc, borderRadius:14, padding:12, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", border:`4px solid #fff`, boxShadow:`0 0 30px ${gc}, 0 0 60px ${gc}88, inset 0 0 20px rgba(255,255,255,0.15)`, transform:"scale(1)", transition:"all 0.3s ease", flex:1, minHeight:0 }}>
               {lastDrawn ? (
                 <>
                   <div style={{ fontSize:50, fontWeight:800, color:getTextColor(gc), marginBottom:2, fontFamily:"'Poller One',cursive" }}>{getLetterForNum(lastDrawn)}</div>
@@ -618,16 +618,16 @@ setIsAdmin(true);
               <div style={{ background:gc, borderRadius:8, padding:"3px 14px", fontSize:13, fontWeight:800, color:getTextColor(gc), letterSpacing:1 }}>BINGO</div>
 
               {/* Encabezados letras */}
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:4, width:"85%" }}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:4, width:160, maxWidth:"85%" }}>
                 {Object.keys(COLS).map((l, i) => (
                   <div key={l} style={{ aspectRatio:"1/1", borderRadius:6, background:BINGO_LETTER_COLORS[i], display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:800, color:"#fff" }}>{l}</div>
                 ))}
               </div>
 
               {/* Grid bingo grande */}
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:4, width:"85%", flex:1 }}>
+<div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:4, width:160, maxWidth:"85%" }}>
                 {activePattern.grid.flat().map((cell, i) => (
-                  <div key={i} style={{ aspectRatio:"1/1", borderRadius:6, background:cell ? gc : "rgba(255,255,255,0.07)", border:cell ? "none" : "1px solid rgba(255,255,255,0.1)", boxShadow:cell ? `0 0 8px ${gc}88` : "none" }} />
+                  <div key={i} style={{ height:24, borderRadius:6, background:cell ? gc : "rgba(255,255,255,0.07)", border:cell ? "none" : "1px solid rgba(255,255,255,0.1)", boxShadow:cell ? `0 0 8px ${gc}88` : "none" }} />
                 ))}
               </div>
 
