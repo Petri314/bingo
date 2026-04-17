@@ -600,9 +600,7 @@ setIsAdmin(true);
               {activePattern.binguito && (
                 <>
                   <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:4, width:160, maxWidth:"85%" }}>
-                {Object.keys(COLS).map((l, i) => (
-                  <div key={l} style={{ aspectRatio:"1/1", borderRadius:6, background:BINGO_LETTER_COLORS[i], display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:800, color:"#fff" }}>{l}</div>
-                ))}
+                
               </div>
                   <div style={{ display:"flex", alignItems:"center", gap:5 }}>
                     <div style={{ width:8, height:8, borderRadius:1, background:binguitoColor }} />
@@ -635,9 +633,7 @@ setIsAdmin(true);
 
               {/* Encabezados letras */}
               <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:4, width:160, maxWidth:"85%" }}>
-                {Object.keys(COLS).map((l, i) => (
-                  <div key={l} style={{ aspectRatio:"1/1", borderRadius:6, background:BINGO_LETTER_COLORS[i], display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:800, color:"#fff" }}>{l}</div>
-                ))}
+                
               </div>
 
               {/* Grid bingo grande */}
