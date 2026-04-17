@@ -50,6 +50,7 @@ export default function BingoAdmin() {
   const [showArrows, setShowArrows] = useState(false);
   const arrowTimeout = useRef(null);
   const [winnerPopup, setWinnerPopup]   = useState(null);
+  const [binguitos, setBinguitos] = useState([]);
   const [binguitoPopup, setBinguitoPopup] = useState(null);
   const [selectedWinner, setSelectedWinner] = useState(null);
   const [confirmAssign, setConfirmAssign] = useState(null);
@@ -83,7 +84,7 @@ const [currentPrice, setCurrentPrice] = useState(PRICE);
     if (!token) return;
     try {
       const payload = JSON.parse(atob(token.split(".")[1]));
-      if (payload.exp * 1000 > Date.now()) { setIsAdmin(true); } else { sessionStorage.removeItem("admin_token"); }
+      if (payload.exp * 1000 > Date.now()) { setIsAdmin(true); isAdminRef.current = true; } else { sessionStorage.removeItem("admin_token"); }
     } catch { sessionStorage.removeItem("admin_token"); }
   }, []);
 
@@ -110,8 +111,9 @@ const [currentPrice, setCurrentPrice] = useState(PRICE);
       });
       if (!res.ok) { setPwError(true); setTimeout(() => setPwError(false), 1500); return; }
       const { token } = await res.json();
-      sessionStorage.setItem("admin_token", token);
-      setIsAdmin(true); isAdminRef.current = true;
+sessionStorage.setItem("admin_token", token);
+isAdminRef.current = true;
+setIsAdmin(true);
       setShowLogin(false); setPwInput(""); setPwError(false);
     } catch (err) { console.error("Error de login:", err); setPwError(true); setTimeout(() => setPwError(false), 1500); }
   };
@@ -143,23 +145,22 @@ const [currentPrice, setCurrentPrice] = useState(PRICE);
   const speakNumber = (num) => {
     if (isMutedRef.current || !num) return;
     window.speechSynthesis.cancel();
-    const doSpeak = () => {
+    setTimeout(() => {
       const u = new SpeechSynthesisUtterance(`${getLetterForNum(num)}, ${num}`);
-      u.lang = "es-ES"; u.rate = 0.75; u.pitch = 1.1; u.volume = 1;
+      u.lang = "es-ES";
+      u.rate = 1.1;
+      u.pitch = 1.1;
+      u.volume = 1;
       const voices = window.speechSynthesis.getVoices();
       const preferred =
-        voices.find(v => v.name === "Google español") ||
-        voices.find(v => v.name === "Microsoft Laura - Spanish (Spain)") ||
         voices.find(v => v.lang === "es-ES" && !v.localService) ||
         voices.find(v => v.lang === "es-ES") ||
-        voices.find(v => v.lang?.startsWith("es")) ||
-        voices.find(v => v.lang?.startsWith("es-"));
+        voices.find(v => v.lang?.startsWith("es"));
       if (preferred) u.voice = preferred;
+      u.onstart = () => console.log("🔊 Hablando:", num);
+      u.onerror = (e) => console.error("🔊 Error:", e);
       window.speechSynthesis.speak(u);
-    };
-    if (window.speechSynthesis.getVoices().length === 0) {
-      window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.onvoiceschanged = null; doSpeak(); };
-    } else { doSpeak(); }
+    }, 150);
   };
 
   useEffect(() => {
@@ -223,7 +224,7 @@ const [currentPrice, setCurrentPrice] = useState(PRICE);
         setCountdownEndsAt(v.countdownEndsAt > Date.now() ? v.countdownEndsAt : null);
       }
       if (v.lastSpoken && v.lastSpokenAt && Date.now() - v.lastSpokenAt < 4000 && !isAdminRef.current) {
-        if (!isMutedRef.current) speakNumber(v.lastSpoken);
+        speakNumber(v.lastSpoken);
       }
       // Popup bingo
       if (v.currentWinner && v.currentWinner.ts && Date.now() - v.currentWinner.ts < 8000) {
@@ -239,7 +240,13 @@ const [currentPrice, setCurrentPrice] = useState(PRICE);
       }
     });
 
-    return () => { uC(); uD(); uW(); uS(); };
+    const uB = onValue(ref(db, DB_BINGUITOS), s => {
+  const v = s.val();
+  const all = v ? Object.values(v) : [];
+  setBinguitos(all.sort((a, b) => a.ts - b.ts));
+});
+
+    return () => { uC(); uD(); uW(); uS(); uB(); };
   }, []);
 
   const handleSelectGame = async (game) => {
@@ -323,7 +330,7 @@ const [currentPrice, setCurrentPrice] = useState(PRICE);
     await set(ref(db, DB_DRAWN), next.length ? Object.fromEntries(next.map((v, i) => [i, v])) : null);
 
     if (isMarking) {
-      if (!isMuted) speakNumber(n);
+      speakNumber(n);
       await update(ref(db, DB_STATE), { lastSpoken: n, lastSpokenAt: Date.now() });
 
       const soldCards = cards.filter(c => c.paid && c.gameId === activeGame.id);
@@ -1003,19 +1010,30 @@ const [currentPrice, setCurrentPrice] = useState(PRICE);
           {/* ══ TAB GANADORES ══ */}
           {tab === 3 && (
             <div>
-              {isAdmin && (
-                <div style={{ background:"#ffffff", borderRadius:13, padding:16, border:"2px solid #fde68a", marginBottom:22, boxShadow:"0 4px 6px -1px rgba(0,0,0,0.1)" }}>
-                  <h3 style={{ margin:"0 0 12px", fontSize:14, color:"#92400e" }}>Registrar ganador manualmente</h3>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
-                    <input placeholder="Nombre" value={winnerName} onChange={e => setWinnerName(e.target.value)} style={inpS} />
-                    <input placeholder="N° cartón" value={winnerCard} onChange={e => setWinnerCard(e.target.value)} style={inpS} />
-                  </div>
-                  <button onClick={addWinner} style={{...btnS("#f59e0b"), width:"100%", padding:"11px"}}>🏆 Registrar</button>
-                </div>
-              )}
-              {winners.length === 0
-                ? <div style={{ textAlign:"center", color:"#94a3b8", padding:40 }}>Sin ganadores</div>
-                : winners.map(w => {
+              {/* BINGUITOS */}
+{binguitos.length > 0 && (
+  <div style={{ marginBottom:16 }}>
+    <div style={{ fontSize:12, fontWeight:700, color:"#f59e0b", letterSpacing:2, marginBottom:8, paddingLeft:4 }}>BINGUITOS</div>
+    {binguitos.map(w => (
+      <div key={w.id || w.ts} style={{ background:"#ffffff", borderRadius:12, padding:"14px 16px", display:"flex", alignItems:"center", gap:12, border:"1px solid #fde68a", marginBottom:6, boxShadow:"0 1px 3px rgba(0,0,0,0.05)" }}>
+        <div style={{ fontSize:26 }}>⭐</div>
+        <div style={{ flex:1 }}>
+          <div style={{ fontWeight:700, fontSize:15, color:"#92400e" }}>{w.name}</div>
+          <div style={{ fontSize:12, color:"#64748b" }}>
+            Cartón #{w.card} · <span style={{ color:GAMES.find(g => g.id === w.gameId)?.color || "#64748b", fontWeight:700 }}>{w.game}</span> · {w.binguitoName} · {w.time}
+          </div>
+        </div>
+        {isAdmin && <button onClick={e => { e.stopPropagation(); remove(ref(db, `${DB_BINGUITOS}/${w.id || w.ts}`)); }} style={{ background:"none", border:"none", color:"#94a3b8", cursor:"pointer", fontSize:16 }}>✕</button>}
+      </div>
+    ))}
+  </div>
+)}
+
+{/* BINGOS */}
+<div style={{ fontSize:12, fontWeight:700, color:"#94a3b8", letterSpacing:2, marginBottom:8, paddingLeft:4 }}>BINGOS</div>
+{winners.length === 0
+  ? <div style={{ textAlign:"center", color:"#94a3b8", padding:40 }}>Sin ganadores</div>
+  : winners.map(w => {
                   const isExpanded = selectedWinner === (w.id || w.ts);
                   const winnerCardData = cards.find(c => c.cardNum === w.card && c.gameId === w.gameId);
                   const winnerPattern = PATTERNS.find(p => p.id === w.patternId) || activePattern;
