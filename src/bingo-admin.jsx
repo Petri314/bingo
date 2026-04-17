@@ -1104,14 +1104,36 @@ setIsAdmin(true);
                     if (e.key !== "Enter") return;
                     const val = e.target.value.trim();
                     if (!val) return;
+                    // Detectar rango tipo "18-20"
+                    const rangeMatch = val.match(/^(\d+)-(\d+)$/);
+                    if (rangeMatch) {
+                      const from = parseInt(rangeMatch[1]);
+                      const to = parseInt(rangeMatch[2]);
+                      if (from > to) { showToast("Rango inválido", "err"); return; }
+                      const nums = [];
+                      for (let i = from; i <= to; i++) nums.push(String(i).padStart(3, "0"));
+                      const espacioDisponible = confirmAssign.qty - confirmAssign.selected.length;
+                      if (nums.length > espacioDisponible) { showToast(`Solo puedes agregar ${espacioDisponible} más`, "err"); return; }
+                      let notFound = [];
+                      let newSelected = [...confirmAssign.selected];
+                      nums.forEach(padded => {
+                        const found = confirmAssign.available.find(c => !c.paid && c.cardNum === padded && !newSelected.includes(c.id));
+                        if (found) newSelected.push(found.id);
+                        else notFound.push(padded);
+                      });
+                      if (notFound.length > 0) showToast(`No encontrados: ${notFound.join(", ")}`, "err");
+                      setConfirmAssign(p => ({...p, selected:newSelected, nums:p.available.filter(x => newSelected.includes(x.id)).map(x => x.cardNum)}));
+                      e.target.value = "";
+                      return;
+                    }
+                    // Número individual
                     const padded = val.padStart(3, "0");
-                    const found = confirmAssign.available.filter(c => !c.paid && c.cardNum === padded);
-                    if (found.length === 0) { showToast(`Cartón ${padded} no encontrado`, "err"); return; }
-                    const alreadySel = confirmAssign.selected.includes(found[0].id);
-                    if (alreadySel) { showToast(`Cartón ${padded} ya seleccionado`, "err"); return; }
+                    const found = confirmAssign.available.find(c => !c.paid && c.cardNum === padded);
+                    if (!found) { showToast(`Cartón ${padded} no encontrado`, "err"); return; }
+                    if (confirmAssign.selected.includes(found.id)) { showToast(`Cartón ${padded} ya seleccionado`, "err"); return; }
                     if (confirmAssign.selected.length >= confirmAssign.qty) { showToast(`Máximo ${confirmAssign.qty} cartón${confirmAssign.qty > 1 ? "es" : ""}`, "err"); return; }
                     setConfirmAssign(p => {
-                      const newSelected = [...p.selected, found[0].id];
+                      const newSelected = [...p.selected, found.id];
                       return {...p, selected:newSelected, nums:p.available.filter(x => newSelected.includes(x.id)).map(x => x.cardNum)};
                     });
                     e.target.value = "";
