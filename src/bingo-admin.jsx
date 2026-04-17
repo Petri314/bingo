@@ -1086,7 +1086,7 @@ setIsAdmin(true);
       )}
 
       {confirmAssign && (
-        <div onClick={() => setConfirmAssign(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300, backdropFilter:"blur(4px)" }}>
+        <div onClick={() => setConfirmAssign(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"flex-start", justifyContent:"center", overflowY:"auto", zIndex:300, backdropFilter:"blur(4px)", paddingTop:16, paddingBottom:16 }}>
           <div onClick={e => e.stopPropagation()} style={{ background:"#fff", borderRadius:20, padding:28, width:"min(400px,92vw)", boxShadow:"0 20px 60px rgba(0,0,0,0.3)" }}>
             <div style={{ fontSize:32, textAlign:"center", marginBottom:8 }}>🎟️</div>
             <h3 style={{ textAlign:"center", margin:"0 0 20px", fontSize:18, color:"#1e293b" }}>Confirmar asignación</h3>
@@ -1101,7 +1101,7 @@ setIsAdmin(true);
               </div>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
                 <span style={{ color:"#64748b", fontSize:14 }}>Buscar y agregar</span>
-                <input placeholder="Ej: 045" style={{ background:"#f1f5f9", border:"1px solid #e2e8f0", borderRadius:8, padding:"6px 10px", fontSize:13, width:"60%", outline:"none", fontFamily:"sans-serif" }}
+                <input placeholder="Ej: 045" inputMode="numeric" pattern="[0-9]*" style={{ background:"#f1f5f9", border:"1px solid #e2e8f0", borderRadius:8, padding:"6px 10px", fontSize:13, width:"60%", outline:"none", fontFamily:"sans-serif" }}
                   onKeyDown={e => {
                     if (e.key !== "Enter") return;
                     const val = e.target.value.trim();
