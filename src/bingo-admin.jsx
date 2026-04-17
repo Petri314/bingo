@@ -1088,8 +1088,6 @@ setIsAdmin(true);
       {confirmAssign && (
         <div onClick={() => setConfirmAssign(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"flex-start", justifyContent:"center", overflowY:"auto", zIndex:300, backdropFilter:"blur(4px)", paddingTop:16, paddingBottom:16 }}>
           <div onClick={e => e.stopPropagation()} style={{ background:"#fff", borderRadius:20, padding:28, width:"min(400px,92vw)", boxShadow:"0 20px 60px rgba(0,0,0,0.3)" }}>
-            <div style={{ fontSize:32, textAlign:"center", marginBottom:8 }}>🎟️</div>
-            <h3 style={{ textAlign:"center", margin:"0 0 20px", fontSize:18, color:"#1e293b" }}>Confirmar asignación</h3>
             <div style={{ background:"#f8fafc", borderRadius:12, padding:16, marginBottom:20, border:"1px solid #e2e8f0" }}>
               <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
                 <span style={{ color:"#64748b", fontSize:14 }}>Nombre</span>
@@ -1195,7 +1193,7 @@ setIsAdmin(true);
         </div>
       )}
 
-      {toast && <div style={{ position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", background:toast.type === "err" ? "#ef4444" : "#10b981", color:"#fff", padding:"12px 24px", borderRadius:12, fontWeight:700, fontSize:14, zIndex:999, boxShadow:"0 10px 15px -3px rgba(0,0,0,0.1)", whiteSpace:"nowrap", fontFamily:"sans-serif" }}>{toast.msg}</div>}
+      {toast && <div style={{ position:"fixed", top:16, left:"50%", transform:"translateX(-50%)", background:toast.type === "err" ? "#ef4444" : "#10b981", color:"#fff", padding:"12px 24px", borderRadius:12, fontWeight:700, fontSize:14, zIndex:999, boxShadow:"0 10px 15px -3px rgba(0,0,0,0.1)", whiteSpace:"nowrap", fontFamily:"sans-serif" }}>{toast.msg}</div>}
 
       {showLogin && <LoginModal pwInput={pwInput} setPwInput={setPwInput} pwError={pwError} onLogin={handleLogin} onClose={() => { setShowLogin(false); setPwInput(""); setPwError(false); }} />}
       {showPatternModal && <PatternModal activePattern={activePattern} activeGame={activeGame} onSelect={handleSelectPattern} onClose={() => setShowPatternModal(false)} />}
