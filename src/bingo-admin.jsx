@@ -627,8 +627,8 @@ setIsAdmin(true);
             <div className="zona-ultimo" style={{ background:gc, borderRadius:14, padding:12, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", border:`4px solid #fff`, boxShadow:`0 0 30px ${gc}, 0 0 60px ${gc}88, inset 0 0 20px rgba(255,255,255,0.15)`, transform:"scale(1)", transition:"all 0.3s ease", flex:1, minHeight:0 }}>
               {lastDrawn ? (
                 <>
-                  <div style={{ fontSize:50, fontWeight:800, color:getTextColor(gc), marginBottom:2, fontFamily:"'Poller One',cursive" }}>{getLetterForNum(lastDrawn)}</div>
-                  <div style={{ fontSize:80, fontWeight:900, color:getTextColor(gc), lineHeight:1, fontFamily:"'Poller One',cursive" }} key={lastDrawn} className="num-pop">{lastDrawn}</div>
+                  <div style={{ fontSize:90, fontWeight:800, color:getTextColor(gc), marginBottom:2, fontFamily:"'Poller One',cursive" }}>{getLetterForNum(lastDrawn)}</div>
+                  <div style={{ fontSize:150, fontWeight:900, color:getTextColor(gc), lineHeight:1, fontFamily:"'Poller One',cursive" }} key={lastDrawn} className="num-pop">{lastDrawn}</div>
                 </>
               ) : (
                 <div style={{ fontSize:12, color:getTextColor(gc), textAlign:"center", fontWeight:600, lineHeight:1.7 }}>{isAdmin ? "Toca un\nnúmero" : "Esperando\nsorteo..."}</div>
