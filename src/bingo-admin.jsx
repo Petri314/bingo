@@ -421,18 +421,18 @@ setIsAdmin(true);
   <style>
     *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
     body{font-family:sans-serif;margin:0;margin-top:8mm;padding:2mm;box-sizing:border-box;}
-    .grid-container{display:grid;grid-template-columns:1fr 1fr;gap:0;width:fit-content;margin:0 auto;padding-top:25mm;}
-    .card-box{width:110mm;height:130mm;border:2px solid #000;padding:3mm;border-radius:8px;text-align:center;page-break-inside:avoid;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;background:#fff;margin-top:5mm;}
+    .grid-container{display:grid;grid-template-columns:1fr 1fr;gap:0;width:fit-content;margin:0 auto;margin-top:15mm;}
+    .card-box{width:110mm;height:130mm;border:2px solid #000;padding:3mm;border-radius:8px;text-align:center;page-break-inside:avoid;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;background:#fff;}
     .color-strip{height:5mm;width:100%;position:absolute;top:0;left:0;}
     .game-info{font-family:'Poller One',cursive;font-size:13px;font-weight:900;margin-top:2mm;margin-bottom:2mm;color:#000;border-top:1px dashed #aaa;border-bottom:1px dashed #aaa;padding:2mm 0;}
     .bingo-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:0;height:100mm;margin-top:2mm;}
     .bingo-cell{display:flex;align-items:center;justify-content:center;border-radius:2px;font-family:'Poller One',cursive;font-size:45px;font-weight:400;border:1px solid #bbb;height:85%;width:85%;margin:auto;}
     .footer-info{font-size:8px;color:#000;margin-top:3mm;border-top:1px dashed #000;padding-top:2mm;font-family:sans-serif;line-height:1.3;font-weight:600;}
     .no-print{text-align:center;margin-bottom:20px;}
-    @page{margin-top:20mm;margin-bottom:10mm;margin-left:5mm;margin-right:5mm;}@page{margin-top:35mm;}@media print{body{padding:0;margin:0;}.grid-container{padding-top:25mm;}.no-print{display:none;}}
+    @page{margin-top:20mm;margin-bottom:10mm;margin-left:5mm;margin-right:5mm;}@media print{body{padding:0;margin:0;}.no-print{display:none;}}
   </style></head><body>
   <div class="no-print"><h2>Cartones (${cardsToPrint.length})</h2><button onclick="window.print()" style="padding:10px 20px;font-size:16px;cursor:pointer;background:#4caf50;color:white;border:none;border-radius:5px;">🖨️ IMPRIMIR</button></div>
-  <div style="height:20mm;"></div><div class="grid-container">`;
+  <div class="grid-container">`;
 
   cardsToPrint.forEach(c => {
     const gc2 = c.gameId ? (GAMES.find(g => g.id === c.gameId)?.color || "#000") : "#000";
