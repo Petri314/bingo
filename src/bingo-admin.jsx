@@ -411,13 +411,10 @@ setIsAdmin(true);
 
   const handlePrintCards = async () => {
   const cardsToPrint = cards
-  .filter(c => c.grid && c.gameId === activeGame.id)
-  .sort((a, b) => a.cardNum.localeCompare(b.cardNum));
+    .filter(c => c.grid && c.gameId === activeGame.id)
+    .sort((a, b) => a.cardNum.localeCompare(b.cardNum));
   if (!cardsToPrint.length) return showToast("No hay cartones para imprimir", "err");
-  console.log("Total cartones a imprimir:", cardsToPrint.length);
-  console.log("Último cartón:", cardsToPrint[cardsToPrint.length - 1]?.cardNum);
 
-  const printWindow = window.open('', '_blank');
   let html = `<!DOCTYPE html><html><head><title>Imprimir Cartones</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -425,24 +422,23 @@ setIsAdmin(true);
   <style>
     *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
     body{font-family:sans-serif;margin:0;padding:0;box-sizing:border-box;}
-    .grid-container{display:grid;grid-template-columns:1fr 1fr;gap:4mm;width:fit-content;margin:0 auto;padding:4mm;padding-top:50mm;}
+    .grid-container{display:grid;grid-template-columns:1fr 1fr;gap:2mm;width:fit-content;margin:0 auto;padding-top:15mm;}
     .card-box{width:110mm;height:128mm;border:2px solid #000;padding:3mm;border-radius:8px;text-align:center;page-break-inside:avoid;break-inside:avoid;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;background:#fff;}
     .color-strip{height:5mm;width:100%;position:absolute;top:0;left:0;}
     .game-info{font-family:'Poller One',cursive;font-size:13px;font-weight:900;margin-top:2mm;margin-bottom:2mm;color:#000;border-top:1px dashed #aaa;border-bottom:1px dashed #aaa;padding:2mm 0;}
     .bingo-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:0;height:100mm;margin-top:2mm;}
     .bingo-cell{display:flex;align-items:center;justify-content:center;border-radius:2px;font-family:'Poller One',cursive;font-size:45px;font-weight:400;border:1px solid #bbb;height:85%;width:85%;margin:auto;}
     .footer-info{font-size:8px;color:#000;margin-top:3mm;border-top:1px dashed #000;padding-top:2mm;font-family:sans-serif;line-height:1.3;font-weight:600;}
-    .no-print{text-align:center;margin-bottom:20px;padding:10px;}
-    @page{margin-top:40mm !important;margin-bottom:10mm !important;margin-left:5mm !important;margin-right:5mm !important;}@media print{body{padding:0 !important;margin:0 !important;}.no-print{display:none;}.grid-container{padding:0;gap:2mm;}}
+    .no-print{text-align:center;padding:10px;}
+    @page{margin:15mm 5mm;}
+    @media print{.no-print{display:none;}}
   </style></head><body>
-  <div style="height:20mm;"></div>
-  <div class="no-print"><h2>Cartones (${cardsToPrint.length})</h2><button onclick="window.print()" style="padding:10px 20px;font-size:16px;cursor:pointer;background:#4caf50;color:white;border:none;border-radius:5px;">🖨️ IMPRIMIR</button></div>
-  `;
+  <div class="no-print"><h2>Cartones (${cardsToPrint.length})</h2><button onclick="window.print()" style="padding:10px 20px;font-size:16px;cursor:pointer;background:#4caf50;color:white;border:none;border-radius:5px;">🖨️ IMPRIMIR</button></div>`;
 
   cardsToPrint.forEach((c, idx) => {
     if (idx % 4 === 0) {
       if (idx > 0) html += `</div>`;
-      html += `<div class="grid-container" style="page-break-before:${idx === 0 ? 'auto' : 'always'};padding-top:15mm;">`;
+      html += `<div class="grid-container" style="page-break-before:${idx === 0 ? 'auto' : 'always'};">`;
     }
     const gc2 = c.gameId ? (GAMES.find(g => g.id === c.gameId)?.color || "#000") : "#000";
     const gn = c.gameId ? c.gameId.replace('j', '') : '?';
@@ -455,19 +451,13 @@ setIsAdmin(true);
     <div class="footer-info">BINGO SOLIDARIO CRISTIAN HIDALGO<br>ESCANEA EL QR DEL CENTRO PARA VER INFO DEL JUEGO</div></div>`;
   });
 
-  html += `</div>
-  <script>
-    document.fonts.ready.then(() => {
-      window.dispatchEvent(new Event('fonts-loaded'));
-    });
-  </script>
-  </body></html>`;
+  html += `</div><div style="height:1px;"></div></body></html>`;
+
+  const printWindow = window.open('', '_blank');
   printWindow.document.write(html);
   printWindow.document.close();
-  printWindow.onload = () => {
-    printWindow.focus();
-  };
 };
+
 
   const filteredCards = useMemo(() =>
     cards.filter(c =>
