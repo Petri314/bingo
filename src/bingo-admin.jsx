@@ -375,10 +375,14 @@ setIsAdmin(true);
       // entraba un segundo ganador.
       const estadoSnap = await new Promise(res => onValue(ref(db, DB_STATE), res, { onlyOnce: true }));
       const estado = estadoSnap.val() || {};
-      // Identifica la ronda en curso. Si el estado no la trae todavía (por ejemplo, base
-      // de datos de un evento anterior), se crea ahora para que el ganador quede atado a ella.
-      const roundId = estado.roundId ?? Date.now();
-      if (estado.roundId == null) await update(ref(db, DB_STATE), { roundId });
+      // Identifica la ronda en curso. Si el estado no la trae todavía (por ejemplo, base de
+      // datos de un evento anterior), se crea con una transacción para que, si dos admins
+      // empiezan a la vez, ambos queden en la MISMA ronda y no se anoten dos ganadores.
+      let roundId = estado.roundId;
+      if (roundId == null) {
+        const resultado = await runTransaction(ref(db, `${DB_STATE}/roundId`), (actual) => actual ?? Date.now());
+        roundId = resultado.snapshot.val() ?? Date.now();
+      }
 
       // ── Detectar ganador BINGO ────────────────────────────────────────────
       if (!estado.alreadyWon) {
