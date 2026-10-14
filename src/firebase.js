@@ -13,6 +13,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const PIN = "4915"; 
 
-export { db, PIN };
+// El PIN del admin NO va aquí: se valida en el servidor (api/login.js) contra la
+// variable de entorno ADMIN_PIN, y en Vercel se configura en Settings → Environment Variables.
+export { db };
