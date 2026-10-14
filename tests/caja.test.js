@@ -12,6 +12,7 @@ import assert from "node:assert/strict";
 import {
   EFECTIVO, TRANSFERENCIA, fmt, fmtSigno, diaLocal, esAlDebe, saldoCuenta, cuentasConSaldo,
   totalesCaja, arqueo, porProducto, porVendedor, cartonesEnCaja, resumenTexto,
+  estadoVenta, agruparPorDia, textoDia,
 } from "../src/caja.js";
 
 const BEBIDA = { id: "p1", nombre: "Bebida", precio: 1500 };
@@ -205,6 +206,64 @@ test("el resumen de texto trae los números que se van a copiar", () => {
   assert.match(txt, /Mesa 4/);
   assert.match(txt, /Inicial \(cambio\)/);
   assert.match(txt, /Cartones entregados/);
+});
+
+test("estadoVenta: guía el orden de la venta (elegir → cómo paga → cobrar)", () => {
+  const bebida = { productoId: "p1", nombre: "Bebida", precioUnitario: 1500, cantidad: 2, tipo: "producto" };
+
+  const vacio = estadoVenta({ lineas: [] });
+  assert.equal(vacio.paso, 1, "sin productos todavía no hay nada que cobrar");
+  assert.equal(vacio.puedeCobrar, false);
+  assert.match(vacio.texto, /Toca lo que se lleva/);
+
+  const conCosas = estadoVenta({ lineas: [bebida] });
+  assert.equal(conCosas.paso, 3);
+  assert.equal(conCosas.total, 3000);
+  assert.equal(conCosas.puedeCobrar, true);
+
+  const alDebeSinNombre = estadoVenta({ lineas: [bebida], medio: "debe" });
+  assert.equal(alDebeSinNombre.paso, 2, "al debe sin nombre no deja cobrar: falta el paso 2");
+  assert.equal(alDebeSinNombre.puedeCobrar, false);
+  assert.match(alDebeSinNombre.texto, /nombre/i);
+
+  assert.equal(estadoVenta({ lineas: [bebida], medio: "debe", cuentaNombre: "Mesa 4" }).puedeCobrar, true);
+  assert.equal(estadoVenta({ lineas: [bebida], medio: "debe", cuentaId: "c1" }).puedeCobrar, true);
+
+  const gratis = estadoVenta({ lineas: [{ ...bebida, precioUnitario: 0 }] });
+  assert.equal(gratis.puedeCobrar, false, "un total en $0 no se cobra");
+  assert.match(gratis.texto, /\$0/);
+});
+
+test("agruparPorDia: separa las jornadas y suma entradas, salidas y al debe", () => {
+  const ahora = Date.now();
+  const hoy = diaLocal(ahora);
+  const ayer = diaLocal(ahora - 86400000);
+  const filas = [
+    { tipoMov: "venta", id: "v1", ts: ahora, total: 3000, medio: EFECTIVO },
+    { tipoMov: "venta", id: "v2", ts: ahora, total: 6000, cuentaId: "c1" },
+    { tipoMov: "pago", id: "g1", ts: ahora, monto: 2000, cuentaId: "c1" },
+    { tipoMov: "gasto", id: "s1", ts: ahora, monto: 1000, concepto: "Hielo" },
+    { tipoMov: "venta", id: "v3", ts: ahora - 86400000, dia: ayer, total: 1500 },
+  ];
+  const grupos = agruparPorDia(filas);
+
+  assert.equal(grupos.length, 2);
+  assert.equal(grupos[0].dia, hoy, "la jornada más reciente va primero");
+  assert.equal(grupos[0].entradas, 5000, "la venta al contado y el pago entran");
+  assert.equal(grupos[0].salidas, 1000, "el gasto sale");
+  assert.equal(grupos[0].alDebe, 6000, "lo que quedó al debe ese día");
+  assert.equal(grupos[0].filas.length, 4);
+  assert.equal(grupos[0].filas[0].ts >= grupos[0].filas[3].ts, true, "las filas van de la más nueva a la más vieja");
+  assert.equal(grupos[1].dia, ayer);
+  assert.equal(grupos[1].entradas, 1500);
+  assert.equal(grupos[1].alDebe, 0);
+});
+
+test("textoDia arma el encabezado de la jornada", () => {
+  const txt = textoDia("2026-10-14");
+  assert.match(txt, /14/);
+  assert.match(txt, /octubre/i);
+  assert.equal(textoDia(""), "", "sin día no inventa texto");
 });
 
 test("esAlDebe distingue una venta al contado de una anotada en una cuenta", () => {

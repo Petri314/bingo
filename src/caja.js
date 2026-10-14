@@ -216,6 +216,50 @@ export function cartonesEnCaja(ventas) {
   return { cantidad: sumar(lineas, (v) => v.cantidad), total: sumar(lineas), cobrado: sumar(lineas.filter((v) => !v.cuentaId)), alDebe: sumar(lineas.filter(esAlDebe)) };
 }
 
+// Texto de una jornada para los encabezados del historial: "2026-10-14" → "mié 14 de octubre".
+export function textoDia(dia) {
+  const [y, m, d] = String(dia || "").split("-").map(Number);
+  if (!y || !m || !d) return String(dia || "");
+  return new Date(y, m - 1, d).toLocaleDateString("es-CL", { weekday:"short", day:"2-digit", month:"long" });
+}
+
+// Estado del flujo de venta: en qué paso va quien vende y si ya puede cobrar.
+//   1 → todavía no eligió nada ("toca lo que se lleva")
+//   2 → eligió cosas, pero falta decidir cómo paga (o a nombre de quién queda al debe)
+//   3 → puede cobrar / anotar al debe
+// Sirve para que la pantalla muestre siempre el paso en curso y no haya que adivinar
+// que primero van los productos y después el cobro.
+export function estadoVenta({ lineas = [], medio = EFECTIVO, cuentaId = null, cuentaNombre = "" } = {}) {
+  const total = sumar(lineas, (l) => (Number(l.cantidad) || 0) * (Number(l.precioUnitario) || 0));
+  if (!lineas.length) return { paso:1, total:0, puedeCobrar:false, texto:"Toca lo que se lleva el cliente" };
+  if (total <= 0) return { paso:3, total, puedeCobrar:false, texto:"El total está en $0: revisa el precio del producto" };
+  if (medio === "debe" && !cuentaId && !String(cuentaNombre || "").trim()) {
+    return { paso:2, total, puedeCobrar:false, texto:"Escribe a nombre de quién queda la deuda" };
+  }
+  return { paso:3, total, puedeCobrar:true, texto:"" };
+}
+
+// Historial agrupado por jornada: entradas (ventas cobradas y pagos), salidas (gastos) y
+// lo que quedó al debe ese día. Sirve para leer el detalle de corrido, día por día.
+// Cada fila trae `tipoMov` = "venta" | "pago" | "gasto" (así el campo `tipo` de una venta
+// puede seguir diciendo si era un producto o un cartón).
+export function agruparPorDia(filas = []) {
+  const mapa = new Map();
+  for (const f of filas) {
+    const dia = f.dia || diaLocal(f.ts);
+    if (!mapa.has(dia)) mapa.set(dia, { dia, filas:[], entradas:0, salidas:0, alDebe:0 });
+    const grupo = mapa.get(dia);
+    grupo.filas.push(f);
+    const monto = Math.round(Number(f.total !== undefined && f.total !== null ? f.total : f.monto) || 0);
+    if (f.tipoMov === "gasto") grupo.salidas += monto;
+    else if (f.tipoMov === "venta" && f.cuentaId) grupo.alDebe += monto;
+    else grupo.entradas += monto;
+  }
+  return [...mapa.values()]
+    .map((g) => ({ ...g, filas: g.filas.sort((a, b) => (b.ts || 0) - (a.ts || 0)) }))
+    .sort((a, b) => (a.dia < b.dia ? 1 : -1));
+}
+
 // Resumen en texto plano para copiar y pegar (WhatsApp).
 export function resumenTexto(datos, { titulo = "BINGO SOLIDARIO — CAJA", cartonesEntregados = null } = {}) {
   const t = totalesCaja(datos);

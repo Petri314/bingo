@@ -140,24 +140,36 @@ reproduce el bug (con el criterio viejo se anotaban 4 ganadores) y verifica el a
 Pestaña nueva **💰 Caja**. No hace falta saber de antemano qué se va a vender: el catálogo
 (Productos) se arma la misma noche con nombre, precio y categoría.
 
-### Cómo se usa durante el evento
+### Cómo se usa durante el evento (todo en una sola pantalla)
 1. Cada voluntario abre el panel en su celular con el PIN y escribe su nombre (queda en
    `localStorage.bingo_vendedor`): cada registro guarda quién lo hizo.
-2. **Vender**: se tocan los productos que se lleva el cliente (se arma un ticket), se elige
-   💵 Efectivo / 🏦 Transferencia / 📝 Al debe y se cobra. Hay un botón 🎟️ Cartón al precio
-   activo para los cartones que se pagan por la caja.
-3. **Al debe**: quien pide hartas cosas —y cartones— y paga después con una sola
-   transferencia queda en una cuenta con su nombre. En **Cuentas** se ve el saldo, se
-   agregan más ítems y se registra el pago (parcial o total). El saldo se calcula siempre
-   (ítems − pagos): no hay estado guardado que se pueda desincronizar.
-4. **Movimientos**: todo el día en una lista (ventas, pagos y gastos). Tocar un registro
-   abre la corrección (cantidad, precio, medio) o el borrado.
-5. **Gastos**: salidas de dinero (hielo, insumos, vueltos), en efectivo o transferencia.
-6. **Cierre**: efectivo inicial de cambio; efectivo esperado = inicial + ventas y pagos en
-   efectivo − gastos en efectivo; efectivo contado y la diferencia (sobra/falta). El arqueo
-   se puede guardar con fecha, quién lo hizo y el desglose completo.
-7. **Resumen**: desglose por producto y por vendedor, más un texto listo para copiar y
-   pegar en WhatsApp.
+2. **Paso 1 · Toca lo que se lleva el cliente**: el catálogo está a la vista; cada toque
+   suma al ticket y debajo se ve el detalle de lo elegido con el total. Hay un botón 🎟️
+   Cartón al precio activo para los cartones que se cobran por la caja.
+3. **Paso 2 · ¿Cómo paga?**: 💵 Efectivo, 🏦 Transferencia o 📝 Al debe con el nombre.
+   Mientras no haya productos elegidos estos botones están bloqueados y el paso avisa
+   “primero elige lo que se lleva”: así el orden de la venta se ve, no hay que adivinarlo.
+4. **Paso 3 · Cobrar**: un botón grande que dice el monto y el medio (“Cobrar $3.000 en
+   transferencia”, “Anotar $3.000 al debe de Mesa 4”).
+5. **📝 Quién debe**: siempre a la vista, con cada cuenta **desplegada** (los ítems, la hora
+   y quién los anotó, cuánto pagó y el saldo). Se cobra con un toque — “Ya pagó $X
+   (efectivo)” — o con “Otro monto” para pagos parciales.
+6. **📋 Historial**: todo de corrido, con hora, medio de pago y quién, agrupado por jornada
+   con los subtotales de cada día (entró / salió / al debe). Cada fila trae ✎ para corregir
+   (cantidad, precio, medio) y ✕ para borrar; el detalle se ve sin abrir nada.
+7. Abajo, cuatro bloques plegables que muestran su resumen en el título: **Productos**
+   (catálogo), **Gastos**, **Cierre de caja (arqueo)** y **Resumen para enviar**.
+   - *Cierre*: efectivo inicial de cambio; efectivo esperado = inicial + ventas y pagos en
+     efectivo − gastos en efectivo; efectivo contado y la diferencia (sobra/falta). El
+     arqueo se puede guardar con fecha, quién lo hizo y el desglose completo, y hay una
+     tabla por vendedor para cuadrar cada uno.
+   - *Resumen*: desglose por producto más un texto listo para copiar y pegar en WhatsApp.
+
+Criterio de diseño (porque la primera versión resultó confusa): el detalle de la venta, las
+cuentas al debe y el historial van **siempre desplegados**; lo único que se pliega son los
+bloques de administración, y aun así cada título muestra su dato clave (cuántos productos a
+la venta, cuánto se gastó, cuánto efectivo se espera). El flujo de venta va numerado en
+pantalla para que no haya que recordar el orden.
 
 ### Dónde queda cada dato (Firebase)
 | Nodo | Contenido |
@@ -187,4 +199,5 @@ vez desde sus celulares no chocan entre sí.
 - `src/components/CajaPanel.jsx`: la interfaz de la pestaña.
 - `tests/caja.test.js`: cubre, entre otros, el caso real del evento — 4 bebidas y 3 cartones
   al debe, pagados después con una sola transferencia —, el pago parcial, el que pagó de
-  más, los gastos según su medio de pago y la diferencia del arqueo.
+  más, los gastos según su medio de pago, la diferencia del arqueo, y el flujo de la venta
+  (`estadoVenta`) y el agrupado del historial por jornada (`agruparPorDia`).
