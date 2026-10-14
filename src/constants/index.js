@@ -6,6 +6,32 @@ export const DB_DRAWN   = "bingo_drawn";
 export const DB_WINNERS = "bingo_winners";
 export const DB_STATE   = "bingo_state";
 
+// ── Caja del evento (bebidas, comida, cartones que se cobran en caja, etc.) ──
+// El catálogo es configurable: se arma la misma noche, así que no importa no saber
+// todavía qué se va a vender.
+export const DB_PRODUCTOS = "bingo_productos";   // catálogo: { id, nombre, precio, categoria, activo, orden }
+export const DB_VENTAS    = "bingo_ventas";      // todas las líneas vendidas (contado o al debe)
+export const DB_CUENTAS   = "bingo_cuentas";     // cuentas "al debe": { id, nombre, ts, vendedor }
+export const DB_PAGOS     = "bingo_pagos";      // pagos que van saldando una cuenta
+export const DB_GASTOS    = "bingo_gastos";     // salidas de dinero (compras, vueltos mal dados, etc.)
+export const DB_CIERRES   = "bingo_cierres";    // arqueos guardados (esperado vs contado)
+export const DB_CAJA      = "bingo_caja";       // config: { efectivoInicial }
+
+export const CATEGORIAS = [
+  { id: "bebida",  nombre: "Bebida",  emoji: "🥤" },
+  { id: "comida",  nombre: "Comida",  emoji: "🍔" },
+  { id: "dulce",   nombre: "Dulce",   emoji: "🍰" },
+  { id: "carton",  nombre: "Cartón",  emoji: "🎟️" },
+  { id: "otro",    nombre: "Otro",    emoji: "📦" },
+];
+
+// Nombres sugeridos al crear el catálogo (solo el nombre: el precio lo pones tú,
+// porque cada evento lo fija distinto).
+export const SUGERENCIAS_PRODUCTO = [
+  "Bebida", "Jugo", "Café", "Té", "Agua", "Comida", "Completo", "Empanada",
+  "Sopaipilla", "Choripán", "Kuchen", "Dulce", "Galleta", "Helado", "Papas fritas",
+];
+
 export const GAMES = [
   { id: "j1",  name: "Juego 1",  color: "#FF0000" },
   { id: "j2",  name: "Juego 2",  color: "#00CFCF" },
@@ -295,4 +321,4 @@ export const PATTERNS = [
 
 export const BINGO_LETTER_COLORS = ['#ef4444','#3b82f6','#f59e0b','#22c55e','#a855f7'];
 
-export const TABS = ["🎟️ Cartones","📋 Información","🎱 Sorteo","🏆 Ganadores"];
+export const TABS = ["🎟️ Cartones","📋 Información","🎱 Sorteo","🏆 Ganadores","💰 Caja"];

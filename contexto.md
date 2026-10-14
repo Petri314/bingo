@@ -26,13 +26,18 @@ proyecto/
 │   │   ├── CardGrid.jsx      ✅ Separado (exporta CardGrid default + CardGridMemo named)
 │   │   ├── GameModal.jsx     ✅ Separado
 │   │   ├── PatternModal.jsx  ✅ Separado
-│   │   └── WinnerPopup.jsx   ✅ Separado
+│   │   ├── WinnerPopup.jsx   ✅ Separado
+│   │   └── CajaPanel.jsx     💰 Pestaña de caja (ventas, cuentas al debe, gastos, cierre)
 │   ├── constants/
 │   │   └── index.js          ✅ Constantes globales separadas
-│   ├── utils.js              ✅ Funciones helpers separadas
+│   ├── utils.js              ✅ Funciones helpers separadas (cartones y ganadores)
+│   ├── caja.js               💰 Lógica pura de la caja (totales, arqueo, resumen)
 │   ├── bingo-admin.jsx       ✅ Componente principal (refactor completo)
 │   ├── firebase.js           ✅ Configuración Firebase
 │   └── main.jsx              ✅ Entry point
+├── tests/
+│   ├── ganadores.test.js     ✅ Un ganador por juego y ronda
+│   └── caja.test.js          💰 Caja: efectivo/transferencia, al debe, arqueo
 ├── public/
 │   └── premios/              🖼️ Imágenes de premios por juego
 ├── .env.local                ✅ Variables de entorno locales (en .gitignore)
@@ -86,7 +91,11 @@ proyecto/
 ### 🐛 Bugs / lógica (pendiente revisar)
 - [ ] Patrones solo verifican una orientación fija
   - Ej: línea horizontal solo gana en fila 1, no en cualquier fila
-- [ ] IDs generados con Date.now() + i*10 — posible colisión con múltiples admins simultáneos
+- [ ] Cartones: IDs generados con Date.now() + i*10 — posible colisión con múltiples admins
+  simultáneos. La caja ya usa `push()` (clave generada por Firebase), que es lo correcto:
+  conviene migrar la generación de cartones al mismo criterio.
+- [ ] Los cartones se cuentan como recaudados al marcarlos vendidos (entregados), aunque se
+  paguen después. La plata cobrada sí queda exacta en la pestaña Caja.
 
 ## Datos del juego
 - 12 juegos con colores distintos (j1 al j12)
@@ -100,6 +109,8 @@ proyecto/
 - El countdown usa timestamp absoluto (countdownEndsAt) para sincronizar todos los clientes
 - La detección de ganadores usa runTransaction para evitar condiciones de carrera
 - Las imágenes de premios van en /public/premios/j1.png ... j12.png (y versión mobile)
+- El panel tiene 5 pestañas: Cartones, Información, Sorteo, Ganadores y Caja (💰). La caja
+  pide PIN de admin y el nombre del voluntario que vende (guardado en el celular).
 - `import { PIN } from "./firebase.js"` fue eliminado de bingo-admin.jsx (PIN migró al servidor)
 
 ## Ganadores: un solo ganador por juego (corregido)
@@ -123,3 +134,57 @@ Ahora funciona así:
 
 Tests: `npm test` (usa `node --test`, sin dependencias extra). `tests/ganadores.test.js`
 reproduce el bug (con el criterio viejo se anotaban 4 ganadores) y verifica el arreglo.
+
+## Caja del evento (bebida, comida y todo lo que entra)
+
+Pestaña nueva **💰 Caja**. No hace falta saber de antemano qué se va a vender: el catálogo
+(Productos) se arma la misma noche con nombre, precio y categoría.
+
+### Cómo se usa durante el evento
+1. Cada voluntario abre el panel en su celular con el PIN y escribe su nombre (queda en
+   `localStorage.bingo_vendedor`): cada registro guarda quién lo hizo.
+2. **Vender**: se tocan los productos que se lleva el cliente (se arma un ticket), se elige
+   💵 Efectivo / 🏦 Transferencia / 📝 Al debe y se cobra. Hay un botón 🎟️ Cartón al precio
+   activo para los cartones que se pagan por la caja.
+3. **Al debe**: quien pide hartas cosas —y cartones— y paga después con una sola
+   transferencia queda en una cuenta con su nombre. En **Cuentas** se ve el saldo, se
+   agregan más ítems y se registra el pago (parcial o total). El saldo se calcula siempre
+   (ítems − pagos): no hay estado guardado que se pueda desincronizar.
+4. **Movimientos**: todo el día en una lista (ventas, pagos y gastos). Tocar un registro
+   abre la corrección (cantidad, precio, medio) o el borrado.
+5. **Gastos**: salidas de dinero (hielo, insumos, vueltos), en efectivo o transferencia.
+6. **Cierre**: efectivo inicial de cambio; efectivo esperado = inicial + ventas y pagos en
+   efectivo − gastos en efectivo; efectivo contado y la diferencia (sobra/falta). El arqueo
+   se puede guardar con fecha, quién lo hizo y el desglose completo.
+7. **Resumen**: desglose por producto y por vendedor, más un texto listo para copiar y
+   pegar en WhatsApp.
+
+### Dónde queda cada dato (Firebase)
+| Nodo | Contenido |
+|---|---|
+| `bingo_productos` | catálogo: nombre, precio, categoría, activo |
+| `bingo_ventas` | una línea por ítem; `medio` efectivo/transferencia, o `cuentaId` si quedó al debe |
+| `bingo_cuentas` | cuentas al debe (nombre de quien debe) |
+| `bingo_pagos` | pagos que van saldando una cuenta |
+| `bingo_gastos` | salidas de dinero |
+| `bingo_cierres` | arqueos guardados (snapshot del momento) |
+| `bingo_caja/efectivoInicial` | el cambio con que parte la caja |
+
+Las claves se generan con `push()` (las crea Firebase), así dos voluntarios vendiendo a la
+vez desde sus celulares no chocan entre sí.
+
+### Ojo con los cartones (para no contar dos veces)
+- La pestaña **Cartones** cuenta cartones **entregados** (devengado): controla qué cartón
+  tiene cada persona.
+- La pestaña **Caja** cuenta la **plata que entra**, incluidos los cartones que se cobran
+  por la caja (botón 🎟️ Cartón).
+- Por eso los dos totales no se suman: en la Caja los cartones entregados se muestran solo
+  como referencia.
+
+### Lógica pura y tests
+- `src/caja.js`: totales (efectivo y transferencia separados), saldos de cuentas al debe,
+  arqueo, desglose por producto y por vendedor, texto del resumen.
+- `src/components/CajaPanel.jsx`: la interfaz de la pestaña.
+- `tests/caja.test.js`: cubre, entre otros, el caso real del evento — 4 bebidas y 3 cartones
+  al debe, pagados después con una sola transferencia —, el pago parcial, el que pagó de
+  más, los gastos según su medio de pago y la diferencia del arqueo.

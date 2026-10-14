@@ -5,10 +5,13 @@ import GameModal from "./components/GameModal.jsx";
 import PatternModal from "./components/PatternModal.jsx";
 import WinnerPopup from "./components/WinnerPopup.jsx";
 import { CardGridMemo } from "./components/CardGrid.jsx";
+import CajaPanel from "./components/CajaPanel.jsx";
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { db } from "./firebase.js";
-import { ref, onValue, set, remove, update, runTransaction } from "firebase/database";
-import { COLS, TOTAL, PRICE, DB_CARDS, DB_DRAWN, DB_WINNERS, DB_STATE, GAMES, PATTERNS, BINGO_LETTER_COLORS, TABS } from "./constants/index.js";
+import { ref, onValue, set, remove, update, runTransaction, push, child } from "firebase/database";
+import { COLS, TOTAL, PRICE, DB_CARDS, DB_DRAWN, DB_WINNERS, DB_STATE, GAMES, PATTERNS, BINGO_LETTER_COLORS, TABS,
+  DB_PRODUCTOS, DB_VENTAS, DB_CUENTAS, DB_PAGOS, DB_GASTOS, DB_CIERRES, DB_CAJA } from "./constants/index.js";
+import { diaLocal, totalesCaja, cuentasConSaldo, fmt } from "./caja.js";
 
 const DB_BINGUITOS = "bingo_binguitos";
 
@@ -63,6 +66,17 @@ export default function BingoAdmin() {
   const [countdownInput, setCountdownInput] = useState("5");
   const [priceInput, setPriceInput] = useState(String(PRICE));
 const [currentPrice, setCurrentPrice] = useState(PRICE);
+
+  // ── Caja: bebida, comida, cartones cobrados en caja, cuentas al debe y gastos ──
+  const [productos, setProductos]       = useState([]);
+  const [ventas, setVentas]             = useState([]);
+  const [cuentasCaja, setCuentasCaja]   = useState([]);
+  const [pagos, setPagos]               = useState([]);
+  const [gastosCaja, setGastosCaja]     = useState([]);
+  const [cierres, setCierres]           = useState([]);
+  const [cajaConfig, setCajaConfig]     = useState({});
+  // Cada voluntario vende desde su celular: su nombre queda en el registro que hace.
+  const [vendedor, setVendedor]         = useState(() => localStorage.getItem("bingo_vendedor") || "");
 
   const [newSaleAnim, setNewSaleAnim] = useState(null);
   const prevSoldCount = useRef(0);
@@ -262,7 +276,16 @@ setIsAdmin(true);
   setBinguitos(all.sort((a, b) => a.ts - b.ts));
 });
 
-    return () => { uC(); uD(); uW(); uS(); uB(); };
+    // ── Caja ──
+    const uProd = onValue(ref(db, DB_PRODUCTOS), s => setProductos(s.val() ? Object.values(s.val()) : []));
+    const uVen  = onValue(ref(db, DB_VENTAS),    s => setVentas(s.val() ? Object.values(s.val()) : []));
+    const uCue  = onValue(ref(db, DB_CUENTAS),   s => setCuentasCaja(s.val() ? Object.values(s.val()) : []));
+    const uPag  = onValue(ref(db, DB_PAGOS),     s => setPagos(s.val() ? Object.values(s.val()) : []));
+    const uGas  = onValue(ref(db, DB_GASTOS),    s => setGastosCaja(s.val() ? Object.values(s.val()) : []));
+    const uCie  = onValue(ref(db, DB_CIERRES),   s => setCierres(s.val() ? Object.values(s.val()) : []));
+    const uCfg  = onValue(ref(db, DB_CAJA),      s => setCajaConfig(s.val() || {}));
+
+    return () => { uC(); uD(); uW(); uS(); uB(); uProd(); uVen(); uCue(); uPag(); uGas(); uCie(); uCfg(); };
   }, []);
 
   const handleSelectGame = async (game) => {
@@ -498,6 +521,80 @@ setIsAdmin(true);
 };
 
 
+  // ── Caja: handlers ──────────────────────────────────────────────────────────
+  // Las claves se generan con push() (no con Date.now()) para que dos voluntarios
+  // vendiendo al mismo tiempo desde sus celulares no choquen entre sí.
+  const cambiarVendedor = (nombre) => {
+    if (nombre) localStorage.setItem("bingo_vendedor", nombre);
+    else localStorage.removeItem("bingo_vendedor");
+    setVendedor(nombre);
+  };
+
+  const cajaAgregarProducto = async (prod) => {
+    const clave = push(child(ref(db), DB_PRODUCTOS)).key;
+    await set(ref(db, `${DB_PRODUCTOS}/${clave}`), { id:clave, activo:true, orden:Date.now(), ...prod });
+  };
+  const cajaEditarProducto = (id, cambios) => update(ref(db, `${DB_PRODUCTOS}/${id}`), cambios);
+  const cajaBorrarProducto = (id) => remove(ref(db, `${DB_PRODUCTOS}/${id}`));
+
+  const cajaCrearCuenta = async (nombre) => {
+    const clave = push(child(ref(db), DB_CUENTAS)).key;
+    await set(ref(db, `${DB_CUENTAS}/${clave}`), { id:clave, nombre, ts:Date.now(), vendedor: vendedor || "Sin nombre" });
+    return clave;
+  };
+
+  // Registra una venta completa (todas sus líneas de una sola vez). Si viene cuentaId,
+  // la plata queda "al debe" y se cobra después con un pago.
+  const cajaRegistrarVenta = async ({ lineas = [], medio = null, cuentaId = null }) => {
+    if (!lineas.length) return;
+    const ts = Date.now();
+    const dia = diaLocal(ts);
+    const updates = {};
+    lineas.forEach((l, i) => {
+      const clave = push(child(ref(db), DB_VENTAS)).key;
+      updates[`${DB_VENTAS}/${clave}`] = {
+        id:clave, ts: ts + i, dia,
+        nombre: l.nombre, productoId: l.productoId || null, tipo: l.tipo || "producto",
+        cantidad: l.cantidad, precioUnitario: l.precioUnitario, total: l.cantidad * l.precioUnitario,
+        medio: cuentaId ? null : medio, cuentaId: cuentaId || null,
+        vendedor: vendedor || "Sin nombre",
+      };
+    });
+    await update(ref(db), updates);
+  };
+
+  const cajaCorregirLinea = (id, cambios) => update(ref(db, `${DB_VENTAS}/${id}`), cambios);
+  const cajaBorrarLinea = (id) => remove(ref(db, `${DB_VENTAS}/${id}`));
+
+  const cajaRegistrarPago = async ({ cuentaId, monto, medio }) => {
+    const clave = push(child(ref(db), DB_PAGOS)).key;
+    await set(ref(db, `${DB_PAGOS}/${clave}`), { id:clave, cuentaId, monto, medio, ts:Date.now(), vendedor: vendedor || "Sin nombre" });
+  };
+  const cajaEditarPago = (id, cambios) => update(ref(db, `${DB_PAGOS}/${id}`), cambios);
+  const cajaBorrarPago = (id) => remove(ref(db, `${DB_PAGOS}/${id}`));
+
+  // Borra la cuenta con todo lo que tenía al debe (ítems y pagos), para corregir errores.
+  const cajaBorrarCuenta = async (cuentaId) => {
+    const updates = { [`${DB_CUENTAS}/${cuentaId}`]: null };
+    ventas.filter(v => v.cuentaId === cuentaId).forEach(v => { updates[`${DB_VENTAS}/${v.id}`] = null; });
+    pagos.filter(p => p.cuentaId === cuentaId).forEach(p => { updates[`${DB_PAGOS}/${p.id}`] = null; });
+    await update(ref(db), updates);
+  };
+
+  const cajaRegistrarGasto = async ({ concepto, monto, medio }) => {
+    const clave = push(child(ref(db), DB_GASTOS)).key;
+    await set(ref(db, `${DB_GASTOS}/${clave}`), { id:clave, concepto, monto, medio, ts:Date.now(), vendedor: vendedor || "Sin nombre" });
+  };
+  const cajaEditarGasto = (id, cambios) => update(ref(db, `${DB_GASTOS}/${id}`), cambios);
+  const cajaBorrarGasto = (id) => remove(ref(db, `${DB_GASTOS}/${id}`));
+
+  const cajaGuardarEfectivoInicial = (monto) => set(ref(db, `${DB_CAJA}/efectivoInicial`), monto);
+  const cajaGuardarCierre = async (datos) => {
+    const clave = push(child(ref(db), DB_CIERRES)).key;
+    await set(ref(db, `${DB_CIERRES}/${clave}`), { id:clave, ...datos });
+  };
+  const cajaBorrarCierre = (id) => remove(ref(db, `${DB_CIERRES}/${id}`));
+
   const filteredCards = useMemo(() =>
     cards.filter(c =>
       c.gameId === activeGame.id &&
@@ -549,14 +646,14 @@ setIsAdmin(true);
       <div style={{ display:"flex", background:"#0f1221", padding:"8px 12px", gap:6, borderBottom:"1px solid rgba(255,255,255,0.08)" }}>
         {TABS.map((t, i) => {
           const isActive = tab === i;
-          const labels = ["Cartones", "Información", "Sorteo", "Ganadores"];
+          const labels = ["Cartones", "Información", "Sorteo", "Ganadores", "Caja"];
           return (
             <button key={t} onClick={() => setTab(i)} style={{
               flex:1, padding:"10px 6px",
               background: isActive ? gc : "rgba(255,255,255,0.05)",
               border:"none", borderRadius:10,
               color: isActive ? getTextColor(gc) : "#64748b",
-              fontWeight: isActive ? 700 : 500, fontSize:15,
+              fontWeight: isActive ? 700 : 500, fontSize:13,
               cursor:"pointer", fontFamily:"'Nunito', sans-serif",
               transition:"all 0.2s ease",
               boxShadow: isActive ? `0 0 12px ${gc}66` : "none"
@@ -704,7 +801,7 @@ setIsAdmin(true);
 
       {/* ══ OTROS TABS ══ */}
       {tab !== 2 && (
-        <div style={{ padding: tab === 1 && !isAdmin ? "0" : "18px 14px", maxWidth: tab === 1 && !isAdmin ? "100%" : 760, margin:"0 auto" }}>
+        <div style={{ padding: tab === 1 && !isAdmin ? "0" : tab === 4 ? "14px 12px" : "18px 14px", maxWidth: (tab === 1 && !isAdmin) || tab === 4 ? "100%" : 760, margin:"0 auto" }}>
 
           {/* ══ TAB CARTONES ══ */}
           {tab === 0 && (<div style={{ marginTop:10 }}>
@@ -848,6 +945,39 @@ setIsAdmin(true);
     <div style={{ textAlign:"center", color:"#94a3b8", padding:"20px 0", fontSize:13 }}>Sin ventas registradas aún</div>
   )}
 </div>
+
+{/* Resumen de la caja: bebida, comida y lo que se cobra por caja (los cartones van aparte) */}
+{(() => {
+  const tc = totalesCaja({ ventas, cuentas:cuentasCaja, pagos, gastos:gastosCaja, efectivoInicial:cajaConfig?.efectivoInicial || 0 });
+  const abiertas = cuentasConSaldo(cuentasCaja, ventas, pagos).filter(c => c.saldo > 0).length;
+  return (
+    <div style={{ background:"#ffffff", borderRadius:13, padding:16, marginBottom:16, border:"1px solid #e2e8f0", boxShadow:"0 1px 3px rgba(0,0,0,0.05)" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12, gap:10 }}>
+        <h3 style={{ margin:0, fontSize:14, color:"#334155" }}>💰 Caja del evento</h3>
+        <button onClick={() => setTab(4)} style={{...btnS("#0ea5e9"), padding:"6px 12px", fontSize:12}}>Registrar venta ›</button>
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+        {[
+          { label:"Efectivo esperado", val:fmt(tc.esperadoEfectivo), color:"#16a34a" },
+          { label:"Transferencias", val:fmt(tc.transferencia), color:"#3b82f6" },
+          { label:`Al debe${abiertas ? ` (${abiertas})` : ""}`, val:fmt(tc.porCobrar), color:"#f97316" },
+          { label:"Gastos", val:fmt(tc.gastosTotal), color:"#ef4444" },
+        ].map(s => (
+          <div key={s.label}>
+            <div style={{ fontSize:18, fontWeight:800, color:s.color }}>{s.val}</div>
+            <div style={{ fontSize:12, color:"#64748b" }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ marginTop:10, paddingTop:10, borderTop:"1px solid #f1f5f9", fontSize:13, fontWeight:700, color:"#334155" }}>
+        Neto en caja: <span style={{ color:"#16a34a" }}>{fmt(tc.cobrado)}</span>
+        <div style={{ fontWeight:400, color:"#94a3b8", fontSize:11, marginTop:2 }}>
+          Incluye bebida, comida y los cartones que se cobran por caja. Los {cards.filter(c => c.paid).length} cartones entregados ({fmt(totalRecaudado)}) se cuentan en la pestaña Cartones.
+        </div>
+      </div>
+    </div>
+  );
+})()}
 
       <div style={{ marginBottom:12 }}>
         <button onClick={() => setShowGameModal(true)} style={{ background:activeGame.color, border:"none", borderRadius:10, padding:"10px 20px", fontSize:14, fontWeight:700, cursor:"pointer", color:getTextColor(activeGame.color), display:"flex", alignItems:"center", gap:8 }}>🎮 {activeGame.name} ▼</button>
@@ -1113,6 +1243,34 @@ setIsAdmin(true);
                 })
               }
             </div>
+          )}
+
+          {/* ══ TAB CAJA ══ */}
+          {tab === 4 && (
+            <CajaPanel
+              isAdmin={isAdmin}
+              productos={productos}
+              ventas={ventas}
+              cuentas={cuentasCaja}
+              pagos={pagos}
+              gastos={gastosCaja}
+              cierres={cierres}
+              config={cajaConfig}
+              currentPrice={currentPrice}
+              vendedor={vendedor}
+              onCambiarVendedor={cambiarVendedor}
+              totalCartones={totalRecaudado}
+              cantidadCartones={cards.filter(c => c.paid).length}
+              showToast={showToast}
+              api={{
+                agregarProducto:cajaAgregarProducto, editarProducto:cajaEditarProducto, borrarProducto:cajaBorrarProducto,
+                registrarVenta:cajaRegistrarVenta, crearCuenta:cajaCrearCuenta,
+                corregirLinea:cajaCorregirLinea, borrarLinea:cajaBorrarLinea, borrarCuenta:cajaBorrarCuenta,
+                registrarPago:cajaRegistrarPago, editarPago:cajaEditarPago, borrarPago:cajaBorrarPago,
+                registrarGasto:cajaRegistrarGasto, editarGasto:cajaEditarGasto, borrarGasto:cajaBorrarGasto,
+                guardarEfectivoInicial:cajaGuardarEfectivoInicial, guardarCierre:cajaGuardarCierre, borrarCierre:cajaBorrarCierre,
+              }}
+            />
           )}
 
         </div>
