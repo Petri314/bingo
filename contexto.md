@@ -101,3 +101,25 @@ proyecto/
 - La detección de ganadores usa runTransaction para evitar condiciones de carrera
 - Las imágenes de premios van en /public/premios/j1.png ... j12.png (y versión mobile)
 - `import { PIN } from "./firebase.js"` fue eliminado de bingo-admin.jsx (PIN migró al servidor)
+
+## Ganadores: un solo ganador por juego (corregido)
+
+El evento de abril tuvo 2 a 4 ganadores por juego. Causa: el único freno era el flag
+`alreadyWon` leído del estado de React, que llega atrasado mientras el admin canta números
+seguidos; como varios cartones cumplen el mismo patrón casi al mismo tiempo, cada toque
+anotaba uno más. Además, volver a elegir el mismo juego o patrón en el modal reseteaba ese
+flag (y con la clave de ganador por cartón, los demás cartones entraban como nuevos).
+
+Ahora funciona así:
+- El ganador se anota con una **transacción sobre todo el nodo de ganadores**, que aborta
+  si ya hay uno del mismo juego en la misma ronda (`src/utils.js` → `resolverRegistro`).
+- La **ronda** se identifica con `bingo_state.roundId`, que solo cambia al pulsar Reiniciar:
+  un juego tiene un ganador por ronda; para un ganador nuevo hay que Reiniciar (o borrar el
+  ganador registrado, si fue un error de tipeo).
+- `bingo_state.alreadyWon` se lee fresco desde Firebase dentro de `toggleNumber`.
+- Re-elegir el juego o el patrón activo ya no reinicia al ganador ya registrado.
+- Los registros de eventos anteriores (sin `roundId`) no bloquean el evento nuevo.
+- El binguito usa la misma protección, por separado del bingo.
+
+Tests: `npm test` (usa `node --test`, sin dependencias extra). `tests/ganadores.test.js`
+reproduce el bug (con el criterio viejo se anotaban 4 ganadores) y verifica el arreglo.

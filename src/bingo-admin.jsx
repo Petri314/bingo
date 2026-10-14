@@ -1,4 +1,4 @@
-import { pad, getTextColor, getLetterForNum, generateCardGrid, checkPattern, checkBinguito } from "./utils.js";
+import { pad, getTextColor, getLetterForNum, generateCardGrid, checkPattern, checkBinguito, resolverRegistro } from "./utils.js";
 import ResetModal from "./components/ResetModal.jsx";
 import LoginModal from "./components/LoginModal.jsx";
 import GameModal from "./components/GameModal.jsx";
@@ -266,11 +266,16 @@ setIsAdmin(true);
   }, []);
 
   const handleSelectGame = async (game) => {
+    // Volver a elegir el juego que ya está activo no debe borrar al ganador ya
+    // registrado: eso reabría la detección y anotaba un segundo ganador.
+    if (!game || game.id === activeGame.id) return;
     await update(ref(db, DB_STATE), { gameId:game.id, alreadyWon:false, alreadyBinguito:false, currentWinner:null, currentBinguito:null });
     setWinnerPopup(null); setBinguitoPopup(null);
   };
 
   const handleSelectPattern = async (pattern) => {
+    // Mismo caso: re-elegir el patrón activo no reinicia el ganador del sorteo en curso.
+    if (!pattern || pattern.id === activePattern.id) return;
     await update(ref(db, DB_STATE), { patternId:pattern.id, alreadyWon:false, alreadyBinguito:false, currentWinner:null, currentBinguito:null });
     setBinguitoPopup(null);
   };
@@ -338,6 +343,21 @@ setIsAdmin(true);
     showToast("Eliminado");
   };
 
+  // Anota un ganador solo si en la ronda en curso ese juego no tiene uno ya (un juego =
+  // un ganador; para otra ronda hay que usar Reiniciar). La transacción sobre todo el nodo
+  // de ganadores evita que dos toques rápidos —o dos celulares de admin a la vez— anoten
+  // dos ganadores distintos, que era exactamente el bug del evento de abril.
+  const registrarGanador = async (nodo, clave, registro, filtro) => {
+    let previo = null;
+    const resultado = await runTransaction(ref(db, nodo), (todos) => {
+      const r = resolverRegistro(todos, clave, registro, filtro);
+      previo = r.previo;
+      return r.siguiente === null ? undefined : r.siguiente;  // undefined = aborta sin escribir
+    });
+    if (previo) return { estado: "previo", previo };
+    return { estado: resultado.committed ? "nuevo" : "sin_cambio" };
+  };
+
   const toggleNumber = async (n) => {
     if (!isAdmin) return;
     const isMarking = !drawn.includes(n);
@@ -350,20 +370,30 @@ setIsAdmin(true);
 
       const soldCards = cards.filter(c => c.paid && c.gameId === activeGame.id);
 
+      // El estado se lee fresco desde Firebase: el `alreadyWon` de React puede venir
+      // atrasado (el admin canta varios números seguidos) y era la puerta por la que
+      // entraba un segundo ganador.
+      const estadoSnap = await new Promise(res => onValue(ref(db, DB_STATE), res, { onlyOnce: true }));
+      const estado = estadoSnap.val() || {};
+      // Identifica la ronda en curso. Si el estado no la trae todavía (por ejemplo, base
+      // de datos de un evento anterior), se crea ahora para que el ganador quede atado a ella.
+      const roundId = estado.roundId ?? Date.now();
+      if (estado.roundId == null) await update(ref(db, DB_STATE), { roundId });
+
       // ── Detectar ganador BINGO ────────────────────────────────────────────
-      if (!alreadyWon) {
+      if (!estado.alreadyWon) {
         for (const card of soldCards) {
           if (!card.grid) continue;
           if (checkPattern(card, next, activePattern)) {
             const winnerKey = `${activeGame.id}_${card.cardNum}`;
-            const winnerRef = ref(db, `${DB_WINNERS}/${winnerKey}`);
-            await runTransaction(winnerRef, (existing) => {
-              if (existing !== null) return;
-              return { id:winnerKey, name:card.owner, card:card.cardNum, game:activeGame.name, gameId:activeGame.id, patternId:activePattern.id, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now(), drawn:[...next] };
-            });
-            const snap = await new Promise(res => onValue(winnerRef, res, { onlyOnce: true }));
-            if (snap.val()) {
-              update(ref(db, DB_STATE), { alreadyWon:true, currentWinner:snap.val() });
+            const registro = { id:winnerKey, name:card.owner, card:card.cardNum, game:activeGame.name, gameId:activeGame.id, patternId:activePattern.id, roundId, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now(), drawn:[...next] };
+            const res = await registrarGanador(DB_WINNERS, winnerKey, registro,
+              { gameId: activeGame.id, roundId });
+            if (res.estado === "nuevo") {
+              update(ref(db, DB_STATE), { alreadyWon:true, currentWinner:registro });
+            } else if (res.previo) {
+              update(ref(db, DB_STATE), { alreadyWon:true, currentWinner:res.previo });
+              showToast(`Ya ganó el ${res.previo.game} (cartón ${res.previo.card}) · usa Reiniciar para una ronda nueva`, "err");
             }
             break;
           }
@@ -371,19 +401,19 @@ setIsAdmin(true);
       }
 
       // ── Detectar ganador BINGUITO ─────────────────────────────────────────
-      if (!alreadyBinguito && activePattern.binguito) {
+      if (!estado.alreadyBinguito && activePattern.binguito) {
         for (const card of soldCards) {
           if (!card.grid) continue;
           if (checkBinguito(card, next, activePattern)) {
             const binguitoKey = `${activeGame.id}_${card.cardNum}`;
-            const binguitoRef = ref(db, `${DB_BINGUITOS}/${binguitoKey}`);
-            await runTransaction(binguitoRef, (existing) => {
-              if (existing !== null) return;
-              return { id:binguitoKey, name:card.owner, card:card.cardNum, game:activeGame.name, gameId:activeGame.id, patternId:activePattern.id, binguitoName: activePattern.binguito.name, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now(), drawn:[...next] };
-            });
-            const snap = await new Promise(res => onValue(binguitoRef, res, { onlyOnce: true }));
-            if (snap.val()) {
-              update(ref(db, DB_STATE), { alreadyBinguito:true, currentBinguito:snap.val() });
+            const registro = { id:binguitoKey, name:card.owner, card:card.cardNum, game:activeGame.name, gameId:activeGame.id, patternId:activePattern.id, roundId, binguitoName: activePattern.binguito.name, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now(), drawn:[...next] };
+            const res = await registrarGanador(DB_BINGUITOS, binguitoKey, registro,
+              { gameId: activeGame.id, roundId });
+            if (res.estado === "nuevo") {
+              update(ref(db, DB_STATE), { alreadyBinguito:true, currentBinguito:registro });
+            } else if (res.previo) {
+              update(ref(db, DB_STATE), { alreadyBinguito:true, currentBinguito:res.previo });
+              showToast(`Ya está el binguito del ${res.previo.game} (cartón ${res.previo.card})`, "err");
             }
             break;
           }
@@ -394,15 +424,20 @@ setIsAdmin(true);
 
   const resetSort = async () => {
     await set(ref(db, DB_DRAWN), null);
-    await update(ref(db, DB_STATE), { alreadyWon:false, alreadyBinguito:false, currentWinner:null, currentBinguito:null });
+    // Ronda nueva: los ganadores anteriores dejan de bloquear y se puede volver a ganar.
+    await update(ref(db, DB_STATE), { alreadyWon:false, alreadyBinguito:false, currentWinner:null, currentBinguito:null, roundId:Date.now() });
     setShowResetModal(false);
     showToast("Sorteo reiniciado");
   };
 
   const addWinner = async () => {
     if (!winnerName.trim() || !winnerCard.trim()) return showToast("Completa campos", "err");
+    // Se guarda la ronda para que un ganador cargado a mano también cuente como el
+    // ganador de este juego en esta ronda (y no se anote después otro automáticamente).
+    const estadoSnap = await new Promise(res => onValue(ref(db, DB_STATE), res, { onlyOnce: true }));
+    const roundId = (estadoSnap.val() || {}).roundId ?? null;
     const winnerKey = `${activeGame.id}_${winnerCard.trim()}`;
-    await set(ref(db, `${DB_WINNERS}/${winnerKey}`), { id:winnerKey, name:winnerName.trim(), card:winnerCard.trim(), game:activeGame.name, gameId:activeGame.id, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now(), drawn:[...drawn] });
+    await set(ref(db, `${DB_WINNERS}/${winnerKey}`), { id:winnerKey, name:winnerName.trim(), card:winnerCard.trim(), game:activeGame.name, gameId:activeGame.id, roundId, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now(), drawn:[...drawn] });
     showToast("🏆 ¡Ganador registrado!");
     setWinnerName(""); setWinnerCard("");
   };

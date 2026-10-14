@@ -46,6 +46,31 @@ export function checkPattern(card, drawn, pattern) {
   return _checkGrid(card, drawn, pattern.grid);
 }
 
+// ── Un solo ganador por juego y ronda ────────────────────────────────────────
+// Devuelve el ganador ya registrado en la ronda en curso (roundId) para ese juego, si
+// existe. Es la regla que evita los 2-4 ganadores que salieron en el evento: varios
+// cartones completan el mismo patrón casi al mismo tiempo y cada toque del admin
+// anotaba uno más. El roundId cambia solo al reiniciar el sorteo, que es la forma
+// explícita de empezar una ronda nueva; los registros viejos sin roundId no bloquean.
+// El patrón no interviene a propósito: un juego tiene un ganador, no uno por patrón.
+export function ganadoEnEsteSorteo(registros, { gameId, roundId }) {
+  if (roundId === null || roundId === undefined) return null;
+  return (registros || []).find(w =>
+    w && w.gameId === gameId && w.roundId === roundId
+  ) || null;
+}
+
+// Decide qué hacer al detectar un cartón ganador. Está pensado para ejecutarse dentro
+// de una transacción de Firebase sobre todo el nodo de ganadores:
+//   siguiente === null  → ya había un ganador en este sorteo, no hay que escribir nada
+//   previo              → el ganador que ya estaba registrado
+//   siguiente           → nodo de ganadores con el nuevo registro agregado
+export function resolverRegistro(todos, clave, registro, filtro) {
+  const previo = ganadoEnEsteSorteo(Object.values(todos || {}), filtro);
+  if (previo) return { previo, siguiente: null };
+  return { previo: null, siguiente: { ...(todos || {}), [clave]: registro } };
+}
+
 // Verifica si el cartón cumple el subpatrón "binguito" del patrón activo.
 // Devuelve false si el patrón no tiene binguito definido.
 export function checkBinguito(card, drawn, pattern) {
