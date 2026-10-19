@@ -1,4 +1,4 @@
-import { pad, getTextColor, getLetterForNum, generateCardGrid, checkPattern, checkBinguito, resolverRegistro } from "./utils.js";
+import { pad, getTextColor, getLetterForNum, generateCardGrid, checkPattern, checkBinguito, resolverRegistro, claveGanador } from "./utils.js";
 import ResetModal from "./components/ResetModal.jsx";
 import LoginModal from "./components/LoginModal.jsx";
 import GameModal from "./components/GameModal.jsx";
@@ -234,7 +234,10 @@ setIsAdmin(true);
       const all = v ? Object.values(v) : [];
       const unique = Object.values(
         all.reduce((acc, w) => {
-          const key = `${w.gameId}_${w.card}`;
+          // La ronda forma parte de la identidad: un cartón puede ganar en rondas
+          // distintas y ambas quedan en el historial. Los registros viejos sin
+          // roundId se agrupan como "old".
+          const key = `${w.gameId}_${w.roundId ?? "old"}_${w.card}`;
           if (!acc[key] || w.ts > acc[key].ts) acc[key] = w;
           return acc;
         }, {})
@@ -381,6 +384,18 @@ setIsAdmin(true);
     return { estado: resultado.committed ? "nuevo" : "sin_cambio" };
   };
 
+  // Obtiene la ronda en curso. Si el estado no la trae todavía (por ejemplo, base de
+  // datos de un evento anterior), la crea con una transacción para que, si dos admins
+  // empiezan a la vez, ambos queden en la MISMA ronda y no se anoten dos ganadores.
+  const obtenerRoundId = async (estado) => {
+    let roundId = estado.roundId;
+    if (roundId == null) {
+      const resultado = await runTransaction(ref(db, `${DB_STATE}/roundId`), (actual) => actual ?? Date.now());
+      roundId = resultado.snapshot.val() ?? Date.now();
+    }
+    return roundId;
+  };
+
   const toggleNumber = async (n) => {
     if (!isAdmin) return;
     const isMarking = !drawn.includes(n);
@@ -398,21 +413,14 @@ setIsAdmin(true);
       // entraba un segundo ganador.
       const estadoSnap = await new Promise(res => onValue(ref(db, DB_STATE), res, { onlyOnce: true }));
       const estado = estadoSnap.val() || {};
-      // Identifica la ronda en curso. Si el estado no la trae todavía (por ejemplo, base de
-      // datos de un evento anterior), se crea con una transacción para que, si dos admins
-      // empiezan a la vez, ambos queden en la MISMA ronda y no se anoten dos ganadores.
-      let roundId = estado.roundId;
-      if (roundId == null) {
-        const resultado = await runTransaction(ref(db, `${DB_STATE}/roundId`), (actual) => actual ?? Date.now());
-        roundId = resultado.snapshot.val() ?? Date.now();
-      }
+      const roundId = await obtenerRoundId(estado);
 
       // ── Detectar ganador BINGO ────────────────────────────────────────────
       if (!estado.alreadyWon) {
         for (const card of soldCards) {
           if (!card.grid) continue;
           if (checkPattern(card, next, activePattern)) {
-            const winnerKey = `${activeGame.id}_${card.cardNum}`;
+            const winnerKey = claveGanador(activeGame.id, roundId);
             const registro = { id:winnerKey, name:card.owner, card:card.cardNum, game:activeGame.name, gameId:activeGame.id, patternId:activePattern.id, roundId, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now(), drawn:[...next] };
             const res = await registrarGanador(DB_WINNERS, winnerKey, registro,
               { gameId: activeGame.id, roundId });
@@ -432,7 +440,7 @@ setIsAdmin(true);
         for (const card of soldCards) {
           if (!card.grid) continue;
           if (checkBinguito(card, next, activePattern)) {
-            const binguitoKey = `${activeGame.id}_${card.cardNum}`;
+            const binguitoKey = claveGanador(activeGame.id, roundId);
             const registro = { id:binguitoKey, name:card.owner, card:card.cardNum, game:activeGame.name, gameId:activeGame.id, patternId:activePattern.id, roundId, binguitoName: activePattern.binguito.name, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now(), drawn:[...next] };
             const res = await registrarGanador(DB_BINGUITOS, binguitoKey, registro,
               { gameId: activeGame.id, roundId });
@@ -459,12 +467,32 @@ setIsAdmin(true);
 
   const addWinner = async () => {
     if (!winnerName.trim() || !winnerCard.trim()) return showToast("Completa campos", "err");
-    // Se guarda la ronda para que un ganador cargado a mano también cuente como el
-    // ganador de este juego en esta ronda (y no se anote después otro automáticamente).
+    // Un ganador cargado a mano entra por la MISMA regla y la misma transacción que
+    // uno automático: un juego = un ganador por ronda. Antes se usaba set() con una
+    // clave por cartón, así que dos cartones distintos podían quedar como ganadores.
     const estadoSnap = await new Promise(res => onValue(ref(db, DB_STATE), res, { onlyOnce: true }));
-    const roundId = (estadoSnap.val() || {}).roundId ?? null;
-    const winnerKey = `${activeGame.id}_${winnerCard.trim()}`;
-    await set(ref(db, `${DB_WINNERS}/${winnerKey}`), { id:winnerKey, name:winnerName.trim(), card:winnerCard.trim(), game:activeGame.name, gameId:activeGame.id, roundId, time:new Date().toLocaleTimeString("es-CL"), ts:Date.now(), drawn:[...drawn] });
+    const estado = estadoSnap.val() || {};
+    const roundId = await obtenerRoundId(estado);
+    const winnerKey = claveGanador(activeGame.id, roundId);
+    const registro = {
+      id: winnerKey, name: winnerName.trim(), card: winnerCard.trim(),
+      game: activeGame.name, gameId: activeGame.id, roundId,
+      time: new Date().toLocaleTimeString("es-CL"), ts: Date.now(), drawn: [...drawn],
+    };
+    const res = await registrarGanador(DB_WINNERS, winnerKey, registro,
+      { gameId: activeGame.id, roundId });
+    if (res.estado === "previo") {
+      showToast(`Ya ganó el ${res.previo.game} (cartón ${res.previo.card}) en esta ronda`,
+        "err");
+      return;
+    }
+    if (res.estado !== "nuevo") {
+      showToast("No se pudo registrar el ganador. Intenta de nuevo.", "err");
+      return;
+    }
+    // Se marca el estado para que la detección automática no siga intentando anotar
+    // otro ganador del mismo juego en esta ronda.
+    await update(ref(db, DB_STATE), { alreadyWon:true, currentWinner:registro });
     showToast("🏆 ¡Ganador registrado!");
     setWinnerName(""); setWinnerCard("");
   };

@@ -5,7 +5,7 @@
 // Se ejecutan con:  npm test
 import test from "node:test";
 import assert from "node:assert/strict";
-import { checkPattern, checkBinguito, ganadoEnEsteSorteo, resolverRegistro } from "../src/utils.js";
+import { checkPattern, checkBinguito, ganadoEnEsteSorteo, resolverRegistro, claveGanador } from "../src/utils.js";
 import { PATTERNS } from "../src/constants/index.js";
 
 const ESQUINAS = PATTERNS.find(p => p.id === "corners");
@@ -40,7 +40,8 @@ const CON_LINEA = [...ESQUINAS_16, 16, 31, 46];
 function cantar(nodo, cards, dibujados, pattern, { gameId = "j1", roundId = 1000 } = {}) {
   for (const card of cards) {
     if (!checkPattern(card, dibujados, pattern)) continue;
-    const clave = `${gameId}_${card.cardNum}`;
+    // La misma clave que usa la app: un juego tiene un solo ganador por ronda.
+    const clave = claveGanador(gameId, roundId);
     const registro = { id: clave, gameId, card: card.cardNum, name: card.owner, patternId: pattern.id, roundId, drawn: [...dibujados] };
     const { previo, siguiente } = resolverRegistro(nodo, clave, registro, { gameId, roundId });
     if (previo) return { estado: "previo", previo, nodo };
@@ -67,7 +68,7 @@ test("un solo ganador aunque 4 cartones completen el mismo patrón", () => {
 
   assert.equal(eventos.filter(e => e.estado === "nuevo").length, 1, "solo se anota un ganador");
   assert.equal(eventos.filter(e => e.estado === "previo").length, 3, "los otros 3 intentos quedan bloqueados");
-  assert.deepEqual(Object.keys(nodo), ["j1_001"], "gana el primer cartón que cumplió el patrón");
+  assert.deepEqual(Object.keys(nodo), ["j1_r1000"], "gana el primer cartón que cumplió el patrón");
   assert.equal(eventos[0].numero, 65, "gana con el último número que le faltaba");
 });
 
@@ -96,7 +97,7 @@ test("misma ronda: no hay segundo ganador; ronda nueva: sí se puede volver a ga
   // Reiniciar el sorteo = roundId nuevo (lo escribe el botón Reiniciar)
   const ronda2 = cantarSorteo(CUATRO_CARTONES, ESQUINAS_16, ESQUINAS, { nodo: ronda1.nodo, roundId: 2000 });
   assert.equal(ronda2.eventos.filter(e => e.estado === "nuevo").length, 1, "en ronda nueva sí gana");
-  assert.equal(Object.keys(ronda2.nodo).length, 1, "el ganador nuevo reemplaza al anterior del mismo cartón");
+  assert.equal(Object.keys(ronda2.nodo).length, 2, "el historial conserva el ganador de cada ronda");
 });
 
 test("ganadores de un evento anterior (sin roundId) no bloquean", () => {
@@ -111,7 +112,7 @@ test("ganadores de un evento anterior (sin roundId) no bloquean", () => {
 
 test("un juego = un ganador: cambiar el patrón no habilita otro", () => {
   const ronda = cantarSorteo(CUATRO_CARTONES, CON_LINEA, ESQUINAS);
-  assert.deepEqual(Object.keys(ronda.nodo), ["j1_001"], "gana 4 esquinas");
+  assert.deepEqual(Object.keys(ronda.nodo), ["j1_r1000"], "gana 4 esquinas");
 
   // Con los mismos números, otro cartón cumple Línea Horizontal, pero el juego ya tiene ganador
   const conLinea = cantar(ronda.nodo, CUATRO_CARTONES, ronda.dibujados, LINEA_H, { roundId: 1000 });
@@ -124,21 +125,38 @@ test("cada juego tiene su propio ganador", () => {
   const j2 = [carton(0, "j2"), carton(1, "j2")];
   const ronda1 = cantarSorteo(j1, ESQUINAS_16, ESQUINAS, { gameId: "j1" });
   const ronda2 = cantarSorteo(j2, ESQUINAS_16, ESQUINAS, { nodo: ronda1.nodo, gameId: "j2" });
-  assert.deepEqual(Object.keys(ronda2.nodo).sort(), ["j1_001", "j2_001"]);
+  assert.deepEqual(Object.keys(ronda2.nodo).sort(), ["j1_r1000", "j2_r1000"]);
 });
 
 test("si el admin borra el ganador equivocado, el correcto se puede anotar", () => {
   const cards = [carton(0), carton(1), carton(2)];
   const ronda = cantarSorteo(cards, ESQUINAS_16, ESQUINAS);
-  assert.deepEqual(Object.keys(ronda.nodo), ["j1_001"], "se anota el primero que cumple el patrón");
+  assert.deepEqual(Object.keys(ronda.nodo), ["j1_r1000"], "se anota el primero que cumple el patrón");
 
   // El admin corrige: borra ese ganador desde la pestaña Ganadores...
   const sinElPrimero = { ...ronda.nodo };
-  delete sinElPrimero["j1_001"];
+  delete sinElPrimero["j1_r1000"];
   // ...y vuelve a cantar un número: ahora se detecta el cartón que realmente ganó
   const corregido = cantar(sinElPrimero, [carton(1)], ESQUINAS_16, ESQUINAS);
   assert.equal(corregido.estado, "nuevo");
-  assert.deepEqual(Object.keys(corregido.nodo), ["j1_002"]);
+  assert.deepEqual(Object.keys(corregido.nodo), ["j1_r1000"]);
+  assert.equal(corregido.registro.card, "002");
+});
+
+test("la clave de ganador es por juego y ronda, no por cartón", () => {
+  const k = claveGanador("j1", 1000);
+  assert.equal(k, claveGanador("j1", 1000), "misma ronda y juego → misma clave");
+  assert.notEqual(k, claveGanador("j1", 2000), "otra ronda → otra clave");
+  assert.notEqual(k, claveGanador("j2", 1000), "otro juego → otra clave");
+
+  // Dos cartones distintos que cumplen el patrón a la vez intentan escribir la misma
+  // clave: el segundo encuentra al primero y no se guarda.
+  const primero = { gameId:"j1", card:"001", roundId:1000 };
+  const segundo = { gameId:"j1", card:"002", roundId:1000 };
+  const { previo, siguiente } = resolverRegistro({ [k]: primero }, k, segundo,
+    { gameId:"j1", roundId:1000 });
+  assert.equal(previo.card, "001");
+  assert.equal(siguiente, null, "no se agrega un segundo ganador");
 });
 
 test("el binguito usa la misma protección (un solo binguito por ronda)", () => {
@@ -149,7 +167,7 @@ test("el binguito usa la misma protección (un solo binguito por ronda)", () => 
     dibujados.push(n);
     for (const card of CUATRO_CARTONES) {
       if (!checkBinguito(card, dibujados, ESQUINAS)) continue;
-      const clave = `j1_${card.cardNum}`;
+      const clave = claveGanador("j1", 1000);
       const registro = { id: clave, gameId: "j1", card: card.cardNum, patternId: ESQUINAS.id, roundId: 1000, drawn: [...dibujados] };
       const { previo, siguiente } = resolverRegistro(nodo, clave, registro, { gameId: "j1", roundId: 1000 });
       if (!previo) { nodo = siguiente; nuevos++; }

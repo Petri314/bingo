@@ -60,6 +60,14 @@ export function ganadoEnEsteSorteo(registros, { gameId, roundId }) {
   ) || null;
 }
 
+// Clave única de ganador: un juego tiene UN ganador por ronda. Al usar la ronda en la
+// clave (y no el número de cartón), dos cartones distintos que cumplen el patrón al
+// mismo tiempo no pueden quedar guardados como dos ganadores, ni siquiera si alguien
+// escribe directo en Firebase.
+export function claveGanador(gameId, roundId) {
+  return `${gameId}_r${roundId}`;
+}
+
 // Decide qué hacer al detectar un cartón ganador. Está pensado para ejecutarse dentro
 // de una transacción de Firebase sobre todo el nodo de ganadores:
 //   siguiente === null  → ya había un ganador en este sorteo, no hay que escribir nada
